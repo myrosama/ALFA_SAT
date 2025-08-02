@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
 </head>
 <body class="test-body">
+    <!-- The backdrop for the modal -->
+    <div class="modal-backdrop" id="modal-backdrop"></div>
 
     <div class="test-wrapper">
         <!-- TOP HEADER -->
@@ -20,55 +22,66 @@
                     <span>Module 1</span>
                 </div>
             </div>
+            <div class="header-center timer">
+                <i class="fa-regular fa-clock"></i>
+                <span>31:45</span>
+            </div>
             <div class="header-right">
                 <div class="test-tools">
                     <button class="tool-btn" title="Calculator"><i class="fa-solid fa-calculator"></i></button>
                     <button class="tool-btn" title="Highlighter"><i class="fa-solid fa-highlighter"></i></button>
-                    <button class="tool-btn" title="Strikethrough Answer"><i class="fa-solid fa-strikethrough"></i></button>
-                </div>
-                <div class="timer">
-                    <i class="fa-regular fa-clock"></i>
-                    <span>31:45</span>
                 </div>
             </div>
         </header>
 
-        <!-- MAIN SPLIT-SCREEN CONTENT -->
+        <!-- MAIN SPLIT-SCREEN CONTENT (Resizer is removed) -->
         <main class="test-main">
             <div class="stimulus-pane">
                 <div class="pane-content">
                     <h3>The Ascent of the Robotic Bee</h3>
                     <p>In the intricate dance of pollination, bees are unparalleled masters. Their fuzzy bodies are perfect for trapping pollen, and their tireless flights ensure the propagation of countless plant species. However, with bee populations facing threats from climate change and habitat loss, scientists are exploring technological stand-ins. Enter the "RoboBee," a tiny, insect-sized robot developed by researchers at Harvard University.</p>
                     <p>Initially, the challenge was immense. Creating a machine that could replicate the delicate, agile flight of a bee required breakthroughs in micro-robotics and artificial muscle technology. The first prototypes were tethered to a power source, unable to venture far. But years of refinement led to autonomous versions capable of controlled flight.</p>
-                    <p>The latest models are equipped with electrostatic patches, allowing them to cling to surfaces just as a bee would alight on a flower. When it comes to pollination, instead of a fuzzy body, these RoboBees use a gel-coated brush to gather and transfer pollen grains. While they cannot yet match the efficiency of a natural hive, they represent a remarkable fusion of biology and engineering, offering a potential (though perhaps dystopian) safety net for our ecosystems.</p>
                 </div>
             </div>
 
-            <div class="pane-resizer" id="pane-resizer"></div>
-
             <div class="question-pane">
                 <div class="pane-content">
+                    <!-- Question Header Bar with Mark for Review -->
+                    <div class="question-header-bar">
+                        <div class="q-number-display">1</div>
+                        <label class="mark-for-review">
+                            <input type="checkbox">
+                            <i class="fa-regular fa-flag"></i>
+                            <span>Mark for Review</span>
+                        </label>
+                    </div>
+
                     <p class="question-text">Which finding, if true, would most directly weaken the author's claim about the potential of RoboBees as a "safety net"?</p>
                     
                     <div class="question-options">
-                        <!-- Options A, B, C, D -->
-                        <label class="option"><input type="radio" name="question1" value="A"><span class="option-letter">A</span><span class="option-text">The materials used in RoboBee construction are biodegradable and ethically sourced.</span></label>
-                        <label class="option"><input type="radio" name="question1" value="B"><span class="option-letter">B</span><span class="option-text">Field trials show that many plant species' reproductive structures are too delicate and are damaged by the RoboBee's brush.</span></label>
-                        <label class="option"><input type="radio" name="question1" value="C"><span class="option-letter">C</span><span class="option-text">The flight algorithm of the RoboBee can be updated remotely to improve its navigation through complex environments.</span></label>
-                        <label class="option"><input type="radio" name="question1" value="D"><span class="option-letter">D</span><span class="option-text">A single natural bee colony can pollinate an area equivalent to what 500 current-generation RoboBees can cover.</span></label>
+                        <!-- Options with Strikethrough Buttons -->
+                        <div class="option-wrapper">
+                            <label class="option"><input type="radio" name="question1" value="A"><span class="option-letter">A</span><span class="option-text">The materials used in RoboBee construction are biodegradable and ethically sourced.</span></label>
+                            <button class="strikethrough-btn" title="Eliminate choice"><i class="fa-solid fa-ban"></i></button>
+                        </div>
+                        <div class="option-wrapper">
+                            <label class="option"><input type="radio" name="question1" value="B"><span class="option-letter">B</span><span class="option-text">Field trials show that many plant species' reproductive structures are too delicate and are damaged by the RoboBee's brush.</span></label>
+                            <button class="strikethrough-btn" title="Eliminate choice"><i class="fa-solid fa-ban"></i></button>
+                        </div>
+                        <div class="option-wrapper">
+                            <label class="option"><input type="radio" name="question1" value="C"><span class="option-letter">C</span><span class="option-text">The flight algorithm of the RoboBee can be updated remotely to improve its navigation through complex environments.</span></label>
+                            <button class="strikethrough-btn" title="Eliminate choice"><i class="fa-solid fa-ban"></i></button>
+                        </div>
+                        <div class="option-wrapper">
+                            <label class="option"><input type="radio" name="question1" value="D"><span class="option-letter">D</span><span class="option-text">A single natural bee colony can pollinate an area equivalent to what 500 current-generation RoboBees can cover.</span></label>
+                            <button class="strikethrough-btn" title="Eliminate choice"><i class="fa-solid fa-ban"></i></button>
+                        </div>
                     </div>
-                    
-                    <!-- MARK FOR REVIEW MOVED HERE -->
-                    <label class="mark-for-review">
-                        <input type="checkbox">
-                        <i class="fa-regular fa-flag"></i>
-                        <span>Mark for Review</span>
-                    </label>
                 </div>
             </div>
         </main>
 
-        <!-- BOTTOM NAVIGATION -->
+        <!-- FOOTER (Restored to the version you liked) -->
         <footer class="test-footer">
             <div class="footer-user-name">
                 Boboxon Yusupov
@@ -86,7 +99,7 @@
         </footer>
     </div>
 
-    <!-- QUESTION NAVIGATOR MODAL (HIDDEN BY DEFAULT) -->
+    <!-- QUESTION NAVIGATOR MODAL -->
     <div class="question-navigator-modal" id="question-navigator-modal">
         <div class="modal-header">
             <h4>Section 1, Module 1: Reading and Writing Questions</h4>
@@ -98,13 +111,12 @@
             <span><i class="fa-solid fa-flag for-review"></i> For Review</span>
         </div>
         <div class="modal-grid">
-            <!-- Question numbers will be generated by JS later. Static for now. -->
-            <div class="q-number current">1</div> <div class="q-number">2</div> <div class="q-number reviewed">3</div> <div class="q-number">4</div> <div class="q-number">5</div>
-            <div class="q-number">6</div> <div class="q-number">7</div> <div class="q-number">8</div> <div class="q-number">9</div> <div class="q-number">10</div>
-            <div class="q-number">11</div> <div class="q-number">12</div> <div class="q-number">13</div> <div class="q-number">14</div> <div class="q-number">15</div>
-            <div class="q-number">16</div> <div class="q-number">17</div> <div class="q-number answered">18</div> <div class="q-number">19</div> <div class="q-number">20</div>
-            <div class="q-number">21</div> <div class="q-number">22</div> <div class="q-number">23</div> <div class="q-number">24</div> <div class="q-number">25</div>
-            <div class="q-number">26</div> <div class="q-number">27</div>
+            <div class="q-number current">1</div><div class="q-number">2</div><div class="q-number reviewed">3</div><div class="q-number">4</div><div class="q-number">5</div>
+            <div class="q-number">6</div><div class="q-number">7</div><div class="q-number">8</div><div class="q-number">9</div><div class="q-number">10</div>
+            <div class="q-number">11</div><div class="q-number">12</div><div class="q-number">13</div><div class="q-number">14</div><div class="q-number">15</div>
+            <div class="q-number">16</div><div class="q-number">17</div><div class="q-number answered">18</div><div class="q-number">19</div><div class="q-number">20</div>
+            <div class="q-number">21</div><div class="q-number">22</div><div class="q-number">23</div><div class="q-number">24</div><div class="q-number">25</div>
+            <div class="q-number">26</div><div class="q-number">27</div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary">Go to Review Page</button>
