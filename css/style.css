@@ -1,0 +1,320 @@
+/* --- Global Styles & Variables --- */
+:root {
+    --primary-blue: #003366;  /* A deep blue from your logo */
+    --primary-purple: #6A0DAD; /* A vibrant purple to replace the red */
+    --light-gray: #f4f7f6;
+    --medium-gray: #e8e8e8;
+    --dark-gray: #555;
+    --text-color: #333;
+    --white: #ffffff;
+    --success: #28a745;
+    --error: #dc3545;
+    --font-family: 'Poppins', sans-serif;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--light-gray);
+    color: var(--text-color);
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* --- Authentication Page Styles --- */
+.auth-container {
+    padding: 20px;
+}
+
+.auth-card {
+    background-color: var(--white);
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.auth-header .logo {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 10px;
+}
+
+.auth-header h1 {
+    margin: 0;
+    color: var(--primary-blue);
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.auth-header p {
+    color: var(--dark-gray);
+    margin-bottom: 30px;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.input-group {
+    text-align: left;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--dark-gray);
+}
+
+.input-group input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--medium-gray);
+    border-radius: 8px;
+    font-size: 1rem;
+    box-sizing: border-box; /* Important for padding and width */
+    transition: border-color 0.3s;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: var(--primary-purple);
+}
+
+.btn {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+.btn-primary {
+    background-color: var(--primary-purple);
+    color: var(--white);
+    margin-top: 10px;
+}
+
+.btn-primary:hover {
+    background-color: #56088f; /* A slightly darker purple */
+    transform: translateY(-2px);
+}
+
+.auth-switch {
+    margin-top: 25px;
+    font-size: 0.9rem;
+}
+
+.auth-switch a {
+    color: var(--primary-purple);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.auth-switch a:hover {
+    text-decoration: underline;
+}
+
+/* --- Dashboard Styles --- */
+.dashboard-body {
+    background-color: var(--white);
+    display: block; /* Override the flex settings from the login page */
+}
+
+.main-header {
+    background-color: var(--white);
+    border-bottom: 1px solid var(--medium-gray);
+    padding: 0 40px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    height: 70px;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--primary-blue);
+}
+
+.logo-small {
+    width: 40px;
+    height: 40px;
+}
+
+.main-header nav a {
+    text-decoration: none;
+    color: var(--primary-purple);
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+}
+
+.main-header nav a:hover {
+    background-color: var(--light-gray);
+}
+
+.dashboard-main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px;
+}
+
+.welcome-section {
+    background: linear-gradient(135deg, var(--primary-blue), var(--primary-purple));
+    color: var(--white);
+    padding: 30px;
+    border-radius: 12px;
+    margin-bottom: 40px;
+}
+
+.welcome-section h2 {
+    margin: 0 0 10px 0;
+    font-size: 2rem;
+}
+
+.test-code-section {
+    margin-bottom: 40px;
+}
+
+.test-code-section form {
+    display: flex;
+    gap: 10px;
+}
+
+.test-code-input {
+    flex-grow: 1;
+    padding: 12px 15px;
+    border: 1px solid var(--medium-gray);
+    border-radius: 8px;
+    font-size: 1rem;
+    max-width: 300px;
+    text-transform: uppercase;
+}
+.test-code-input::placeholder {
+    text-transform: none;
+}
+
+.btn-secondary {
+    background-color: var(--primary-blue);
+    color: var(--white);
+}
+
+.btn-secondary:hover {
+    background-color: #002244; /* Darker blue */
+}
+
+
+.test-list-container h3 {
+    font-size: 1.5rem;
+    color: var(--primary-blue);
+    border-bottom: 2px solid var(--light-gray);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.test-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 25px;
+}
+
+.test-card {
+    background-color: var(--white);
+    border: 1px solid var(--medium-gray);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.test-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+}
+
+.card-content {
+    padding: 25px;
+    flex-grow: 1;
+}
+
+.test-card h4 {
+    margin: 0 0 10px 0;
+    font-size: 1.2rem;
+    color: var(--primary-blue);
+}
+
+.test-card p {
+    color: var(--dark-gray);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+
+.test-status {
+    font-weight: 600;
+    font-size: 0.8rem;
+    padding: 4px 8px;
+    border-radius: 20px;
+}
+
+.not-started {
+    background-color: #e3d3f8; /* Light purple */
+    color: var(--primary-purple);
+}
+
+.card-btn {
+    display: block;
+    background-color: var(--primary-purple);
+    color: var(--white);
+    text-align: center;
+    padding: 15px;
+    text-decoration: none;
+    font-weight: 600;
+    margin: 0; /* Override default button margins */
+    border-radius: 0 0 10px 10px; /* Round bottom corners only */
+}
+
+.test-card.completed .card-btn {
+    background-color: var(--primary-blue);
+}
+
+.score-display {
+    background-color: var(--light-gray);
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 15px;
+    text-align: center;
+}
+
+.score-display p {
+    margin: 0;
+    color: var(--primary-blue);
+}
