@@ -1,7 +1,13 @@
 /* --- Global Styles & Variables --- */
+/* --- Universal Box Sizing & Reset --- */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
 :root {
-    --primary-blue: #003366;  /* A deep blue from your logo */
-    --primary-purple: #6A0DAD; /* A vibrant purple to replace the red */
+    --primary-blue: #003366;
+    --primary-purple: #6A0DAD;
     --light-gray: #f4f7f6;
     --medium-gray: #e8e8e8;
     --dark-gray: #555;
@@ -14,13 +20,8 @@
 
 body {
     font-family: var(--font-family);
-    background-color: var(--light-gray);
     color: var(--text-color);
     margin: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
 }
 
 .hidden {
@@ -28,34 +29,61 @@ body {
 }
 
 /* --- Authentication Page Styles --- */
+.auth-body {
+    background: linear-gradient(135deg, var(--primary-blue), var(--primary-purple));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px 0;
+}
+
+.auth-page-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--white);
+    margin-bottom: 30px;
+}
+
+.auth-page-header .logo {
+    width: 80px;
+    height: 80px;
+}
+
+.auth-page-header h1 {
+    margin: 10px 0 0 0;
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
 .auth-container {
-    padding: 20px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 0 20px;
 }
 
 .auth-card {
     background-color: var(--white);
     padding: 40px;
     border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     width: 100%;
-    max-width: 400px;
+    max-width: 420px;
     text-align: center;
 }
 
-.auth-header .logo {
-    width: 80px;
-    height: 80px;
-    margin-bottom: 10px;
-}
-
-.auth-header h1 {
-    margin: 0;
+.auth-card h2 {
+    margin: 0 0 5px 0;
     color: var(--primary-blue);
-    font-size: 2rem;
+    font-size: 1.8rem;
     font-weight: 700;
 }
 
-.auth-header p {
+.auth-card p {
     color: var(--dark-gray);
     margin-bottom: 30px;
 }
@@ -84,13 +112,14 @@ body {
     border: 1px solid var(--medium-gray);
     border-radius: 8px;
     font-size: 1rem;
-    box-sizing: border-box; /* Important for padding and width */
-    transition: border-color 0.3s;
+    box-sizing: border-box;
+    transition: border-color 0.3s, box-shadow 0.3s;
 }
 
 .input-group input:focus {
     outline: none;
     border-color: var(--primary-purple);
+    box-shadow: 0 0 0 3px rgba(106, 13, 173, 0.15);
 }
 
 .btn {
@@ -110,7 +139,7 @@ body {
 }
 
 .btn-primary:hover {
-    background-color: #56088f; /* A slightly darker purple */
+    background-color: #56088f;
     transform: translateY(-2px);
 }
 
@@ -131,8 +160,7 @@ body {
 
 /* --- Dashboard Styles --- */
 .dashboard-body {
-    background-color: var(--white);
-    display: block; /* Override the flex settings from the login page */
+    background-color: var(--light-gray); /* Subtle background for the dashboard */
 }
 
 .main-header {
@@ -177,7 +205,7 @@ body {
 }
 
 .main-header nav a:hover {
-    background-color: var(--light-gray);
+    background-color: #f8f9fa;
 }
 
 .dashboard-main {
@@ -227,9 +255,8 @@ body {
 }
 
 .btn-secondary:hover {
-    background-color: #002244; /* Darker blue */
+    background-color: #002244;
 }
-
 
 .test-list-container h3 {
     font-size: 1.5rem;
@@ -286,7 +313,7 @@ body {
 }
 
 .not-started {
-    background-color: #e3d3f8; /* Light purple */
+    background-color: #e3d3f8;
     color: var(--primary-purple);
 }
 
@@ -298,8 +325,8 @@ body {
     padding: 15px;
     text-decoration: none;
     font-weight: 600;
-    margin: 0; /* Override default button margins */
-    border-radius: 0 0 10px 10px; /* Round bottom corners only */
+    margin: 0;
+    border-radius: 0 0 10px 10px;
 }
 
 .test-card.completed .card-btn {
@@ -317,4 +344,377 @@ body {
 .score-display p {
     margin: 0;
     color: var(--primary-blue);
+}
+
+/* --- Test Interface Styles --- */
+.test-body {
+    background-color: var(--medium-gray);
+    height: 100vh;
+    overflow: hidden; /* Prevent body scrolling */
+}
+
+.test-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.test-header, .test-footer {
+    background-color: var(--white);
+    flex-shrink: 0; /* Prevent header/footer from shrinking */
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.test-header {
+    height: 60px;
+    border-bottom: 1px solid var(--medium-gray);
+}
+
+.header-left, .header-right, .footer-left, .footer-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.test-title {
+    line-height: 1.2;
+}
+
+.test-title h4 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--primary-blue);
+}
+
+.test-title span {
+    font-size: 0.8rem;
+    color: var(--dark-gray);
+}
+
+.header-center {
+    font-weight: 600;
+    color: var(--dark-gray);
+}
+
+.tool-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+    color: var(--dark-gray);
+    padding: 5px;
+}
+
+.tool-btn:hover {
+    color: var(--primary-purple);
+}
+
+.timer {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--primary-blue);
+}
+.timer i {
+    margin-right: 8px;
+}
+
+.test-main {
+    flex-grow: 1; /* This is crucial: makes the main content fill available space */
+    display: flex;
+    overflow: hidden; /* Prevents overflow issues */
+}
+
+.stimulus-pane, .question-pane {
+    height: 100%;
+    overflow-y: auto; /* Allow independent scrolling */
+    background-color: var(--white);
+}
+
+.stimulus-pane {
+    flex-basis: 50%; /* Start at 50% width */
+    padding: 25px;
+    border-right: 1px solid var(--medium-gray);
+}
+
+.question-pane {
+    flex-basis: 50%;
+    padding: 25px;
+}
+
+.pane-resizer {
+    flex-basis: 5px;
+    background-color: var(--medium-gray);
+    cursor: col-resize; /* Indicates it's draggable */
+    transition: background-color 0.2s;
+}
+.pane-resizer:hover {
+    background-color: var(--primary-purple);
+}
+
+.pane-content p {
+    margin-bottom: 1em;
+}
+
+.question-text {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 30px !important;
+}
+
+.question-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.option {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    border: 1px solid var(--medium-gray);
+    padding: 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.option:hover {
+    border-color: var(--primary-purple);
+}
+
+.option input[type="radio"] {
+    display: none; /* Hide the ugly default radio button */
+}
+
+.option-letter {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 30px;
+    height: 30px;
+    border: 2px solid var(--dark-gray);
+    border-radius: 50%;
+    font-weight: 600;
+    flex-shrink: 0;
+    transition: border-color 0.2s, background-color 0.2s, color 0.2s;
+}
+
+/* Style for when an option is selected */
+.option input[type="radio"]:checked + .option-letter {
+    background-color: var(--primary-blue);
+    border-color: var(--primary-blue);
+    color: var(--white);
+}
+.option input[type="radio"]:checked ~ .option-text {
+    font-weight: 600;
+}
+
+.test-footer {
+    height: 70px;
+    border-top: 1px solid var(--medium-gray);
+}
+
+.mark-for-review {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 10px;
+    border-radius: 6px;
+}
+.mark-for-review:hover {
+    background-color: var(--light-gray);
+}
+
+.mark-for-review input {
+    width: 18px;
+    height: 18px;
+}
+.mark-for-review span {
+    font-weight: 600;
+}
+
+/* --- Test Interface Redesign --- */
+
+/* Header & Footer Backgrounds */
+.test-header, .test-footer {
+    background: var(--primary-purple);
+    color: var(--white);
+}
+
+.test-header {
+    border-bottom: 1px solid #56088f; /* Darker purple border */
+}
+
+/* Update text/icon colors for new background */
+.test-title h4, .timer, .tool-btn {
+    color: var(--white);
+}
+.test-title span {
+    color: #e3d3f8; /* Light purple for subtitles */
+}
+.tool-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+}
+.header-center { /* This element was removed, but keeping for safety */
+    color: var(--white);
+}
+
+/* Footer Redesign */
+.test-footer {
+    justify-content: space-between;
+    height: 60px;
+    border-top: 1px solid #56088f;
+}
+
+.footer-user-name {
+    font-weight: 500;
+}
+
+.question-nav-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: var(--white);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background-color 0.2s;
+}
+.question-nav-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+.question-nav-btn i {
+    transition: transform 0.3s;
+}
+.question-nav-btn.open i {
+    transform: rotate(180deg);
+}
+
+/* Mark for Review new position */
+.mark-for-review {
+    margin-top: 30px;
+    padding: 10px;
+    border-radius: 6px;
+    display: inline-flex; /* Make it fit its content */
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+.mark-for-review:hover {
+    background-color: var(--light-gray);
+    border-color: var(--medium-gray);
+}
+.mark-for-review input { display: none; }
+.mark-for-review i { font-size: 1.2rem; color: var(--dark-gray); }
+.mark-for-review span { font-weight: 600; }
+.mark-for-review input:checked ~ i {
+    color: var(--primary-purple);
+    font-weight: 900; /* Makes it a solid flag */
+}
+
+/* Question Navigator Modal Styles */
+.question-navigator-modal {
+    position: fixed;
+    bottom: 75px; /* 60px footer + 15px gap */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 500px;
+    background-color: var(--white);
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    z-index: 2000;
+    color: var(--text-color);
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s, visibility 0.3s;
+    transform-origin: bottom center;
+}
+
+.question-navigator-modal.visible {
+    visibility: visible;
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* The little triangle pointer */
+.question-navigator-modal::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 20px;
+    height: 20px;
+    background-color: var(--white);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--medium-gray);
+}
+.modal-header h4 { margin: 0; font-size: 1.1rem; }
+.close-modal-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
+
+.modal-filters {
+    display: flex;
+    gap: 20px;
+    padding: 15px 20px;
+    font-size: 0.9rem;
+    color: var(--dark-gray);
+}
+.modal-filters i { margin-right: 5px; }
+.modal-filters .current-q { color: var(--primary-blue); }
+.modal-filters .for-review { color: var(--primary-purple); }
+
+.modal-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    padding: 0 20px 20px 20px;
+}
+
+.q-number {
+    border: 1px solid var(--medium-gray);
+    border-radius: 4px;
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+    font-weight: 500;
+}
+.q-number:hover {
+    border-color: var(--primary-purple);
+}
+.q-number.current {
+    border: 2px solid var(--primary-blue);
+    font-weight: 700;
+}
+.q-number.answered {
+    text-decoration: line-through;
+    color: var(--dark-gray);
+}
+.q-number.reviewed {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%236a0dad' d='M96 0C60.7 0 32 28.7 32 64V448c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V64c0-35.3-28.7-64-64-64H96z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: top 2px right 2px;
+    background-size: 8px;
+}
+
+.modal-footer {
+    padding: 15px 20px;
+    border-top: 1px solid var(--medium-gray);
+    text-align: center;
 }
