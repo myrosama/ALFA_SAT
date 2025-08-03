@@ -1,74 +1,99 @@
-// Wait for the HTML document to be fully loaded before running the script
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- Login/Sign Up Page Logic ---
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // --- LOGIN PAGE LOGIC ---
     const loginForm = document.getElementById('login-form');
-    const signupForm = document.getElementById('signup-form');
-    const switchLink = document.getElementById('switch-link');
-    const loginText = document.getElementById('login-text');
-    const signupText = document.getElementById('signup-text');
-
-    // Check if we are on the login/signup page before adding event listeners
-    if (switchLink) {
-        switchLink.addEventListener('click', (e) => {
-            e.preventDefault(); // Prevent the link from navigating
-
-            // Toggle visibility of the forms
-            loginForm.classList.toggle('hidden');
-            signupForm.classList.toggle('hidden');
-
-            // Toggle the helper text and link text
-            loginText.classList.toggle('hidden');
-            signupText.classList.toggle('hidden');
-
-            if (signupForm.classList.contains('hidden')) {
-                // We are showing the Login form
-                switchLink.textContent = 'Sign Up';
-            } else {
-                // We are showing the Sign Up form
-                switchLink.textContent = 'Log In';
-            }
-        });
-    }
-
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-
-    // --- Login/Sign Up Page Logic ---
-    const loginForm = document.getElementById('login-form');
-    const signupForm = document.getElementById('signup-form');
-    const switchLink = document.getElementById('switch-link');
-    const loginText = document.getElementById('login-text');
-    const signupText = document.getElementById('signup-text');
-    const formTitle = document.getElementById('form-title');
-    const formSubtitle = document.getElementById('form-subtitle');
-
-    if (switchLink) {
-        switchLink.addEventListener('click', (e) => {
+    if (loginForm) {
+        const errorDiv = document.getElementById('login-error');
+        loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            loginForm.classList.toggle('hidden');
-            signupForm.classList.toggle('hidden');
-            loginText.classList.toggle('hidden');
-            signupText.classList.toggle('hidden');
-            if (signupForm.classList.contains('hidden')) {
-                switchLink.textContent = 'Sign Up';
-                formTitle.textContent = 'Log In';
-                formSubtitle.textContent = 'Your journey to a better score starts here.';
-            } else {
-                switchLink.textContent = 'Log In';
-                formTitle.textContent = 'Create Account';
-                formSubtitle.textContent = 'Join us and start preparing for success.';
-            }
+            errorDiv.textContent = ''; // Clear previous errors
+            
+            const email = loginForm['login-email'].value;
+            const password = loginForm['login-password'].value;
+
+            auth.signInWithEmailAndPassword(email, password)
+                .then(cred => {
+                    window.location.href = 'dashboard.html';
+                })
+                .catch(err => {
+                    console.error(err.code);
+                    if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+                        errorDiv.textContent = 'Incorrect email or password.';
+                    } else {
+                        errorDiv.textContent = 'An error occurred. Please try again.';
+                    }
+                });
         });
     }
 
-    // --- Test Page Logic ---
-    // We check if an element from the test page exists before running test-specific code
+    // --- SIGN UP PAGE LOGIC ---
+    const signupForm = document.getElementById('signup-form');
+    if (signupForm) {
+        const errorDiv = document.getElementById('signup-error');
+        signupForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            errorDiv.textContent = ''; // Clear previous errors
+
+            const name = signupForm['signup-name'].value;
+            const email = signupForm['signup-email'].value;
+            const password = signupForm['signup-password'].value;
+
+            auth.createUserWithEmailAndPassword(email, password)
+                .then(cred => {
+                    return db.collection('users').doc(cred.user.uid).set({
+                        fullName: name,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }).then(() => {
+                        return cred.user.updateProfile({ displayName: name });
+                    });
+                })
+                .then(() => {
+                    alert('Account created! Please log in.');
+                    window.location.href = 'index.html';
+                })
+                .catch(err => {
+                    console.error(err.code);
+                    if (err.code === 'auth/email-already-in-use') {
+                        errorDiv.textContent = 'This email is already registered.';
+                    } else if (err.code === 'auth/weak-password') {
+                        errorDiv.textContent = 'Password should be at least 6 characters.';
+                    } else {
+                        errorDiv.textContent = 'An error occurred. Please try again.';
+                    }
+                });
+        });
+    }
+
+    // --- LOGOUT & PAGE PROTECTION ---
+    const logoutButton = document.getElementById('logout-btn');
+    if (logoutButton) {
+        logoutButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            auth.signOut().then(() => {
+                window.location.href = 'index.html';
+            });
+        });
+    }
+
+    auth.onAuthStateChanged(user => {
+        const isOnAuthPage = window.location.pathname.includes('index.html') || window.location.pathname.includes('signup.html');
+        if (user) {
+            if (isOnAuthPage) { window.location.replace('dashboard.html'); } // Use replace to avoid back-button issues
+            const welcomeUserName = document.querySelector('#welcome-user-name');
+            const footerUserName = document.querySelector('#footer-user-name');
+            if (welcomeUserName) welcomeUserName.textContent = user.displayName;
+            if (footerUserName) footerUserName.textContent = user.displayName;
+        } else {
+            if (!isOnAuthPage) { window.location.replace('index.html'); }
+        }
+    });
+
+    // --- TEST PAGE UI LOGIC ---
     const testBody = document.querySelector('.test-body');
     if (testBody) {
-
-        // --- Question Navigator Modal Logic ---
         const navBtn = document.getElementById('question-nav-btn');
         const modal = document.getElementById('question-navigator-modal');
         const closeBtn = document.getElementById('close-modal-btn');
@@ -80,30 +105,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 backdrop.classList.toggle('visible');
                 navBtn.classList.toggle('open');
             };
-
             navBtn.addEventListener('click', toggleModal);
             closeBtn.addEventListener('click', toggleModal);
             backdrop.addEventListener('click', toggleModal);
         }
 
-        // --- Answer Strikethrough Logic ---
         const strikethroughButtons = document.querySelectorAll('.strikethrough-btn');
         strikethroughButtons.forEach(button => {
             button.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-
                 const wrapper = button.closest('.option-wrapper');
                 const radio = wrapper.querySelector('input[type="radio"]');
-
                 if (wrapper) {
                     wrapper.classList.toggle('stricken-through');
-                    if (wrapper.classList.contains('stricken-through')) {
-                        radio.checked = false;
-                        radio.disabled = true;
-                    } else {
-                        radio.disabled = false;
-                    }
+                    radio.disabled = wrapper.classList.contains('stricken-through');
+                    if (radio.disabled) radio.checked = false;
                 }
             });
         });

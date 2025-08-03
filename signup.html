@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to ALFA SAT</title>
+    <title>Sign Up - ALFA SAT</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
@@ -23,22 +23,26 @@
 
         <main class="auth-container">
             <div class="auth-card">
-                <h2>Log In</h2>
-                <p>Your journey to a better score starts here.</p>
-                <form id="login-form" class="auth-form">
-                    <div class="error-message" id="login-error"></div> 
+                <h2>Create Account</h2>
+                <p>Join us and start preparing for success.</p>
+                <form id="signup-form" class="auth-form">
+                    <div class="error-message" id="signup-error"></div>
                     <div class="input-group">
-                        <label for="login-email">Email</label>
-                        <input type="email" id="login-email" required>
+                        <label for="signup-name">Full Name</label>
+                        <input type="text" id="signup-name" required>
                     </div>
                     <div class="input-group">
-                        <label for="login-password">Password</label>
-                        <input type="password" id="login-password" required>
+                        <label for="signup-email">Email</label>
+                        <input type="email" id="signup-email" required>
                     </div>
-                    <button type="submit" class="btn btn-primary">Log In</button>
+                    <div class="input-group">
+                        <label for="signup-password">Password (at least 6 characters)</label>
+                        <input type="password" id="signup-password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Sign Up</button>
                 </form>
                 <div class="auth-switch">
-                    <p>Don't have an account? <a href="signup.html">Sign Up</a></p>
+                    <p>Already have an account? <a href="index.html">Log In</a></p>
                 </div>
             </div>
         </main>
