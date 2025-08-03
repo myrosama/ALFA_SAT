@@ -14,57 +14,32 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
     min-height: 100vh;
     padding: 20px;
     position: relative;
-    overflow: hidden;
+    overflow-y: auto; /* Adds a scrollbar ONLY if the content is too tall for the screen */
 }
 
 .background-shapes {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
     z-index: 1;
+    overflow: hidden; /* Important */
 }
-
 .shape {
     position: absolute;
     border-radius: 50%;
     background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0));
-    filter: blur(10px);
 }
-.shape-1 {
-    width: 400px;
-    height: 400px;
-    top: -100px;
-    left: -150px;
-}
-.shape-2 {
-    width: 500px;
-    height: 500px;
-    bottom: -200px;
-    right: -150px;
-}
+.shape-1 { width: 400px; height: 400px; top: -100px; left: -150px; }
+.shape-2 { width: 500px; height: 500px; bottom: -200px; right: -150px; }
 
-.auth-content-wrapper {
+.auth-container {
     position: relative;
     z-index: 2;
     width: 100%;
     max-width: 420px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
 }
 
-.auth-page-header {
-    color: var(--white);
-    margin-bottom: 30px;
-    text-align: center;
-}
-.auth-page-header .logo { width: 80px; height: 80px; }
-.auth-page-header h1 { margin: 10px 0 0 0; font-size: 2.5rem; font-weight: 700; letter-spacing: 1px; }
-
-.auth-container { width: 100%; }
 .auth-card {
-    background-color: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background-color: var(--white);
     padding: 40px;
     border-radius: 16px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
@@ -72,10 +47,50 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
     width: 100%;
 }
 
-.auth-card h2 { margin: 0 0 5px 0; color: var(--primary-blue); font-size: 1.8rem; font-weight: 700; }
-.auth-card p { color: var(--dark-gray); margin-bottom: 25px; }
+.auth-card-header {
+    display: flex;
+    flex-direction: row; /* This is the key change: makes it horizontal */
+    align-items: center;  /* Vertically aligns the logo and text */
+    justify-content: center; /* Centers the whole block in the card */
+    gap: 15px; /* Adds a nice space between the logo and text */
+    margin-bottom: 20px;
+}
+
+
+.auth-card-header .logo { 
+    width: 60px; /* Made the logo slightly smaller to fit better */
+    height: 60px; 
+}
+.auth-card-header h1 {
+    margin: 0; /* Removed the old top margin */
+    font-size: 2.2rem; /* Made the text slightly smaller */
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--primary-blue);
+}
+.auth-card-slogan {
+    color: var(--dark-gray);
+    margin-bottom: 25px; /* Sets the space between slogan and form */
+    margin-top: -15px;   /* Pulls the slogan closer to the header */
+}
 .auth-form { display: flex; flex-direction: column; gap: 15px; }
-.error-message { color: var(--error-red); font-weight: 600; font-size: 0.9rem; text-align: center; min-height: 20px; margin-bottom: 5px; }
+.error-message {
+    color: var(--error-red);
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-align: center;
+    /* New styles for the smooth transition */
+    opacity: 0;
+    max-height: 0;
+    margin-bottom: 0;
+    overflow: hidden;
+    transition: all 0.3s ease-in-out;
+}
+.error-message.visible {
+    opacity: 1;
+    max-height: 50px; /* Allows the element to grow */
+    margin-bottom: 15px; /* Adds space ONLY when the error is visible */
+}
 .input-group { text-align: left; }
 .input-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; color: var(--dark-gray); }
 .input-group input { width: 100%; padding: 12px 15px; border: 1px solid var(--medium-gray); border-radius: 8px; font-size: 1rem; transition: border-color 0.3s, box-shadow 0.3s; font-family: inherit; }

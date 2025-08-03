@@ -3,13 +3,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // --- LOGIN PAGE LOGIC ---
+        // --- LOGIN PAGE LOGIC ---
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
         const errorDiv = document.getElementById('login-error');
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            errorDiv.textContent = ''; // Clear previous errors
+            // Hide the error on a new attempt
+            errorDiv.classList.remove('visible'); 
             
             const email = loginForm['login-email'].value;
             const password = loginForm['login-password'].value;
@@ -20,22 +21,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
                 .catch(err => {
                     console.error(err.code);
+                    let message = 'An error occurred. Please try again.';
                     if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
-                        errorDiv.textContent = 'Incorrect email or password.';
-                    } else {
-                        errorDiv.textContent = 'An error occurred. Please try again.';
+                        message = 'Incorrect email or password.';
                     }
+                    errorDiv.textContent = message;
+                    // Make the error visible
+                    errorDiv.classList.add('visible'); 
                 });
         });
     }
 
-    // --- SIGN UP PAGE LOGIC ---
+        // --- SIGN UP PAGE LOGIC ---
     const signupForm = document.getElementById('signup-form');
     if (signupForm) {
         const errorDiv = document.getElementById('signup-error');
         signupForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            errorDiv.textContent = ''; // Clear previous errors
+            // Hide the error on a new attempt
+            errorDiv.classList.remove('visible');
 
             const name = signupForm['signup-name'].value;
             const email = signupForm['signup-email'].value;
@@ -56,13 +60,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
                 .catch(err => {
                     console.error(err.code);
+                    let message = 'An error occurred. Please try again.';
                     if (err.code === 'auth/email-already-in-use') {
-                        errorDiv.textContent = 'This email is already registered.';
+                        message = 'This email is already registered.';
                     } else if (err.code === 'auth/weak-password') {
-                        errorDiv.textContent = 'Password should be at least 6 characters.';
-                    } else {
-                        errorDiv.textContent = 'An error occurred. Please try again.';
+                        message = 'Password should be at least 6 characters.';
                     }
+                    errorDiv.textContent = message;
+                    // Make the error visible
+                    errorDiv.classList.add('visible');
                 });
         });
     }
