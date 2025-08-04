@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - ALFA SAT</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+</head>
+<body class="dashboard-body">
+
+    <header class="main-header">
+        <div class="header-content">
+            <div class="brand">
+                <img src="assets/logo.png" alt="ALFA SAT Logo" class="logo-small">
+                <span>ALFA SAT Admin</span>
+            </div>
+            <nav>
+                <a href="#" id="logout-btn">Log Out</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="dashboard-main">
+        <div class="admin-welcome">
+            <h2>Test Management</h2>
+            <p>Create, edit, and manage practice tests for your students.</p>
+        </div>
+
+        <div class="admin-section">
+            <div class="section-header">
+                <h3>All Practice Tests</h3>
+                <button class="btn btn-primary" id="create-new-test-btn"><i class="fa-solid fa-plus"></i> Create New Test</button>
+            </div>
+            
+            <div class="test-list-admin">
+                <!-- Example of an existing test -->
+                <div class="test-item-admin">
+                    <div class="test-info">
+                        <h4>Practice Test 1</h4>
+                        <span>ID: pt1_2024</span>
+                    </div>
+                    <div class="test-actions">
+                        <button class="btn-icon" title="Edit Questions"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button class="btn-icon" title="Generate Proctored Code"><i class="fa-solid fa-barcode"></i></button>
+                        <button class="btn-icon danger" title="Delete Test"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                </div>
+
+                <!-- More tests will be loaded here from the database -->
+                 <div class="test-item-admin">
+                    <div class="test-info">
+                        <h4>Practice Test 2</h4>
+                        <span>ID: pt2_2024</span>
+                    </div>
+                    <div class="test-actions">
+                        <button class="btn-icon" title="Edit Questions"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button class="btn-icon" title="Generate Proctored Code"><i class="fa-solid fa-barcode"></i></button>
+                        <button class="btn-icon danger" title="Delete Test"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-init.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

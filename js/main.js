@@ -73,30 +73,85 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- LOGOUT & PAGE PROTECTION ---
+   // +++ ADD THIS NEW BLOCK IN ITS PLACE +++
+// --- ADMIN LOGIN PAGE LOGIC (NEW & SIMPLE) ---
+const adminLoginForm = document.getElementById('admin-login-form');
+if (adminLoginForm) {
+    const errorDiv = document.getElementById('admin-login-error');
+    adminLoginForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        errorDiv.classList.remove('visible');
+        
+        const email = adminLoginForm['admin-email'].value;
+        const password = adminLoginForm['admin-password'].value;
+
+        auth.signInWithEmailAndPassword(email, password)
+            .then(userCredential => {
+                // Step 1: Login successful. Now check the database.
+                const user = userCredential.user;
+                return db.collection('admins').doc(user.uid).get();
+            })
+            .then(doc => {
+                // Step 2: Check if the document exists in the 'admins' collection.
+                if (doc.exists) {
+                    // SUCCESS: User is an admin.
+                    window.location.href = 'admin.html';
+                } else {
+                    // FAIL: User is not in the admins collection.
+                    auth.signOut();
+                    errorDiv.textContent = 'Access Denied. Not an admin account.';
+                    errorDiv.classList.add('visible');
+                }
+            })
+            .catch(err => {
+                // This catches login errors like wrong password.
+                errorDiv.textContent = 'Invalid admin credentials.';
+                errorDiv.classList.add('visible');
+            });
+    });
+}
+
+       // --- LOGOUT & PAGE PROTECTION ---
     const logoutButton = document.getElementById('logout-btn');
     if (logoutButton) {
         logoutButton.addEventListener('click', (e) => {
             e.preventDefault();
             auth.signOut().then(() => {
+                // After logout, always go back to the main login page
                 window.location.href = 'index.html';
             });
         });
     }
 
-    auth.onAuthStateChanged(user => {
-        const isOnAuthPage = window.location.pathname.includes('index.html') || window.location.pathname.includes('signup.html');
-        if (user) {
-            if (isOnAuthPage) { window.location.replace('dashboard.html'); } // Use replace to avoid back-button issues
-            const welcomeUserName = document.querySelector('#welcome-user-name');
-            const footerUserName = document.querySelector('#footer-user-name');
-            if (welcomeUserName) welcomeUserName.textContent = user.displayName;
-            if (footerUserName) footerUserName.textContent = user.displayName;
-        } else {
-            if (!isOnAuthPage) { window.location.replace('index.html'); }
-        }
-    });
+    // +++ ADD THIS NEW BLOCK IN ITS PLACE +++
+auth.onAuthStateChanged(user => {
+    const isProtectedUserPage = window.location.pathname.includes('dashboard.html') || window.location.pathname.includes('test.html');
+    const isAdminPage = window.location.pathname.includes('admin.html');
+    
+    if (user) { // A user is logged in
+        db.collection('admins').doc(user.uid).get().then(doc => {
+            const isAdmin = doc.exists;
 
+            // If a non-admin tries to access admin.html, kick them out.
+            if (isAdminPage && !isAdmin) {
+                return window.location.replace('dashboard.html');
+            }
+            
+            // Update UI elements only on the user-facing pages
+            if (isProtectedUserPage) {
+                const welcomeUserName = document.querySelector('#welcome-user-name');
+                const footerUserName = document.querySelector('#footer-user-name');
+                if (welcomeUserName) welcomeUserName.textContent = user.displayName;
+                if (footerUserName) footerUserName.textContent = user.displayName;
+            }
+        });
+    } else { // No user is logged in
+        // If they are on any protected page, kick them to the login page.
+        if (isProtectedUserPage || isAdminPage) {
+            window.location.replace('index.html');
+        }
+    }
+});
     // --- TEST PAGE UI LOGIC ---
     const testBody = document.querySelector('.test-body');
     if (testBody) {
