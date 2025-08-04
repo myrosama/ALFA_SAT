@@ -5,13 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Test - ALFA SAT Admin</title>
     <link rel="stylesheet" href="css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
 </head>
 <body class="editor-body">
 
     <div class="editor-wrapper">
-        <!-- TOP HEADER: Simple navigation -->
         <header class="main-header">
             <div class="header-content">
                 <div class="brand">
@@ -25,62 +24,101 @@
             </div>
         </header>
 
-        <!-- MAIN EDITOR CONTENT -->
         <main class="editor-main-content">
-            <!-- The dynamic editor form will be injected here by JS -->
-            <div class="question-editor-form-container" id="question-editor-container">
-                <!-- Placeholder shown on page load -->
-                <div class="editor-placeholder">
-                    <i class="fa-solid fa-hand-pointer"></i>
-                    <p>Select a question from the navigator below to begin editing.</p>
+            <!-- Left Panel: For Passage / Graph -->
+            <div class="editor-panel" id="stimulus-panel">
+                <div class="panel-header">
+                    <h3>Passage / Stimulus</h3>
+                    <div class="panel-tools">
+                        <button class="btn-icon" title="Add Image"><i class="fa-solid fa-image"></i></button>
+                        <button class="btn-icon danger" title="Remove"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                </div>
+                <div class="panel-content">
+                    <textarea class="stimulus-textarea" placeholder="For reading questions, paste the passage here. For graph questions, click the image icon above."></textarea>
+                </div>
+            </div>
+
+            <!-- Right Panel: For Question & Answers -->
+            <div class="editor-panel" id="question-panel">
+                <div class="panel-content" id="question-editor-container">
+                    <!-- Placeholder shown on page load -->
+                    <div class="editor-placeholder">
+                        <i class="fa-solid fa-hand-pointer"></i>
+                        <p>Select a question from the navigator below to begin editing.</p>
+                    </div>
                 </div>
             </div>
         </main>
 
-        <!-- BOTTOM NAVIGATOR -->
-        <footer class="editor-footer">
-            <div class="module-switcher">
-                <button class="module-btn active" data-module="1">Reading & Writing - Module 1</button>
-                <button class="module-btn" data-module="2">Reading & Writing - Module 2</button>
-                <button class="module-btn" data-module="3">Math - Module 1</button>
-                <button class="module-btn" data-module="4">Math - Module 2</button>
+        <footer class="editor-footer" id="editor-footer">
+            <div class="footer-controls">
+                <div class="module-switcher">
+                    <button class="module-btn active" data-module="1">R&W M1</button>
+                    <button class="module-btn" data-module="2">R&W M2</button>
+                    <button class="module-btn" data-module="3">Math M1</button>
+                    <button class="module-btn" data-module="4">Math M2</button>
+                </div>
+                <button class="footer-toggle" id="footer-toggle"><i class="fa-solid fa-chevron-down"></i></button>
             </div>
-            <div class="question-navigator" id="question-navigator">
-                <!-- Question numbers will be generated here by JS -->
-            </div>
+            <div class="question-navigator" id="question-navigator"></div>
         </footer>
     </div>
-            </footer>
-
-    </div>
     
-    <!-- NEW: HTML Template for the Question Editor Form -->
+    <!-- TEMPLATE for the Question Editor Form -->
     <template id="question-editor-template">
-        <div class="question-editor-form-wrapper">
-            <!-- Top Toolbar -->
+        <form class="question-editor-form" id="question-form">
+            <!-- Toolbar -->
             <div class="editor-toolbar">
                 <div class="tool-group">
-                    <label>Question Type</label>
-                    <select id="question-type">
-                        <!-- Options will be added by JS -->
-                    </select>
+                    <label>Domain</label>
+                    <select id="q-domain"></select>
                 </div>
                 <div class="tool-group">
-                    <label>Difficulty</label>
-                    <input type="number" id="question-difficulty" min="1" max="5" value="3">
+                    <label>Skill</label>
+                    <select id="q-skill"></select>
+                </div>
+                <div class="tool-group">
+                    <label>Points</label>
+                    <select id="q-points"></select>
                 </div>
             </div>
-
-            <!-- Main Form -->
-            <form class="question-editor-form" id="question-form">
-                <!-- Dynamic fields will be inserted here by JS -->
-            </form>
-        </div>
+            <!-- Question Number -->
+            <div class="question-number-bar">
+                Question <span id="q-number-display">1</span>
+            </div>
+            <!-- Main Form Fields -->
+            <div class="form-scroll-area">
+                <div class="input-group">
+                    <label for="question-text">Question Prompt</label>
+                    <textarea id="question-text" rows="3"></textarea>
+                </div>
+                <h4>Answer Choices</h4>
+                <div class="option-group">
+                    <label class="correct-answer-label"><input type="radio" name="correct-answer" value="A" checked> A</label>
+                    <div class="input-group"><input type="text" id="option-a" placeholder="Text for option A"></div>
+                </div>
+                <div class="option-group">
+                    <label class="correct-answer-label"><input type="radio" name="correct-answer" value="B"> B</label>
+                    <div class="input-group"><input type="text" id="option-b" placeholder="Text for option B"></div>
+                </div>
+                <div class="option-group">
+                    <label class="correct-answer-label"><input type="radio" name="correct-answer" value="C"> C</label>
+                    <div class="input-group"><input type="text" id="option-c" placeholder="Text for option C"></div>
+                </div>
+                <div class="option-group">
+                    <label class="correct-answer-label"><input type="radio" name="correct-answer" value="D"> D</label>
+                    <div class="input-group"><input type="text" id="option-d" placeholder="Text for option D"></div>
+                </div>
+            </div>
+            <!-- Form Actions -->
+            <div class="form-actions">
+                 <button type="button" class="btn btn-secondary danger" id="delete-question-btn">Delete Question</button>
+                 <button type="submit" class="btn btn-primary">Save Question</button>
+            </div>
+        </form>
     </template>
-    <!-- END TEMPLATE -->
-
-    <!-- Scripts -->
-    <script src="https://..."></script>
+    
     <!-- Scripts -->
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>

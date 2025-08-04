@@ -335,200 +335,99 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
     margin-top: 20px;
 }
 
-/* --- New Editor Page Styles --- */
-.editor-body {
-    background-color: var(--light-gray);
-    /* Prevent body from scrolling, we'll scroll internal panels instead */
+/* --- Final Editor Page Styles --- */
+.editor-body { background-color: var(--light-gray); overflow: hidden; }
+.editor-wrapper { display: flex; flex-direction: column; height: 100vh; }
+
+.editor-main-content {
+    flex-grow: 1;
+    padding: 20px;
+    display: grid; /* Switched to grid for the split layout */
+    grid-template-columns: 1fr 1.2fr; /* Left panel is slightly smaller than the right */
+    gap: 20px;
     overflow: hidden;
 }
 
-.editor-wrapper {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-}
-
-.editor-main-content {
-    flex-grow: 1; /* This makes the main area fill all available space */
-    padding: 30px;
-    overflow-y: auto; /* The main content area is scrollable */
-    display: flex;
-    justify-content: center;
-}
-
-.question-editor-form-container {
-    width: 100%;
-    max-width: 900px; /* Set a max-width for the form content */
-}
-
-.editor-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: #bdc3c7; /* A light, muted gray */
-    text-align: center;
-}
-.editor-placeholder i {
-    font-size: 5rem;
-}
-.editor-placeholder p {
-    margin-top: 20px;
-    font-size: 1.3rem;
-    font-weight: 500;
-}
-
-/* Footer & Question Navigator */
-.editor-footer {
-    flex-shrink: 0; /* Prevent the footer from shrinking */
-    background-color: #2c3e50; /* A dark, professional blue-gray */
-    color: var(--white);
-    padding: 15px 30px;
-    box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
-}
-
-.module-switcher {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 15px;
-}
-.module-btn {
-    background: none;
-    border: 1px solid #7f8c8d;
-    color: #ecf0f1;
-    padding: 8px 15px;
-    border-radius: 20px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: background-color 0.2s, border-color 0.2s;
-}
-.module-btn:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-.module-btn.active {
-    background-color: var(--primary-purple);
-    border-color: var(--primary-purple);
-    color: var(--white);
-}
-
-.question-navigator {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px;
-}
-
-.q-nav-btn {
-    background-color: #34495e; /* Slightly lighter than the footer bg */
-    border: 1px solid #7f8c8d;
-    color: #ecf0f1;
-    width: 45px;
-    height: 45px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-}
-.q-nav-btn:hover {
-    background-color: #4e6a85;
-    border-color: var(--white);
-}
-.q-nav-btn.active {
-    background-color: var(--white);
-    color: var(--primary-blue);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-}
-.q-nav-btn.completed {
-    background-color: #27ae60; /* Green for completed */
-    border-color: #2ecc71;
-}
-
-/* --- New Editor Form & Toolbar Styles --- */
-.question-editor-form-wrapper {
+.editor-panel {
     background-color: var(--white);
     border: 1px solid var(--medium-gray);
     border-radius: 12px;
-    height: 100%;
     display: flex;
     flex-direction: column;
+    height: 100%;
+    overflow: hidden;
 }
 
-.editor-toolbar {
-    display: flex;
-    gap: 20px;
+.panel-header {
     padding: 15px 20px;
     border-bottom: 1px solid var(--medium-gray);
-    background-color: #f8f9fa;
-    border-radius: 12px 12px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     flex-shrink: 0;
 }
-.tool-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-.tool-group label {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--dark-gray);
-}
-.tool-group select, .tool-group input {
-    padding: 8px 10px;
-    border: 1px solid var(--medium-gray);
-    border-radius: 6px;
-    font-family: inherit;
-    font-size: 0.9rem;
-}
+.panel-header h3 { margin: 0; color: var(--primary-blue); font-size: 1.1rem; }
 
-.question-editor-form {
-    padding: 25px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-.form-group label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 8px;
-    color: var(--primary-blue);
-}
-.form-group input, .form-group textarea {
+.panel-content { padding: 20px; overflow-y: auto; height: 100%; }
+
+.stimulus-textarea {
     width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--medium-gray);
-    border-radius: 8px;
-    font-size: 1rem;
+    height: 100%;
+    border: none;
+    resize: none;
     font-family: inherit;
+    font-size: 1rem;
 }
-.form-group textarea { resize: vertical; min-height: 80px; }
+.stimulus-textarea:focus { outline: none; }
 
-.options-group .option-input { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.options-group .option-input span { font-weight: 600; }
-.correct-answer-label { display: flex; align-items: center; gap: 8px; font-weight: 600; padding: 8px; }
+/* Question Form */
+.question-editor-form { display: flex; flex-direction: column; gap: 15px; }
+.question-editor-form h4 { color: var(--primary-blue); margin-top: 10px; margin-bottom: 0; border-bottom: 1px solid var(--medium-gray); padding-bottom: 10px; }
+.option-group { display: flex; align-items: center; gap: 10px; }
+.correct-answer-label { display: flex; align-items: center; gap: 8px; font-weight: 600; padding: 8px; border: 1px solid var(--medium-gray); border-radius: 8px; }
+.option-group .input-group { flex-grow: 1; }
+.form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid var(--medium-gray); padding-top: 20px; }
 
-.form-actions {
+/* Editor Toolbar (inside the form) */
+.editor-toolbar {
     display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
-    border-top: 1px solid var(--medium-gray);
-    padding-top: 20px;
+    flex-wrap: wrap; /* Allows tools to wrap on smaller screens */
+    gap: 15px;
+    padding: 15px;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+    margin-bottom: 20px;
+}
+.tool-group { display: flex; flex-direction: column; gap: 5px; }
+.tool-group label { font-size: 0.8rem; font-weight: 600; color: var(--dark-gray); }
+.tool-group select, .tool-group input { padding: 8px 10px; border: 1px solid var(--medium-gray); border-radius: 6px; font-family: inherit; font-size: 0.9rem; }
+
+/* Footer & RESPONSIVE Navigator */
+.editor-footer {
+    position: relative; /* For the toggle button */
+    flex-shrink: 0;
+    background-color: #2c3e50;
+    color: var(--white);
+    padding: 10px 20px;
+    box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
+    transition: margin-bottom 0.3s ease-in-out;
+}
+.editor-footer.hidden {
+    margin-bottom: -135px; /* Adjust this to match the footer height */
 }
 
-/* Hide/Show button for footer */
+.footer-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    padding-bottom: 10px;
+    position: relative;
+}
 .footer-toggle {
     position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
+    right: 0;
+    top: -40px; /* Positions it above the footer */
     background-color: #2c3e50;
     color: white;
     border: 1px solid #7f8c8d;
@@ -538,10 +437,25 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
     cursor: pointer;
     z-index: 10;
 }
-.editor-footer {
-    position: relative;
-    transition: margin-bottom 0.3s;
+.module-switcher { display: flex; justify-content: center; gap: 10px; }
+.module-btn { background: none; border: 1px solid #7f8c8d; color: #ecf0f1; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-weight: 500; transition: background-color 0.2s, border-color 0.2s; }
+.module-btn:hover { background-color: rgba(255, 255, 255, 0.1); }
+.module-btn.active { background-color: var(--primary-purple); border-color: var(--primary-purple); color: var(--white); }
+
+.question-navigator {
+    display: grid;
+    /* This makes the grid responsive and fit all items */
+    grid-template-columns: repeat(auto-fit, minmax(38px, 1fr));
+    gap: 6px;
+    padding-top: 10px;
+    border-top: 1px solid #7f8c8d;
 }
-.editor-footer.hidden {
-    margin-bottom: -150px; /* Adjust this value if your footer is taller */
+.q-nav-btn {
+    background-color: #34495e; border: 1px solid #7f8c8d; color: #ecf0f1;
+    height: 38px;
+    border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem;
+    display: flex; align-items: center; justify-content: center; transition: all 0.2s;
 }
+.q-nav-btn:hover { background-color: #4e6a85; border-color: var(--white); }
+.q-nav-btn.active { background-color: var(--white); color: var(--primary-blue); transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+.q-nav-btn.completed { background-color: #27ae60; border-color: #2ecc71; }
