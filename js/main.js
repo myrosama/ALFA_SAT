@@ -110,6 +110,54 @@ if (adminLoginForm) {
             });
     });
 }
+// +++ ADD THIS ONE NEW BLOCK TO YOUR WORKING main.js FILE +++
+
+    // --- ADMIN PANEL "CREATE TEST" LOGIC ---
+    const createTestBtn = document.getElementById('create-new-test-btn');
+    if (createTestBtn) { // This line ensures this code ONLY runs on admin.html
+        
+        const modal = document.getElementById('create-test-modal');
+        const backdrop = document.getElementById('modal-backdrop');
+        const cancelBtn = document.getElementById('cancel-create-test');
+        const createTestForm = document.getElementById('create-test-form');
+
+        const openModal = () => {
+            modal.classList.add('visible');
+            backdrop.classList.add('visible');
+        };
+
+        const closeModal = () => {
+            modal.classList.remove('visible');
+            backdrop.classList.remove('visible');
+            createTestForm.reset();
+        };
+
+        // --- Event Listeners ---
+        createTestBtn.addEventListener('click', openModal);
+        cancelBtn.addEventListener('click', closeModal);
+        backdrop.addEventListener('click', closeModal);
+
+        // --- Handle Form Submission ---
+        createTestForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const testName = createTestForm['test-name'].value;
+            const testId = createTestForm['test-id'].value;
+
+            // Save the new test to the 'tests' collection in Firestore
+            db.collection('tests').doc(testId).set({
+                name: testName,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                console.log('Test created successfully!');
+                closeModal();
+                alert('Test created successfully!');
+                window.location.reload(); // Reload the page to see the new test (we'll improve this later)
+            }).catch(err => {
+                console.error("Error creating test:", err);
+                alert("Error: " + err.message);
+            });
+        });
+    }
 
        // --- LOGOUT & PAGE PROTECTION ---
     const logoutButton = document.getElementById('logout-btn');

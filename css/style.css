@@ -290,3 +290,47 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
     background-color: #e74c3c;
     color: var(--white);
 }
+
+/* --- Admin Modal Styles --- */
+.admin-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.95);
+    width: 90%;
+    max-width: 500px;
+    background-color: var(--white);
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    z-index: 2000;
+    padding: 30px;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s, visibility 0.3s;
+}
+.admin-modal.visible {
+    visibility: visible;
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+.admin-modal h3 {
+    margin: 0 0 25px 0;
+    color: var(--primary-blue);
+}
+.admin-modal .input-group small {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.8rem;
+    color: var(--dark-gray);
+}
+.admin-modal form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
