@@ -334,3 +334,120 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
     gap: 10px;
     margin-top: 20px;
 }
+
+/* --- Test Editor Page Styles --- */
+.editor-main {
+    max-width: none; /* Allow it to be full-width */
+    padding: 20px;
+    height: calc(100vh - 70px); /* Full height minus header */
+    background-color: var(--light-gray);
+}
+
+.editor-layout {
+    display: grid;
+    grid-template-columns: 350px 1fr; /* Fixed sidebar, flexible main area */
+    gap: 20px;
+    height: 100%;
+}
+
+.editor-panel {
+    background-color: var(--white);
+    border: 1px solid var(--medium-gray);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.panel-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--medium-gray);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+.panel-header h3 {
+    margin: 0;
+    color: var(--primary-blue);
+    font-size: 1.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.btn-small {
+    padding: 8px 12px;
+    font-size: 0.9rem;
+}
+
+.panel-content {
+    padding: 20px;
+    overflow-y: auto;
+    height: 100%;
+}
+
+#editor-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--medium-gray);
+    text-align: center;
+}
+#editor-placeholder i {
+    font-size: 5rem;
+}
+#editor-placeholder p {
+    margin-top: 20px;
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+/* --- Question Editor Form Styles --- */
+.question-editor-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+.question-editor-form h4 {
+    color: var(--primary-blue);
+    margin-top: 10px;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--medium-gray);
+    padding-bottom: 10px;
+}
+.form-row {
+    display: flex;
+    gap: 20px;
+}
+.input-group.full-width {
+    width: 100%;
+}
+.input-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--medium-gray);
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.option-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.correct-answer-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    padding: 8px;
+    border: 1px solid var(--medium-gray);
+    border-radius: 8px;
+}
+.option-group .input-group {
+    flex-grow: 1;
+}

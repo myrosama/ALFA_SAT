@@ -110,6 +110,61 @@ if (adminLoginForm) {
             });
     });
 }
+    // --- TEST EDITOR PAGE LOGIC ---
+    const editorPage = document.querySelector('.editor-main');
+    if (editorPage) {
+        // Get the test ID from the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const testId = urlParams.get('id');
+
+        if (!testId) {
+            // If no ID is provided, send them back to the admin page
+            window.location.href = 'admin.html';
+        }
+
+        // --- Fetch and display the test name ---
+        const testEditorTitle = document.getElementById('test-editor-title');
+        db.collection('tests').doc(testId).get().then(doc => {
+            if (doc.exists) {
+                testEditorTitle.textContent = doc.data().name;
+            } else {
+                alert('Test not found!');
+                window.location.href = 'admin.html';
+            }
+        });
+
+        // +++ ADD THIS NEW CODE BELOW THE EXISTING EDITOR LOGIC +++
+
+        const addQuestionBtn = document.getElementById('add-question-btn');
+        const editorContainer = document.getElementById('question-editor-container');
+        const editorTemplate = document.getElementById('question-editor-template');
+        const questionEditorTitle = document.getElementById('question-editor-title');
+
+        addQuestionBtn.addEventListener('click', () => {
+            // Clone the template content
+            const formClone = editorTemplate.content.cloneNode(true);
+            
+            // Clear the editor and append the new form
+            editorContainer.innerHTML = '';
+            editorContainer.appendChild(formClone);
+            questionEditorTitle.textContent = "Create New Question";
+
+            // Add logic for the new cancel button inside the form
+            const cancelQuestionBtn = editorContainer.querySelector('#cancel-question-btn');
+            cancelQuestionBtn.addEventListener('click', () => {
+                editorContainer.innerHTML = ''; // Clear the form
+                // Restore the placeholder
+                editorContainer.innerHTML = `
+                    <div id="editor-placeholder">
+                        <i class="fa-solid fa-file-circle-plus"></i>
+                        <p>Add a new question to get started</p>
+                    </div>`;
+                questionEditorTitle.textContent = "Select a question or add a new one";
+            });
+        });
+
+        // (Code to SAVE the question will go here next)
+    }
 // +++ ADD THIS ONE NEW BLOCK TO YOUR WORKING main.js FILE +++
 
     // --- ADMIN PANEL "CREATE TEST" LOGIC ---
@@ -158,6 +213,43 @@ if (adminLoginForm) {
             });
         });
     }
+    // ... (The working createTestForm submit logic is here) ...
+
+// +++ PASTE THIS CORRECTED BLOCK +++
+
+        // --- DISPLAY TESTS FROM DATABASE --- //
+        const testListContainer = document.getElementById('admin-test-list');
+
+        db.collection('tests').orderBy('createdAt', 'desc').get().then(snapshot => {
+            if (snapshot.empty) {
+                testListContainer.innerHTML = "<p>No tests found. Create one to get started!</p>";
+                return;
+            }
+
+            let html = '';
+            snapshot.forEach(doc => {
+                const test = doc.data();
+                const testId = doc.id;
+
+                html += `
+                    <div class="test-item-admin" data-id="${testId}">
+                        <div class="test-info">
+                            <h4>${test.name}</h4>
+                            <span>ID: ${testId}</span>
+                        </div>
+                        <div class="test-actions">
+                            <a href="edit-test.html?id=${testId}" class="btn-icon" title="Edit Questions"><i class="fa-solid fa-pen-to-square"></i></a>
+                            <button class="btn-icon" title="Generate Proctored Code"><i class="fa-solid fa-barcode"></i></button>
+                            <button class="btn-icon danger" title="Delete Test"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>
+                `;
+            });
+            testListContainer.innerHTML = html;
+        }).catch(err => {
+            console.error("Error fetching tests:", err);
+            testListContainer.innerHTML = "<p>Error loading tests. Please try again.</p>";
+        });
 
        // --- LOGOUT & PAGE PROTECTION ---
     const logoutButton = document.getElementById('logout-btn');
