@@ -135,6 +135,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const isHidden = editorFooter.classList.toggle('hidden');
         footerToggle.innerHTML = isHidden ? `<i class="fa-solid fa-chevron-up"></i>` : `<i class="fa-solid fa-chevron-down"></i>`;
     });
+    
+
+    
 
     // --- Initial Page Load ---
     generateNavButtons(27, 1);
