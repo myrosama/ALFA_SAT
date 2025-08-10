@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const editorHeaderTitle = document.getElementById('editor-header-title');
     const questionNavigator = document.getElementById('question-navigator');
     const moduleSwitcher = document.querySelector('.module-switcher');
-    const editorFooter = document.getElementById('editor-footer');
     const footerToggle = document.getElementById('footer-toggle');
     const editorContainer = document.getElementById('question-editor-container');
     const editorTemplate = document.getElementById('question-editor-template');
@@ -131,10 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
         editorContainer.innerHTML = `<div class="editor-placeholder"><i class="fa-solid fa-hand-pointer"></i><p>Select a question from the navigator below to begin editing.</p></div>`;
     });
 
-    footerToggle.addEventListener('click', () => {
-        const isHidden = editorFooter.classList.toggle('hidden');
-        footerToggle.innerHTML = isHidden ? `<i class="fa-solid fa-chevron-up"></i>` : `<i class="fa-solid fa-chevron-down"></i>`;
-    });
     
 
     

@@ -424,26 +424,7 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
     box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
     transition: margin-bottom 0.3s ease-in-out;
 }
-.editor-footer.hidden {
-    margin-bottom: -135px; /* Adjust this to match the footer height */
-}
 
-.footer-controls {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: relative;
-    padding-bottom: 10px;
-    position: relative;
-}
-.footer-toggle {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 1.2rem;
-    cursor: pointer;
-    padding: 5px;
-}
 .module-switcher { display: flex; justify-content: center; gap: 10px; }
 .module-btn { background: none; border: 1px solid #7f8c8d; color: #ecf0f1; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-weight: 500; transition: background-color 0.2s, border-color 0.2s; }
 .module-btn:hover { background-color: rgba(255, 255, 255, 0.1); }
