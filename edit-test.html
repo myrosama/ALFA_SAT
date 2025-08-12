@@ -34,10 +34,13 @@
                         <button class="btn-icon danger" title="Remove"><i class="fa-solid fa-trash-can"></i></button>
                     </div>
                 </div>
-                <div class="panel-content">
-                    <textarea class="stimulus-textarea" id="stimulus-textarea" placeholder="For reading questions, paste the passage here. For graph questions, click the image icon above."></textarea>
+            <div class="panel-content">
+            <!-- This new div will hold either the textarea or the image -->
+                <div id="stimulus-display">
+                    <textarea class="stimulus-textarea" id="stimulus-textarea" placeholder="Paste passage text here..."></textarea>
                 </div>
             </div>
+        </div>
 
             <!-- Right Panel: For Question & Answers -->
             <div class="editor-panel" id="question-panel">
@@ -124,6 +127,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
     <script src="js/firebase-init.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/config.js"></script>
     <script src="js/editor.js"></script>
 </body>
 </html>

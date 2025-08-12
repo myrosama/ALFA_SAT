@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     const auth = firebase.auth();
     const db = firebase.firestore();
+    
+    
 
     // --- Page Elements ---
     const editorHeaderTitle = document.getElementById('editor-header-title');
@@ -81,7 +83,7 @@ testRef.collection('questions').get().then(snapshot => {
         }
     }
 
-        function showEditorForQuestion(module, qNumber) {
+    function showEditorForQuestion(module, qNumber) {
         currentModule = module;
         currentQuestion = qNumber;
         
@@ -93,6 +95,7 @@ testRef.collection('questions').get().then(snapshot => {
         const formClone = editorTemplate.content.cloneNode(true);
         editorContainer.innerHTML = '';
         editorContainer.appendChild(formClone);
+        
         
         // --- Select all form elements ---
         const questionForm = editorContainer.querySelector('#question-form');
@@ -127,7 +130,7 @@ testRef.collection('questions').get().then(snapshot => {
         db.collection('tests').doc(testId).collection('questions').doc(questionId).get().then(doc => {
             // Clear the stimulus text area before loading new data
             stimulusTextarea.value = '';
-
+            
             if (doc.exists) {
                 const data = doc.data();
                 // Load the passage text into the left panel
@@ -203,7 +206,76 @@ testRef.collection('questions').get().then(snapshot => {
         editorContainer.innerHTML = `<div class="editor-placeholder"><i class="fa-solid fa-hand-pointer"></i><p>Select a question from the navigator below to begin editing.</p></div>`;
     });
 
+        // ... (after the handleNavClick and moduleSwitcher functions)
+
+    // --- NEW: TELEGRAM IMAGE UPLOAD LOGIC ---
     
+    // This function handles the actual upload
+    async function uploadImageToTelegram(file) {
+        const formData = new FormData();
+        formData.append('chat_id', TELEGRAM_CHANNEL_ID);
+        formData.append('photo', file);
+
+        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`;
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            
+            if (data.ok) {
+                // Success! Get the best quality photo file_id
+                const photoArray = data.result.photo;
+                const fileId = photoArray[photoArray.length - 1].file_id;
+                return fileId;
+            } else {
+                throw new Error(data.description);
+            }
+        } catch (error) {
+            console.error('Telegram Upload Error:', error);
+            alert('Error uploading image: ' + error.message);
+            return null;
+        }
+    }
+
+    // This function handles the button clicks
+    function setupStimulusPanel(questionData) {
+        const stimulusDisplay = document.getElementById('stimulus-display');
+        const addImageBtn = document.getElementById('stimulus-panel').querySelector('[title="Add Image"]');
+        const removeBtn = document.getElementById('stimulus-panel').querySelector('[title="Remove"]');
+        
+        // Initial state
+        stimulusDisplay.innerHTML = `<textarea class="stimulus-textarea" id="stimulus-textarea" placeholder="Paste passage text here..."></textarea>`;
+        stimulusDisplay.querySelector('#stimulus-textarea').value = questionData.passage || '';
+
+        // Add Image button logic
+        addImageBtn.onclick = () => {
+             const input = document.createElement('input');
+             input.type = 'file';
+             input.accept = 'image/png, image/jpeg, image/gif';
+             input.onchange = async e => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                stimulusDisplay.innerHTML = `<p>Uploading image...</p>`;
+                const fileId = await uploadImageToTelegram(file);
+
+                if (fileId) {
+                    stimulusDisplay.innerHTML = `<p>Image uploaded! Don't forget to save the question.</p>`;
+                    // We'll store this file_id in the textarea, so it gets saved with the question
+                    // This is a temporary way to hold the data before saving
+                    document.getElementById('stimulus-textarea').value = `TELEGRAM_IMG_ID:${fileId}`;
+                } else {
+                     stimulusDisplay.innerHTML = `<textarea class="stimulus-textarea" id="stimulus-textarea" placeholder="Upload failed. Please try again."></textarea>`;
+                }
+             }
+             input.click();
+        };
+
+        // Remove button logic will be added next
+    }
 
     
 
