@@ -125,28 +125,26 @@ testRef.collection('questions').get().then(snapshot => {
             pointsSelect.innerHTML += `<option value="${val}" ${selected}>${val} points</option>`;
         });
 
-        // --- LOGIC TO LOAD EXISTING QUESTION DATA ---
+                // --- LOGIC TO LOAD EXISTING QUESTION DATA ---
         const questionId = `m${module}_q${qNumber}`;
         db.collection('tests').doc(testId).collection('questions').doc(questionId).get().then(doc => {
-            // Clear the stimulus text area before loading new data
-            stimulusTextarea.value = '';
+            const dataToLoad = doc.exists ? doc.data() : {};
+            
+            // This one function now handles the entire left panel
+            renderStimulus(dataToLoad); 
             
             if (doc.exists) {
-                const data = doc.data();
-                // Load the passage text into the left panel
-                stimulusTextarea.value = data.passage || '';
-                
                 // Load the rest of the form data into the right panel
-                questionForm.querySelector('#question-text').value = data.prompt || '';
-                questionForm.querySelector('#option-a').value = data.options.A || '';
-                questionForm.querySelector('#option-b').value = data.options.B || '';
-                questionForm.querySelector('#option-c').value = data.options.C || '';
-                questionForm.querySelector('#option-d').value = data.options.D || '';
-                questionForm.querySelector(`input[name="correct-answer"][value="${data.correctAnswer}"]`).checked = true;
-                domainSelect.value = data.domain;
+                questionForm.querySelector('#question-text').value = dataToLoad.prompt || '';
+                questionForm.querySelector('#option-a').value = dataToLoad.options.A || '';
+                questionForm.querySelector('#option-b').value = dataToLoad.options.B || '';
+                questionForm.querySelector('#option-c').value = dataToLoad.options.C || '';
+                questionForm.querySelector('#option-d').value = dataToLoad.options.D || '';
+                questionForm.querySelector(`input[name="correct-answer"][value="${dataToLoad.correctAnswer}"]`).checked = true;
+                domainSelect.value = dataToLoad.domain;
                 domainSelect.dispatchEvent(new Event('change'));
-                skillSelect.value = data.skill;
-                pointsSelect.value = data.points;
+                skillSelect.value = dataToLoad.skill;
+                pointsSelect.value = dataToLoad.points;
             }
         });
 
@@ -160,7 +158,7 @@ testRef.collection('questions').get().then(snapshot => {
                 domain: domainSelect.value,
                 skill: skillSelect.value,
                 points: parseInt(pointsSelect.value),
-                passage: stimulusTextarea.value, // <-- ADDED THIS LINE
+                passage: document.getElementById('stimulus-panel').dataset.stimulusValue || '',
                 prompt: questionForm.querySelector('#question-text').value,
                 options: {
                     A: questionForm.querySelector('#option-a').value,
@@ -186,7 +184,40 @@ testRef.collection('questions').get().then(snapshot => {
                 });
         });
     }
+        // +++ ADD THIS ENTIRE NEW FUNCTION +++
+    // --- RENDER STIMULUS (Text or Image) ---
+    function renderStimulus(data = {}) {
+        const stimulusDisplay = document.getElementById('stimulus-display');
+        const stimulusPanel = document.getElementById('stimulus-panel');
+        // Store current value on the panel itself so the save function can find it
+        stimulusPanel.dataset.stimulusValue = data.passage || ''; 
+        
+        const passage = data.passage || '';
 
+        // Check if the passage is actually an image ID
+        if (passage.startsWith('TELEGRAM_IMG_ID:')) {
+            const fileId = passage.replace('TELEGRAM_IMG_ID:', '');
+            stimulusDisplay.innerHTML = `<p>Loading image...</p>`;
+            
+            fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`)
+                .then(res => res.json())
+                .then(apiRes => {
+                    if (apiRes.ok) {
+                        const imageUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${apiRes.result.file_path}`;
+                        stimulusDisplay.innerHTML = `<img src="${imageUrl}" alt="Question Stimulus" style="width: 100%; height: auto; border-radius: 8px;">`;
+                    } else {
+                        stimulusDisplay.innerHTML = `<p style="color:red;">Error: Could not load image.</p>`;
+                    }
+                });
+        } else {
+            // It's just plain text, so show the textarea
+            stimulusDisplay.innerHTML = `<textarea class="stimulus-textarea" id="stimulus-textarea">${passage}</textarea>`;
+            // When user types in the textarea, update the stored value
+            stimulusDisplay.querySelector('textarea').addEventListener('input', (e) => {
+                stimulusPanel.dataset.stimulusValue = e.target.value;
+            });
+        }
+    }
     // --- Event Handlers ---
     function handleNavClick(e) {
         const module = e.target.dataset.module;
@@ -241,41 +272,41 @@ testRef.collection('questions').get().then(snapshot => {
     }
 
     // This function handles the button clicks
-    function setupStimulusPanel(questionData) {
-        const stimulusDisplay = document.getElementById('stimulus-display');
-        const addImageBtn = document.getElementById('stimulus-panel').querySelector('[title="Add Image"]');
-        const removeBtn = document.getElementById('stimulus-panel').querySelector('[title="Remove"]');
-        
-        // Initial state
-        stimulusDisplay.innerHTML = `<textarea class="stimulus-textarea" id="stimulus-textarea" placeholder="Paste passage text here..."></textarea>`;
-        stimulusDisplay.querySelector('#stimulus-textarea').value = questionData.passage || '';
+        // Event listener for the "Add Image" button
+    document.getElementById('add-image-btn').addEventListener('click', () => {
+        if (!currentQuestion) {
+            alert("Please select a question first!");
+            return;
+        }
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = async e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            document.getElementById('stimulus-display').innerHTML = `<p>Uploading...</p>`;
+            const fileId = await uploadImageToTelegram(file);
 
-        // Add Image button logic
-        addImageBtn.onclick = () => {
-             const input = document.createElement('input');
-             input.type = 'file';
-             input.accept = 'image/png, image/jpeg, image/gif';
-             input.onchange = async e => {
-                const file = e.target.files[0];
-                if (!file) return;
-
-                stimulusDisplay.innerHTML = `<p>Uploading image...</p>`;
-                const fileId = await uploadImageToTelegram(file);
-
-                if (fileId) {
-                    stimulusDisplay.innerHTML = `<p>Image uploaded! Don't forget to save the question.</p>`;
-                    // We'll store this file_id in the textarea, so it gets saved with the question
-                    // This is a temporary way to hold the data before saving
-                    document.getElementById('stimulus-textarea').value = `TELEGRAM_IMG_ID:${fileId}`;
-                } else {
-                     stimulusDisplay.innerHTML = `<textarea class="stimulus-textarea" id="stimulus-textarea" placeholder="Upload failed. Please try again."></textarea>`;
-                }
-             }
-             input.click();
+            if (fileId) {
+                const newValue = `TELEGRAM_IMG_ID:${fileId}`;
+                renderStimulus({ passage: newValue });
+                alert('Image uploaded! Click "Save Question" to finalize.');
+            } else {
+                renderStimulus({ passage: '' }); // Show empty textarea on failure
+            }
         };
+        input.click();
+    });
 
-        // Remove button logic will be added next
-    }
+    // Event listener for the "Remove" button
+    document.getElementById('remove-stimulus-btn').addEventListener('click', () => {
+        if (!currentQuestion) {
+            alert("Please select a question first!");
+            return;
+        }
+        renderStimulus({ passage: '' }); // This clears the panel
+    });
 
     
 
