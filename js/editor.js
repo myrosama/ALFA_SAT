@@ -16,12 +16,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentQuestion = null;
     let savedQuestions = {};
 
-    // --- Data Definitions (for toolbars) ---
+    // --- Data Definitions ---
     const questionTypes = {
         "Reading & Writing": {
             "Information and Ideas": ["Central Ideas and Details", "Command of Evidence", "Inferences"],
             "Craft and Structure": ["Words in Context", "Text Structure and Purpose", "Cross-Text Connections"],
-            "Expression of Ideas": ["Rhetorical Synthesis", "Transitions"],
+             "Expression of Ideas": ["Rhetorical Synthesis", "Transitions"],
             "Standard English Conventions": ["Boundaries", "Form, Structure, and Sense"]
         },
         "Math": {
@@ -33,27 +33,16 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const pointValues = [10, 20, 30, 40];
 
-    if (!testId) {
-        alert('No test ID provided!');
-        window.location.href = 'admin.html';
-        return;
-    }
+    if (!testId) { window.location.href = 'admin.html'; return; }
 
     // --- DATA FETCHING ---
     const testRef = db.collection('tests').doc(testId);
     testRef.get().then(doc => {
-        if (doc.exists) {
-            editorHeaderTitle.textContent = `Editing: ${doc.data().name}`;
-        } else {
-            alert('Test not found!');
-            window.location.href = 'admin.html';
-        }
+        if (doc.exists) { editorHeaderTitle.textContent = `Editing: ${doc.data().name}`; }
+        else { window.location.href = 'admin.html'; }
     });
-
     testRef.collection('questions').get().then(snapshot => {
-        snapshot.forEach(doc => {
-            savedQuestions[doc.id] = true;
-        });
+        snapshot.forEach(doc => { savedQuestions[doc.id] = true; });
         generateNavButtons(27, 1);
     });
 
@@ -72,9 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const fileUrlData = await (await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`)).json();
                 if (fileUrlData.ok) {
                     return `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${fileUrlData.result.file_path}`;
-                } else {
-                    throw new Error(fileUrlData.description);
-                }
+                } else { throw new Error(fileUrlData.description); }
             } else { throw new Error(data.description); }
         } catch (error) {
             console.error('Telegram Upload Error:', error);
@@ -87,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const imageContainer = document.getElementById('stimulus-image-container');
         const imagePreview = document.getElementById('stimulus-image-preview');
         const stimulusTextarea = document.getElementById('stimulus-textarea');
-
+        
         stimulusTextarea.value = data.passage || '';
 
         if (data.imageUrl) {
@@ -110,16 +97,12 @@ document.addEventListener('DOMContentLoaded', () => {
             isResizing = true;
             const startX = e.clientX;
             const startWidth = imageContainer.offsetWidth;
-            
             const doDrag = (e) => {
                 if (!isResizing) return;
                 const newWidth = startWidth + (e.clientX - startX);
-                if (newWidth > 100) { // minimum width
-                    imageContainer.style.width = `${newWidth}px`;
-                }
+                if (newWidth > 100) imageContainer.style.width = `${newWidth}px`;
             };
-            const stopDrag = () => { isResizing = false; window.removeEventListener('mousemove', doDrag);};
-            
+            const stopDrag = () => { isResizing = false; window.removeEventListener('mousemove', doDrag); };
             window.addEventListener('mousemove', doDrag);
             window.addEventListener('mouseup', stopDrag);
         });
@@ -134,18 +117,14 @@ document.addEventListener('DOMContentLoaded', () => {
             button.dataset.qNumber = i;
             button.textContent = i;
             const questionId = `m${moduleNum}_q${i}`;
-            if (savedQuestions[questionId]) {
-                button.classList.add('completed');
-            }
+            if (savedQuestions[questionId]) button.classList.add('completed');
             button.addEventListener('click', handleNavClick);
             questionNavigator.appendChild(button);
         }
     }
 
     async function showEditorForQuestion(module, qNumber) {
-        currentModule = module;
-        currentQuestion = qNumber;
-        
+        currentModule = module; currentQuestion = qNumber;
         document.querySelectorAll('.q-nav-btn').forEach(btn => btn.classList.remove('active'));
         const activeBtn = document.querySelector(`.q-nav-btn[data-q-number='${qNumber}'][data-module='${module}']`);
         if (activeBtn) activeBtn.classList.add('active');
@@ -192,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
             questionForm.querySelector('#option-b').value = questionData.options.B || '';
             questionForm.querySelector('#option-c').value = questionData.options.C || '';
             questionForm.querySelector('#option-d').value = questionData.options.D || '';
-            questionForm.querySelector(`input[name="correct-answer"][value="${questionData.correctAnswer}"]`).checked = true;
+            if (questionData.correctAnswer) questionForm.querySelector(`input[name="correct-answer"][value="${questionData.correctAnswer}"]`).checked = true;
             domainSelect.value = questionData.domain;
             domainSelect.dispatchEvent(new Event('change'));
             skillSelect.value = questionData.skill;
@@ -203,14 +182,11 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const imageContainer = document.getElementById('stimulus-image-container');
             const dataToSave = {
-                module: parseInt(module),
-                questionNumber: parseInt(qNumber),
-                domain: domainSelect.value,
-                skill: skillSelect.value,
-                points: parseInt(pointsSelect.value),
                 passage: document.getElementById('stimulus-textarea').value,
                 imageUrl: imageContainer.classList.contains('hidden') ? null : document.getElementById('stimulus-image-preview').src,
                 imageWidth: imageContainer.classList.contains('hidden') ? null : imageContainer.style.width,
+                module: parseInt(module), questionNumber: parseInt(qNumber),
+                domain: domainSelect.value, skill: skillSelect.value, points: parseInt(pointsSelect.value),
                 prompt: questionForm.querySelector('#question-text').value,
                 options: {
                     A: questionForm.querySelector('#option-a').value, B: questionForm.querySelector('#option-b').value,
@@ -221,12 +197,9 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             
             testRef.collection('questions').doc(questionId).set(dataToSave, { merge: true }).then(() => {
-                alert(`Question ${qNumber} saved successfully!`);
+                alert(`Question ${qNumber} saved successfully.`);
                 activeBtn.classList.add('completed');
                 savedQuestions[questionId] = true;
-            }).catch(err => {
-                console.error("Error saving question:", err);
-                alert("Error: " + err.message);
             });
         });
         setupImageResizing();
@@ -238,7 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showEditorForQuestion(currentModule, qNumber);
     }
     
-    document.getElementById('add-image-btn').addEventListener('click', () => {
+    document.getElementById('add-image-btn').addEventListener('click', async () => {
         if (!currentQuestion) return alert("Please select a question first!");
         const input = document.createElement('input');
         input.type = 'file';
@@ -247,24 +220,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = e.target.files[0];
             if (!file) return;
             
-            const stimulusDisplay = document.getElementById('stimulus-display');
-            if(stimulusDisplay) {
-                stimulusDisplay.innerHTML = `<p>Uploading...</p>`;
-            } else {
-                 document.getElementById('stimulus-image-container').innerHTML = `<p>Uploading...</p>`;
-            }
+            document.getElementById('stimulus-image-container').classList.remove('hidden');
+            document.getElementById('stimulus-image-preview').src = "https://i.gifer.com/ZZ5H.gif"; // Loading GIF
             
             const imageUrl = await uploadImageToTelegram(file);
+
             if (imageUrl) {
                 renderStimulus({ 
                     passage: document.getElementById('stimulus-textarea').value, 
                     imageUrl: imageUrl 
                 });
-                alert('Image uploaded! Click "Save Question" to finalize.');
-            } else {
+            } else { // Handle upload failure
                 renderStimulus({ 
                     passage: document.getElementById('stimulus-textarea').value 
                 });
+                alert("Image upload failed. Please try again.");
             }
         };
         input.click();
@@ -280,10 +250,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.module-btn').forEach(btn => btn.classList.remove('active'));
         e.target.classList.add('active');
         
-        const moduleNum = parseInt(e.target.dataset.module);
-        currentModule = moduleNum;
-        const questionCount = (moduleNum <= 2) ? 27 : 22;
-        generateNavButtons(questionCount, moduleNum);
+        currentModule = parseInt(e.target.dataset.module);
+        const questionCount = (currentModule <= 2) ? 27 : 22;
+        generateNavButtons(questionCount, currentModule);
         
         editorContainer.innerHTML = `<div class="editor-placeholder"><i class="fa-solid fa-hand-pointer"></i><p>Select a question from the navigator below to begin editing.</p></div>`;
     });

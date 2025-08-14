@@ -374,7 +374,6 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
 .tool-group label { font-size: 0.8rem; font-weight: 600; color: var(--dark-gray); }
 .tool-group select, .tool-group input { padding: 8px 10px; border: 1px solid var(--medium-gray); border-radius: 6px; font-family: inherit; font-size: 0.9rem; }
 .question-number-bar { background-color: var(--medium-gray); color: var(--primary-blue); font-weight: 600; padding: 8px 12px; border-radius: 6px; margin-bottom: 15px; }
-
 .form-scroll-area { flex-grow: 1; overflow-y: auto; padding-right: 10px; }
 .form-scroll-area .input-group { margin-bottom: 15px; }
 .form-scroll-area h4 { color: var(--primary-blue); margin-top: 15px; margin-bottom: 10px; border-bottom: 1px solid var(--medium-gray); padding-bottom: 10px; }
