@@ -1,23 +1,20 @@
 document.addEventListener('DOMContentLoaded', () => {
     const auth = firebase.auth();
     const db = firebase.firestore();
-    
-    
 
     // --- Page Elements ---
     const editorHeaderTitle = document.getElementById('editor-header-title');
     const questionNavigator = document.getElementById('question-navigator');
     const moduleSwitcher = document.querySelector('.module-switcher');
-    const footerToggle = document.getElementById('footer-toggle');
     const editorContainer = document.getElementById('question-editor-container');
     const editorTemplate = document.getElementById('question-editor-template');
     
     // --- State Management ---
-const urlParams = new URLSearchParams(window.location.search);
-const testId = urlParams.get('id');
-let currentModule = 1;
-let currentQuestion = null;
-let savedQuestions = {}; // +++ ADD THIS LINE +++
+    const urlParams = new URLSearchParams(window.location.search);
+    const testId = urlParams.get('id');
+    let currentModule = 1;
+    let currentQuestion = null;
+    let savedQuestions = {};
 
     // --- Data Definitions (for toolbars) ---
     const questionTypes = {
@@ -42,30 +39,92 @@ let savedQuestions = {}; // +++ ADD THIS LINE +++
         return;
     }
 
-    // --- REPLACE THIS ENTIRE BLOCK ---
-// --- Fetch Test Info and ALL Question Statuses ---
-const testRef = db.collection('tests').doc(testId);
-
-testRef.get().then(doc => {
-    if (doc.exists) {
-        editorHeaderTitle.textContent = `Editing: ${doc.data().name}`;
-    } else {
-        alert('Test not found!');
-        window.location.href = 'admin.html';
-    }
-});
-
-// NEW: Fetch all question statuses at the beginning
-testRef.collection('questions').get().then(snapshot => {
-    snapshot.forEach(doc => {
-        savedQuestions[doc.id] = true; // e.g., { 'm1_q12': true, 'm2_q5': true }
+    // --- DATA FETCHING ---
+    const testRef = db.collection('tests').doc(testId);
+    testRef.get().then(doc => {
+        if (doc.exists) {
+            editorHeaderTitle.textContent = `Editing: ${doc.data().name}`;
+        } else {
+            alert('Test not found!');
+            window.location.href = 'admin.html';
+        }
     });
-    // Now that we know the status, generate the initial buttons
-    generateNavButtons(27, 1);
-});
-// --- END OF REPLACEMENT ---
 
-    // --- UI Generation Functions ---
+    testRef.collection('questions').get().then(snapshot => {
+        snapshot.forEach(doc => {
+            savedQuestions[doc.id] = true;
+        });
+        generateNavButtons(27, 1);
+    });
+
+    // --- CORE FUNCTIONS ---
+    async function uploadImageToTelegram(file) {
+        const formData = new FormData();
+        formData.append('chat_id', TELEGRAM_CHANNEL_ID);
+        formData.append('photo', file);
+        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`;
+        try {
+            const response = await fetch(url, { method: 'POST', body: formData });
+            const data = await response.json();
+            if (data.ok) {
+                const photoArray = data.result.photo;
+                const fileId = photoArray[photoArray.length - 1].file_id;
+                const fileUrlData = await (await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`)).json();
+                if (fileUrlData.ok) {
+                    return `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${fileUrlData.result.file_path}`;
+                } else {
+                    throw new Error(fileUrlData.description);
+                }
+            } else { throw new Error(data.description); }
+        } catch (error) {
+            console.error('Telegram Upload Error:', error);
+            alert('Error uploading image: ' + error.message);
+            return null;
+        }
+    }
+
+    function renderStimulus(data = {}) {
+        const imageContainer = document.getElementById('stimulus-image-container');
+        const imagePreview = document.getElementById('stimulus-image-preview');
+        const stimulusTextarea = document.getElementById('stimulus-textarea');
+
+        stimulusTextarea.value = data.passage || '';
+
+        if (data.imageUrl) {
+            imagePreview.src = data.imageUrl;
+            imageContainer.style.width = data.imageWidth || '100%';
+            imageContainer.classList.remove('hidden');
+        } else {
+            imageContainer.classList.add('hidden');
+        }
+    }
+
+    function setupImageResizing() {
+        const imageContainer = document.getElementById('stimulus-image-container');
+        const resizeHandle = imageContainer.querySelector('.resize-handle');
+        if (!resizeHandle) return;
+        let isResizing = false;
+
+        resizeHandle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            isResizing = true;
+            const startX = e.clientX;
+            const startWidth = imageContainer.offsetWidth;
+            
+            const doDrag = (e) => {
+                if (!isResizing) return;
+                const newWidth = startWidth + (e.clientX - startX);
+                if (newWidth > 100) { // minimum width
+                    imageContainer.style.width = `${newWidth}px`;
+                }
+            };
+            const stopDrag = () => { isResizing = false; window.removeEventListener('mousemove', doDrag);};
+            
+            window.addEventListener('mousemove', doDrag);
+            window.addEventListener('mouseup', stopDrag);
+        });
+    }
+
     function generateNavButtons(count, moduleNum) {
         questionNavigator.innerHTML = '';
         for (let i = 1; i <= count; i++) {
@@ -75,40 +134,36 @@ testRef.collection('questions').get().then(snapshot => {
             button.dataset.qNumber = i;
             button.textContent = i;
             const questionId = `m${moduleNum}_q${i}`;
-        if (savedQuestions[questionId]) {
-            button.classList.add('completed');
-        }
+            if (savedQuestions[questionId]) {
+                button.classList.add('completed');
+            }
             button.addEventListener('click', handleNavClick);
             questionNavigator.appendChild(button);
         }
     }
 
-    function showEditorForQuestion(module, qNumber) {
+    async function showEditorForQuestion(module, qNumber) {
         currentModule = module;
         currentQuestion = qNumber;
         
         document.querySelectorAll('.q-nav-btn').forEach(btn => btn.classList.remove('active'));
-        const activeBtn = document.querySelector(`.q-nav-btn[data-module='${module}'][data-q-number='${qNumber}']`);
+        const activeBtn = document.querySelector(`.q-nav-btn[data-q-number='${qNumber}'][data-module='${module}']`);
         if (activeBtn) activeBtn.classList.add('active');
 
-        // --- Clear and display the form template ---
-        const formClone = editorTemplate.content.cloneNode(true);
         editorContainer.innerHTML = '';
+        const formClone = editorTemplate.content.cloneNode(true);
         editorContainer.appendChild(formClone);
         
-        
-        // --- Select all form elements ---
         const questionForm = editorContainer.querySelector('#question-form');
-        const stimulusTextarea = document.getElementById('stimulus-textarea'); // We can select this now
-        const domainSelect = editorContainer.querySelector('#q-domain');
-        const skillSelect = editorContainer.querySelector('#q-skill');
-        const pointsSelect = editorContainer.querySelector('#q-points');
-        editorContainer.querySelector('#q-number-display').textContent = qNumber;
+        const domainSelect = questionForm.querySelector('#q-domain');
+        const skillSelect = questionForm.querySelector('#q-skill');
+        const pointsSelect = questionForm.querySelector('#q-points');
+        questionForm.querySelector('#q-number-display').textContent = qNumber;
 
-        // --- Populate Toolbars ---
         const isMath = module > 2;
         const domains = isMath ? Object.keys(questionTypes.Math) : Object.keys(questionTypes["Reading & Writing"]);
         domains.forEach(domain => { domainSelect.innerHTML += `<option value="${domain}">${domain}</option>`; });
+        
         domainSelect.addEventListener('change', () => {
             skillSelect.innerHTML = '';
             const selectedDomain = domainSelect.value;
@@ -116,168 +171,75 @@ testRef.collection('questions').get().then(snapshot => {
             skills.forEach(skill => { skillSelect.innerHTML += `<option value="${skill}">${skill}</option>`; });
         });
         domainSelect.dispatchEvent(new Event('change'));
-        
+
         let defaultPoints = 20;
         if (qNumber <= 5) defaultPoints = 10;
-        else if (qNumber >= 20) defaultPoints = 30;
+        else if (qNumber > 20 && module <= 2) defaultPoints = 30;
+        else if (qNumber > 15 && module > 2) defaultPoints = 30;
         pointValues.forEach(val => {
             const selected = (val === defaultPoints) ? 'selected' : '';
             pointsSelect.innerHTML += `<option value="${val}" ${selected}>${val} points</option>`;
         });
 
-                // --- LOGIC TO LOAD EXISTING QUESTION DATA ---
         const questionId = `m${module}_q${qNumber}`;
-        db.collection('tests').doc(testId).collection('questions').doc(questionId).get().then(doc => {
-            const dataToLoad = doc.exists ? doc.data() : {};
-            
-            // This one function now handles the entire left panel
-            renderStimulus(dataToLoad); 
-            
-            if (doc.exists) {
-                // Load the rest of the form data into the right panel
-                questionForm.querySelector('#question-text').value = dataToLoad.prompt || '';
-                questionForm.querySelector('#option-a').value = dataToLoad.options.A || '';
-                questionForm.querySelector('#option-b').value = dataToLoad.options.B || '';
-                questionForm.querySelector('#option-c').value = dataToLoad.options.C || '';
-                questionForm.querySelector('#option-d').value = dataToLoad.options.D || '';
-                questionForm.querySelector(`input[name="correct-answer"][value="${dataToLoad.correctAnswer}"]`).checked = true;
-                domainSelect.value = dataToLoad.domain;
-                domainSelect.dispatchEvent(new Event('change'));
-                skillSelect.value = dataToLoad.skill;
-                pointsSelect.value = dataToLoad.points;
-            }
-        });
+        const doc = await db.collection('tests').doc(testId).collection('questions').doc(questionId).get();
+        const questionData = doc.exists ? doc.data() : {};
+        
+        renderStimulus(questionData);
+        if (doc.exists) {
+            questionForm.querySelector('#question-text').value = questionData.prompt || '';
+            questionForm.querySelector('#option-a').value = questionData.options.A || '';
+            questionForm.querySelector('#option-b').value = questionData.options.B || '';
+            questionForm.querySelector('#option-c').value = questionData.options.C || '';
+            questionForm.querySelector('#option-d').value = questionData.options.D || '';
+            questionForm.querySelector(`input[name="correct-answer"][value="${questionData.correctAnswer}"]`).checked = true;
+            domainSelect.value = questionData.domain;
+            domainSelect.dispatchEvent(new Event('change'));
+            skillSelect.value = questionData.skill;
+            pointsSelect.value = questionData.points;
+        }
 
-        // --- LOGIC TO HANDLE SAVING THE FORM ---
         questionForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            
-            const questionData = {
+            const imageContainer = document.getElementById('stimulus-image-container');
+            const dataToSave = {
                 module: parseInt(module),
                 questionNumber: parseInt(qNumber),
                 domain: domainSelect.value,
                 skill: skillSelect.value,
                 points: parseInt(pointsSelect.value),
-                passage: document.getElementById('stimulus-panel').dataset.stimulusValue || '',
+                passage: document.getElementById('stimulus-textarea').value,
+                imageUrl: imageContainer.classList.contains('hidden') ? null : document.getElementById('stimulus-image-preview').src,
+                imageWidth: imageContainer.classList.contains('hidden') ? null : imageContainer.style.width,
                 prompt: questionForm.querySelector('#question-text').value,
                 options: {
-                    A: questionForm.querySelector('#option-a').value,
-                    B: questionForm.querySelector('#option-b').value,
-                    C: questionForm.querySelector('#option-c').value,
-                    D: questionForm.querySelector('#option-d').value,
+                    A: questionForm.querySelector('#option-a').value, B: questionForm.querySelector('#option-b').value,
+                    C: questionForm.querySelector('#option-c').value, D: questionForm.querySelector('#option-d').value,
                 },
                 correctAnswer: questionForm.querySelector('input[name="correct-answer"]:checked').value,
                 lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
             };
             
-            const questionRef = db.collection('tests').doc(testId).collection('questions').doc(questionId);
-            
-            questionRef.set(questionData, { merge: true })
-                .then(() => {
-                    alert(`Question ${qNumber} saved successfully!`);
-                    activeBtn.classList.add('completed');
-                     savedQuestions[questionId] = true; // +++ ADD THIS LINE
-                })
-                .catch(err => {
-                    console.error("Error saving question:", err);
-                    alert("Error: " + err.message);
-                });
+            testRef.collection('questions').doc(questionId).set(dataToSave, { merge: true }).then(() => {
+                alert(`Question ${qNumber} saved successfully!`);
+                activeBtn.classList.add('completed');
+                savedQuestions[questionId] = true;
+            }).catch(err => {
+                console.error("Error saving question:", err);
+                alert("Error: " + err.message);
+            });
         });
+        setupImageResizing();
     }
-        // +++ ADD THIS ENTIRE NEW FUNCTION +++
-    // --- RENDER STIMULUS (Text or Image) ---
-    function renderStimulus(data = {}) {
-        const stimulusDisplay = document.getElementById('stimulus-display');
-        const stimulusPanel = document.getElementById('stimulus-panel');
-        // Store current value on the panel itself so the save function can find it
-        stimulusPanel.dataset.stimulusValue = data.passage || ''; 
-        
-        const passage = data.passage || '';
 
-        // Check if the passage is actually an image ID
-        if (passage.startsWith('TELEGRAM_IMG_ID:')) {
-            const fileId = passage.replace('TELEGRAM_IMG_ID:', '');
-            stimulusDisplay.innerHTML = `<p>Loading image...</p>`;
-            
-            fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`)
-                .then(res => res.json())
-                .then(apiRes => {
-                    if (apiRes.ok) {
-                        const imageUrl = `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${apiRes.result.file_path}`;
-                        stimulusDisplay.innerHTML = `<img src="${imageUrl}" alt="Question Stimulus" style="width: 100%; height: auto; border-radius: 8px;">`;
-                    } else {
-                        stimulusDisplay.innerHTML = `<p style="color:red;">Error: Could not load image.</p>`;
-                    }
-                });
-        } else {
-            // It's just plain text, so show the textarea
-            stimulusDisplay.innerHTML = `<textarea class="stimulus-textarea" id="stimulus-textarea">${passage}</textarea>`;
-            // When user types in the textarea, update the stored value
-            stimulusDisplay.querySelector('textarea').addEventListener('input', (e) => {
-                stimulusPanel.dataset.stimulusValue = e.target.value;
-            });
-        }
-    }
-    // --- Event Handlers ---
+    // --- EVENT HANDLERS ---
     function handleNavClick(e) {
-        const module = e.target.dataset.module;
         const qNumber = e.target.dataset.qNumber;
-        showEditorForQuestion(module, qNumber);
+        showEditorForQuestion(currentModule, qNumber);
     }
-
-    moduleSwitcher.addEventListener('click', (e) => {
-        if (e.target.tagName !== 'BUTTON') return;
-        document.querySelectorAll('.module-btn').forEach(btn => btn.classList.remove('active'));
-        e.target.classList.add('active');
-        
-        const moduleNum = parseInt(e.target.dataset.module);
-        const questionCount = (moduleNum <= 2) ? 27 : 22;
-        generateNavButtons(questionCount, moduleNum);
-        
-        editorContainer.innerHTML = `<div class="editor-placeholder"><i class="fa-solid fa-hand-pointer"></i><p>Select a question from the navigator below to begin editing.</p></div>`;
-    });
-
-        // ... (after the handleNavClick and moduleSwitcher functions)
-
-    // --- NEW: TELEGRAM IMAGE UPLOAD LOGIC ---
     
-    // This function handles the actual upload
-    async function uploadImageToTelegram(file) {
-        const formData = new FormData();
-        formData.append('chat_id', TELEGRAM_CHANNEL_ID);
-        formData.append('photo', file);
-
-        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`;
-
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                body: formData
-            });
-            const data = await response.json();
-            
-            if (data.ok) {
-                // Success! Get the best quality photo file_id
-                const photoArray = data.result.photo;
-                const fileId = photoArray[photoArray.length - 1].file_id;
-                return fileId;
-            } else {
-                throw new Error(data.description);
-            }
-        } catch (error) {
-            console.error('Telegram Upload Error:', error);
-            alert('Error uploading image: ' + error.message);
-            return null;
-        }
-    }
-
-    // This function handles the button clicks
-        // Event listener for the "Add Image" button
     document.getElementById('add-image-btn').addEventListener('click', () => {
-        if (!currentQuestion) {
-            alert("Please select a question first!");
-            return;
-        }
+        if (!currentQuestion) return alert("Please select a question first!");
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
@@ -285,29 +247,47 @@ testRef.collection('questions').get().then(snapshot => {
             const file = e.target.files[0];
             if (!file) return;
             
-            document.getElementById('stimulus-display').innerHTML = `<p>Uploading...</p>`;
-            const fileId = await uploadImageToTelegram(file);
-
-            if (fileId) {
-                const newValue = `TELEGRAM_IMG_ID:${fileId}`;
-                renderStimulus({ passage: newValue });
+            const stimulusDisplay = document.getElementById('stimulus-display');
+            if(stimulusDisplay) {
+                stimulusDisplay.innerHTML = `<p>Uploading...</p>`;
+            } else {
+                 document.getElementById('stimulus-image-container').innerHTML = `<p>Uploading...</p>`;
+            }
+            
+            const imageUrl = await uploadImageToTelegram(file);
+            if (imageUrl) {
+                renderStimulus({ 
+                    passage: document.getElementById('stimulus-textarea').value, 
+                    imageUrl: imageUrl 
+                });
                 alert('Image uploaded! Click "Save Question" to finalize.');
             } else {
-                renderStimulus({ passage: '' }); // Show empty textarea on failure
+                renderStimulus({ 
+                    passage: document.getElementById('stimulus-textarea').value 
+                });
             }
         };
         input.click();
     });
 
-    // Event listener for the "Remove" button
-    document.getElementById('remove-stimulus-btn').addEventListener('click', () => {
-        if (!currentQuestion) {
-            alert("Please select a question first!");
-            return;
-        }
-        renderStimulus({ passage: '' }); // This clears the panel
+    document.getElementById('remove-image-btn').addEventListener('click', () => {
+        if (!currentQuestion) return alert("Please select a question first!");
+        renderStimulus({ passage: document.getElementById('stimulus-textarea').value });
     });
 
-    
+    moduleSwitcher.addEventListener('click', (e) => {
+        if (!e.target.matches('button')) return;
+        document.querySelectorAll('.module-btn').forEach(btn => btn.classList.remove('active'));
+        e.target.classList.add('active');
+        
+        const moduleNum = parseInt(e.target.dataset.module);
+        currentModule = moduleNum;
+        const questionCount = (moduleNum <= 2) ? 27 : 22;
+        generateNavButtons(questionCount, moduleNum);
+        
+        editorContainer.innerHTML = `<div class="editor-placeholder"><i class="fa-solid fa-hand-pointer"></i><p>Select a question from the navigator below to begin editing.</p></div>`;
+    });
 
+    // --- Initial Page Load ---
+    generateNavButtons(27, 1);
 });
