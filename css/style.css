@@ -177,6 +177,10 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
 .footer-center .question-nav-btn i { transition: transform 0.3s; }
 .footer-center .question-nav-btn.open i { transform: rotate(180deg); }
 .footer-right { display: flex; align-items: center; gap: 15px; justify-self: end; }
+.footer-toggle {
+    position: absolute; /* Takes the button out of the layout flow */
+    right: 0; /* Pins it to the right side */
+}
 .test-footer .btn-secondary { background-color: var(--primary-blue); }
 .test-footer .btn-primary { background-color: var(--white); color: var(--primary-purple); }
 .modal-backdrop { position: fixed; inset: 0; background-color: rgba(0,0,0,0.5); z-index: 1999; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
@@ -388,12 +392,27 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
 .btn-secondary.danger:hover { background-color: #c0392b; }
 
 .editor-footer { flex-shrink: 0; background-color: #2c3e50; color: var(--white); padding: 10px 20px; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); }
-.footer-controls { display: flex; justify-content: center; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #7f8c8d; padding-bottom: 10px; }
+.footer-controls {
+    display: flex;
+    justify-content: center; /* This centers the module switcher */
+    align-items: center;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #7f8c8d;
+    padding-bottom: 10px;
+    position: relative; /* This is for the toggle button */
+}
 .module-switcher { display: flex; justify-content: center; gap: 10px; }
 .module-btn { background: none; border: 1px solid #7f8c8d; color: #ecf0f1; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 0.9rem; transition: background-color 0.2s, border-color 0.2s; }
 .module-btn:hover { background-color: rgba(255, 255, 255, 0.1); }
 .module-btn.active { background-color: var(--primary-purple); border-color: var(--primary-purple); color: var(--white); }
-.question-navigator { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 6px; }
+/* Find and replace this rule */
+.question-navigator {
+    display: grid; /* Switched back to grid */
+    grid-template-columns: repeat(auto-fit, minmax(38px, 1fr)); /* Responsive columns */
+    justify-content: start; /* THIS IS THE KEY: Aligns items to the beginning */
+    gap: 6px;
+    padding-top: 10px;
+}
 .q-nav-btn { background-color: #34495e; border: 1px solid #7f8c8d; color: #ecf0f1; height: 38px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
 .q-nav-btn:hover { background-color: #4e6a85; border-color: var(--white); }
 .q-nav-btn.active { background-color: var(--white); color: var(--primary-blue); transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
