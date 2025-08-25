@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // --- Page Elements ---
+    // --- Page Elements & State ---
     const editorHeaderTitle = document.getElementById('editor-header-title');
     const questionNavigator = document.getElementById('question-navigator');
     const moduleSwitcher = document.querySelector('.module-switcher');
@@ -11,14 +11,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const addImageBtn = document.getElementById('add-image-btn');
     const removeImageBtn = document.getElementById('remove-image-btn');
     
-    // --- State Management ---
     const urlParams = new URLSearchParams(window.location.search);
     const testId = urlParams.get('id');
     let currentModule = 1;
     let currentQuestion = null;
     let savedQuestions = {};
+    
+    // --- Global Editor Instances ---
+    let passageEditor = null;
+    let promptEditor = null;
 
-    // --- Data Definitions (for toolbars) ---
+    // --- Data Definitions ---
     const questionTypes = {
         "Reading & Writing": {
             "Information and Ideas": ["Central Ideas and Details", "Command of Evidence", "Inferences"],
@@ -44,31 +47,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- DATA FETCHING ---
     const testRef = db.collection('tests').doc(testId);
     testRef.get().then(doc => {
-        if (doc.exists) {
-            editorHeaderTitle.textContent = `Editing: ${doc.data().name}`;
-        } else {
-            alert('Test not found!');
-            window.location.href = 'admin.html';
-        }
+        if (doc.exists) { editorHeaderTitle.textContent = `Editing: ${doc.data().name}`; }
+        else { alert('Test not found!'); window.location.href = 'admin.html'; }
     });
     testRef.collection('questions').get().then(snapshot => {
-        snapshot.forEach(doc => {
-            savedQuestions[doc.id] = true;
-        });
+        snapshot.forEach(doc => { savedQuestions[doc.id] = true; });
         generateNavButtons(27, 1);
     });
 
     // --- CORE FUNCTIONS ---
-    function initializeQuillEditor(selector, placeholder) {
-        return new Quill(selector, {
-            theme: 'snow',
-            placeholder: placeholder,
-            modules: {
-                toolbar: [['bold', 'italic', 'underline']]
-            }
-        });
-    }
-
     async function uploadImageToTelegram(file) {
         const formData = new FormData();
         formData.append('chat_id', TELEGRAM_CHANNEL_ID);
@@ -83,12 +70,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const fileUrlData = await (await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`)).json();
                 if (fileUrlData.ok) {
                     return `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${fileUrlData.result.file_path}`;
-                } else {
-                    throw new Error(fileUrlData.description);
-                }
-            } else {
-                throw new Error(data.description);
-            }
+                } else { throw new Error(fileUrlData.description); }
+            } else { throw new Error(data.description); }
         } catch (error) {
             console.error('Telegram Upload Error:', error);
             alert('Error uploading image: ' + error.message);
@@ -113,18 +96,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const resizeHandle = imageContainer.querySelector('.resize-handle');
         if (!resizeHandle) return;
         let isResizing = false;
-
         resizeHandle.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            isResizing = true;
+            e.preventDefault(); isResizing = true;
             const startX = e.clientX;
             const startWidth = imageContainer.offsetWidth;
             const doDrag = (e) => {
                 if (!isResizing) return;
                 const newWidth = startWidth + (e.clientX - startX);
-                if (newWidth > 100) {
-                    imageContainer.style.width = `${newWidth}px`;
-                }
+                if (newWidth > 100) imageContainer.style.width = `${newWidth}px`;
             };
             const stopDrag = () => { isResizing = false; window.removeEventListener('mousemove', doDrag); };
             window.addEventListener('mousemove', doDrag);
@@ -148,18 +127,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function showEditorForQuestion(module, qNumber) {
-        currentModule = module;
-        currentQuestion = qNumber;
+        currentModule = module; currentQuestion = qNumber;
         document.querySelectorAll('.q-nav-btn').forEach(btn => btn.classList.remove('active'));
         const activeBtn = document.querySelector(`.q-nav-btn[data-q-number='${qNumber}'][data-module='${module}']`);
         if (activeBtn) activeBtn.classList.add('active');
 
-        editorContainer.innerHTML = '';
-        const formClone = editorTemplate.content.cloneNode(true);
-        editorContainer.appendChild(formClone);
+        // If the form isn't on the page yet, create it and editors ONCE.
+        if (!editorContainer.querySelector('#question-form')) {
+            const formClone = editorTemplate.content.cloneNode(true);
+            editorContainer.innerHTML = '';
+            editorContainer.appendChild(formClone);
+            passageEditor = new Quill('#stimulus-editor', { theme: 'snow', placeholder: 'Paste passage text here...' });
+            promptEditor = new Quill('#question-text-editor', { theme: 'snow', placeholder: 'Type question prompt here...' });
+            setupImageResizing();
 
-        const passageEditor = initializeQuillEditor('#stimulus-editor', 'Paste passage text here...');
-        const promptEditor = initializeQuillEditor('#question-text-editor', 'Type question prompt here...');
+            // Attach submit listener only once to the editor container
+            editorContainer.addEventListener('submit', handleFormSubmit);
+        }
         
         const questionForm = editorContainer.querySelector('#question-form');
         const domainSelect = questionForm.querySelector('#q-domain');
@@ -169,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const isMath = module > 2;
         const domains = isMath ? Object.keys(questionTypes.Math) : Object.keys(questionTypes["Reading & Writing"]);
-        domains.forEach(domain => { domainSelect.innerHTML += `<option value="${domain}">${domain}</option>`; });
+        domainSelect.innerHTML = ''; domains.forEach(d => { domainSelect.innerHTML += `<option value="${d}">${d}</option>`; });
         
         domainSelect.addEventListener('change', () => {
             skillSelect.innerHTML = '';
@@ -181,20 +165,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let defaultPoints = 20;
         if (qNumber <= 5) defaultPoints = 10;
-        else if (qNumber > 20 && module <= 2) defaultPoints = 30;
-        else if (qNumber > 15 && module > 2) defaultPoints = 30;
-        pointValues.forEach(val => {
+        else if ((qNumber > 20 && module <= 2) || (qNumber > 15 && module > 2)) defaultPoints = 30;
+        pointsSelect.innerHTML = ''; pointValues.forEach(val => {
             const selected = (val === defaultPoints) ? 'selected' : '';
             pointsSelect.innerHTML += `<option value="${val}" ${selected}>${val} points</option>`;
         });
 
         const questionId = `m${module}_q${qNumber}`;
-        const doc = await db.collection('tests').doc(testId).collection('questions').doc(questionId).get();
+        const doc = await testRef.collection('questions').doc(questionId).get();
         const questionData = doc.exists ? doc.data() : {};
         
         renderStimulus(questionData);
-        if (questionData.passage) passageEditor.root.innerHTML = questionData.passage;
-        if (questionData.prompt) promptEditor.root.innerHTML = questionData.prompt;
+        passageEditor.root.innerHTML = questionData.passage || '';
+        promptEditor.root.innerHTML = questionData.prompt || '';
         
         if (doc.exists) {
             questionForm.querySelector('#option-a').value = questionData.options.A || '';
@@ -207,35 +190,45 @@ document.addEventListener('DOMContentLoaded', () => {
             skillSelect.value = questionData.skill;
             pointsSelect.value = questionData.points;
         }
-
-        questionForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const imageContainer = document.getElementById('stimulus-image-container');
-            const dataToSave = {
-                passage: passageEditor.root.innerHTML,
-                imageUrl: imageContainer.classList.contains('hidden') ? null : document.getElementById('stimulus-image-preview').src,
-                imageWidth: imageContainer.classList.contains('hidden') ? null : imageContainer.style.width,
-                module: parseInt(module), questionNumber: parseInt(qNumber),
-                domain: domainSelect.value, skill: skillSelect.value, points: parseInt(pointsSelect.value),
-                prompt: promptEditor.root.innerHTML,
-                options: {
-                    A: questionForm.querySelector('#option-a').value, B: questionForm.querySelector('#option-b').value,
-                    C: questionForm.querySelector('#option-c').value, D: questionForm.querySelector('#option-d').value,
-                },
-                correctAnswer: questionForm.querySelector('input[name="correct-answer"]:checked').value,
-                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-            };
-            
-            testRef.collection('questions').doc(questionId).set(dataToSave, { merge: true }).then(() => {
-                alert(`Question ${qNumber} saved successfully.`);
-                activeBtn.classList.add('completed');
-                savedQuestions[questionId] = true;
-            });
-        });
-        setupImageResizing();
     }
 
     // --- EVENT HANDLERS ---
+    function handleFormSubmit(e) {
+        e.preventDefault();
+        if (!currentQuestion) return;
+
+        const questionId = `m${currentModule}_q${currentQuestion}`;
+        const activeBtn = document.querySelector(`.q-nav-btn[data-q-number='${currentQuestion}'][data-module='${currentModule}']`);
+        const imageContainer = document.getElementById('stimulus-image-container');
+        const questionForm = editorContainer.querySelector('#question-form');
+        
+        const dataToSave = {
+            passage: passageEditor.root.innerHTML,
+            imageUrl: imageContainer.classList.contains('hidden') ? null : document.getElementById('stimulus-image-preview').src,
+            imageWidth: imageContainer.classList.contains('hidden') ? null : imageContainer.style.width,
+            prompt: promptEditor.root.innerHTML,
+            module: parseInt(currentModule), questionNumber: parseInt(currentQuestion),
+            domain: questionForm.querySelector('#q-domain').value,
+            skill: questionForm.querySelector('#q-skill').value,
+            points: parseInt(questionForm.querySelector('#q-points').value),
+            options: {
+                A: questionForm.querySelector('#option-a').value, B: questionForm.querySelector('#option-b').value,
+                C: questionForm.querySelector('#option-c').value, D: questionForm.querySelector('#option-d').value,
+            },
+            correctAnswer: questionForm.querySelector('input[name="correct-answer"]:checked').value,
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        testRef.collection('questions').doc(questionId).set(dataToSave, { merge: true }).then(() => {
+            alert(`Question ${currentQuestion} saved successfully.`);
+            if (activeBtn) activeBtn.classList.add('completed');
+            savedQuestions[questionId] = true;
+        }).catch(err => {
+            console.error("Error saving question:", err);
+            alert("Error saving question. See console for details.");
+        });
+    }
+
     function handleNavClick(e) {
         const qNumber = e.target.dataset.qNumber;
         showEditorForQuestion(currentModule, qNumber);
@@ -243,27 +236,20 @@ document.addEventListener('DOMContentLoaded', () => {
     
     addImageBtn.addEventListener('click', async () => {
         if (!currentQuestion) return alert("Please select a question first!");
-        
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
-        
         input.onchange = async e => {
             const file = e.target.files[0];
             if (!file) return;
-            
-            const imageContainer = document.getElementById('stimulus-image-container');
-            const imagePreview = document.getElementById('stimulus-image-preview');
-            imageContainer.classList.remove('hidden');
-            imagePreview.src = "https://i.gifer.com/ZZ5H.gif"; // Loading GIF
-            
+            document.getElementById('stimulus-image-container').classList.remove('hidden');
+            document.getElementById('stimulus-image-preview').src = "https://i.gifer.com/ZZ5H.gif";
             const imageUrl = await uploadImageToTelegram(file);
-
             if (imageUrl) {
-                 imagePreview.src = imageUrl;
+                renderStimulus({ passage: passageEditor.root.innerHTML, imageUrl: imageUrl });
             } else {
-                 imageContainer.classList.add('hidden');
-                 alert("Image upload failed. Please try again.");
+                renderStimulus({ passage: passageEditor.root.innerHTML });
+                alert("Image upload failed. Please try again.");
             }
         };
         input.click();
@@ -271,18 +257,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     removeImageBtn.addEventListener('click', () => {
         if (!currentQuestion) return alert("Please select a question first!");
-        renderStimulus({ passage: document.querySelector('#stimulus-editor .ql-editor').innerHTML });
+        renderStimulus({ passage: passageEditor.root.innerHTML });
     });
 
     moduleSwitcher.addEventListener('click', (e) => {
         if (!e.target.matches('button')) return;
         document.querySelectorAll('.module-btn').forEach(btn => btn.classList.remove('active'));
         e.target.classList.add('active');
-        
         currentModule = parseInt(e.target.dataset.module);
         const questionCount = (currentModule <= 2) ? 27 : 22;
         generateNavButtons(questionCount, currentModule);
-        
         editorContainer.innerHTML = `<div class="editor-placeholder"><i class="fa-solid fa-hand-pointer"></i><p>Select a question from the navigator below to begin editing.</p></div>`;
     });
 
