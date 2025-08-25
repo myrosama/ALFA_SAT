@@ -417,3 +417,24 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
 .q-nav-btn:hover { background-color: #4e6a85; border-color: var(--white); }
 .q-nav-btn.active { background-color: var(--white); color: var(--primary-blue); transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
 .q-nav-btn.completed { background-color: #27ae60; border-color: #2ecc71; }
+
+/* --- Quill Editor Styles --- */
+#stimulus-editor, #question-text-editor {
+    height: 150px; /* Give the editors a good default height */
+}
+.ql-editor {
+    font-family: 'Source Serif 4', serif;
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+.ql-toolbar.ql-snow {
+    border: 1px solid var(--medium-gray);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    background-color: #f8f9fa;
+}
+.ql-container.ql-snow {
+    border: 1px solid var(--medium-gray);
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
