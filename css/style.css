@@ -372,13 +372,35 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
 .stimulus-textarea { width: 100%; border: none; resize: vertical; font-family: 'Source Serif 4', serif; font-size: 1.1rem; line-height: 1.6; min-height: 150px; }
 .stimulus-textarea:focus { outline: none; }
 
-.question-editor-form { display: flex; flex-direction: column; height: 100%; }
-.editor-toolbar { display: flex; flex-wrap: wrap; gap: 20px; padding: 15px; border-radius: 8px; background-color: #f8f9fa; margin-bottom: 15px; }
+.question-editor-form { 
+    display: flex; 
+    flex-direction: column; 
+    height: 100%; 
+}
+.editor-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px; /* Adjust gap */
+    padding: 12px; /* Adjust padding */
+    border-radius: 8px;
+    background-color: #f8f9fa;
+    margin-bottom: 15px;
+}
 .tool-group { display: flex; flex-direction: column; gap: 5px; }
 .tool-group label { font-size: 0.8rem; font-weight: 600; color: var(--dark-gray); }
-.tool-group select, .tool-group input { padding: 8px 10px; border: 1px solid var(--medium-gray); border-radius: 6px; font-family: inherit; font-size: 0.9rem; }
+.tool-group select, .tool-group input {
+    padding: 6px 8px; /* Adjust padding */
+    border: 1px solid var(--medium-gray);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 0.85rem; /* Adjust font size */
+}
 .question-number-bar { background-color: var(--medium-gray); color: var(--primary-blue); font-weight: 600; padding: 8px 12px; border-radius: 6px; margin-bottom: 15px; }
-.form-scroll-area { flex-grow: 1; overflow-y: auto; padding-right: 10px; }
+.form-scroll-area {
+    flex-grow: 1; /* This is the key: tells this div to take up all available vertical space */
+    overflow-y: auto;
+    padding-right: 10px;
+}
 .form-scroll-area .input-group { margin-bottom: 15px; }
 .form-scroll-area h4 { color: var(--primary-blue); margin-top: 15px; margin-bottom: 10px; border-bottom: 1px solid var(--medium-gray); padding-bottom: 10px; }
 .form-scroll-area label { display: block; font-weight: 600; margin-bottom: 8px; color: var(--primary-blue); }
@@ -387,7 +409,21 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
 .correct-answer-label { display: flex; align-items: center; gap: 8px; font-weight: 600; padding: 8px; }
 .option-group .input-group { flex-grow: 1; margin-bottom: 0; }
 .option-group .input-group input { width: 100%; padding: 10px 12px; border: 1px solid var(--medium-gray); border-radius: 8px; font-size: 1rem; font-family: 'Source Serif 4', serif; }
-.form-actions { flex-shrink: 0; display: flex; justify-content: space-between; gap: 10px; margin-top: 20px; border-top: 1px solid var(--medium-gray); padding-top: 20px; }
+.form-actions {
+    flex-shrink: 0; /* Prevents this area from shrinking */
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 20px;
+    border-top: 1px solid var(--medium-gray);
+    padding-top: 20px;
+}
+/* ADD THIS NEW RULE */
+.form-actions .btn {
+    padding: 8px 16px; /* Make buttons smaller */
+    font-size: 0.9rem;
+    margin-top: 0; /* Remove default top margin */
+}
 .btn-secondary.danger { background-color: #e74c3c; color: white; }
 .btn-secondary.danger:hover { background-color: #c0392b; }
 
