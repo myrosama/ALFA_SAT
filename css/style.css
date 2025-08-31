@@ -438,3 +438,16 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
     border-bottom-left-radius: 8px;
     border-bottom-right-radius: 8px;
 }
+/* --- MathQuill Styles --- */
+.math-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--medium-gray);
+    border-radius: 8px;
+    font-size: 1.1rem;
+    min-height: 45px;
+}
+.math-input.mq-focused {
+    border-color: var(--primary-purple);
+    box-shadow: 0 0 0 3px rgba(106, 13, 173, 0.15);
+}

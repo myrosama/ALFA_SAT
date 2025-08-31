@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const auth = firebase.auth();
     const db = firebase.firestore();
+    var MQ = MathQuill.getInterface(2);
 
     // --- Page Elements & State ---
     const editorHeaderTitle = document.getElementById('editor-header-title');
@@ -56,6 +57,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- CORE FUNCTIONS ---
+    function initializeQuillEditor(selector, placeholder) {
+        return new Quill(selector, {
+            theme: 'snow', placeholder: placeholder,
+            modules: { toolbar: [['bold', 'italic', 'underline']] }
+        });
+    }
+
     async function uploadImageToTelegram(file) {
         const formData = new FormData();
         formData.append('chat_id', TELEGRAM_CHANNEL_ID);
@@ -132,7 +140,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const activeBtn = document.querySelector(`.q-nav-btn[data-q-number='${qNumber}'][data-module='${module}']`);
         if (activeBtn) activeBtn.classList.add('active');
 
-        // If the form isn't on the page yet, create it and editors ONCE.
         if (!editorContainer.querySelector('#question-form')) {
             const formClone = editorTemplate.content.cloneNode(true);
             editorContainer.innerHTML = '';
@@ -140,18 +147,27 @@ document.addEventListener('DOMContentLoaded', () => {
             passageEditor = new Quill('#stimulus-editor', { theme: 'snow', placeholder: 'Paste passage text here...' });
             promptEditor = new Quill('#question-text-editor', { theme: 'snow', placeholder: 'Type question prompt here...' });
             setupImageResizing();
-
-            // Attach submit listener only once to the editor container
-            editorContainer.addEventListener('submit', handleFormSubmit);
+            editorContainer.querySelector('#question-form').addEventListener('submit', handleFormSubmit);
         }
         
         const questionForm = editorContainer.querySelector('#question-form');
         const domainSelect = questionForm.querySelector('#q-domain');
         const skillSelect = questionForm.querySelector('#q-skill');
         const pointsSelect = questionForm.querySelector('#q-points');
+        const formatSelect = questionForm.querySelector('#q-format');
+        const mcqContainer = questionForm.querySelector('#answer-options-container');
+        const fillInContainer = questionForm.querySelector('#fill-in-answer-container');
         questionForm.querySelector('#q-number-display').textContent = qNumber;
 
         const isMath = module > 2;
+
+        Object.values(questionForm.querySelectorAll('.math-input')).forEach(el => MQ.MathField(el));
+        
+        formatSelect.addEventListener('change', () => {
+            mcqContainer.classList.toggle('hidden', formatSelect.value !== 'mcq');
+            fillInContainer.classList.toggle('hidden', formatSelect.value !== 'fill-in');
+        });
+
         const domains = isMath ? Object.keys(questionTypes.Math) : Object.keys(questionTypes["Reading & Writing"]);
         domainSelect.innerHTML = ''; domains.forEach(d => { domainSelect.innerHTML += `<option value="${d}">${d}</option>`; });
         
@@ -173,26 +189,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const questionId = `m${module}_q${qNumber}`;
         const doc = await testRef.collection('questions').doc(questionId).get();
-        const questionData = doc.exists ? doc.data() : {};
+        const data = doc.exists ? doc.data() : {};
         
-        renderStimulus(questionData);
-        passageEditor.root.innerHTML = questionData.passage || '';
-        promptEditor.root.innerHTML = questionData.prompt || '';
+        renderStimulus(data);
+        passageEditor.root.innerHTML = data.passage || '';
+        promptEditor.root.innerHTML = data.prompt || '';
         
         if (doc.exists) {
-            questionForm.querySelector('#option-a').value = questionData.options.A || '';
-            questionForm.querySelector('#option-b').value = questionData.options.B || '';
-            questionForm.querySelector('#option-c').value = questionData.options.C || '';
-            questionForm.querySelector('#option-d').value = questionData.options.D || '';
-            if (questionData.correctAnswer) questionForm.querySelector(`input[name="correct-answer"][value="${questionData.correctAnswer}"]`).checked = true;
-            domainSelect.value = questionData.domain;
+            formatSelect.value = data.format || 'mcq';
+            formatSelect.dispatchEvent(new Event('change'));
+            
+            MQ(questionForm.querySelector('#option-a')).latex(data.options.A || '');
+            MQ(questionForm.querySelector('#option-b')).latex(data.options.B || '');
+            MQ(questionForm.querySelector('#option-c')).latex(data.options.C || '');
+            MQ(questionForm.querySelector('#option-d')).latex(data.options.D || '');
+            MQ(questionForm.querySelector('#fill-in-answer')).latex(data.fillInAnswer || '');
+            
+            if (data.correctAnswer) {
+                const radio = questionForm.querySelector(`input[name="correct-answer"][value="${data.correctAnswer}"]`);
+                if (radio) radio.checked = true;
+            }
+            
+            domainSelect.value = data.domain;
             domainSelect.dispatchEvent(new Event('change'));
-            skillSelect.value = questionData.skill;
-            pointsSelect.value = questionData.points;
+            skillSelect.value = data.skill;
+            pointsSelect.value = data.points;
         }
     }
 
-    // --- EVENT HANDLERS ---
     function handleFormSubmit(e) {
         e.preventDefault();
         if (!currentQuestion) return;
@@ -211,11 +235,13 @@ document.addEventListener('DOMContentLoaded', () => {
             domain: questionForm.querySelector('#q-domain').value,
             skill: questionForm.querySelector('#q-skill').value,
             points: parseInt(questionForm.querySelector('#q-points').value),
+            format: questionForm.querySelector('#q-format').value,
             options: {
-                A: questionForm.querySelector('#option-a').value, B: questionForm.querySelector('#option-b').value,
-                C: questionForm.querySelector('#option-c').value, D: questionForm.querySelector('#option-d').value,
+                A: MQ(questionForm.querySelector('#option-a')).latex(), B: MQ(questionForm.querySelector('#option-b')).latex(),
+                C: MQ(questionForm.querySelector('#option-c')).latex(), D: MQ(questionForm.querySelector('#option-d')).latex(),
             },
-            correctAnswer: questionForm.querySelector('input[name="correct-answer"]:checked').value,
+            fillInAnswer: MQ(questionForm.querySelector('#fill-in-answer')).latex(),
+            correctAnswer: questionForm.querySelector('input[name="correct-answer"]:checked')?.value || null,
             lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
         };
         
@@ -270,6 +296,5 @@ document.addEventListener('DOMContentLoaded', () => {
         editorContainer.innerHTML = `<div class="editor-placeholder"><i class="fa-solid fa-hand-pointer"></i><p>Select a question from the navigator below to begin editing.</p></div>`;
     });
 
-    // --- Initial Page Load ---
     generateNavButtons(27, 1);
 });
