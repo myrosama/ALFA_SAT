@@ -294,6 +294,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const questionCount = (currentModule <= 2) ? 27 : 22;
         generateNavButtons(questionCount, currentModule);
         editorContainer.innerHTML = `<div class="editor-placeholder"><i class="fa-solid fa-hand-pointer"></i><p>Select a question from the navigator below to begin editing.</p></div>`;
+        document.getElementById('stimulus-panel').querySelector('.panel-content').innerHTML = `<div id="stimulus-image-container" class="hidden"><img id="stimulus-image-preview" src=""><div class="resize-handle"></div></div><div id="stimulus-editor"></div>`;
+        // Reset the state to prevent any other bugs
+        currentQuestion = null;
+        passageEditor = null;
+        promptEditor = null;
     });
 
     generateNavButtons(27, 1);
