@@ -90,17 +90,20 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderStimulus(data = {}) {
         const imageContainer = document.getElementById('stimulus-image-container');
         const imagePreview = document.getElementById('stimulus-image-preview');
-        if (data.imageUrl) {
-            imagePreview.src = data.imageUrl;
-            imageContainer.style.width = data.imageWidth || '100%';
-            imageContainer.classList.remove('hidden');
-        } else {
-            imageContainer.classList.add('hidden');
+        if (imageContainer && imagePreview) {
+            if (data.imageUrl) {
+                imagePreview.src = data.imageUrl;
+                imageContainer.style.width = data.imageWidth || '100%';
+                imageContainer.classList.remove('hidden');
+            } else {
+                imageContainer.classList.add('hidden');
+            }
         }
     }
 
     function setupImageResizing() {
         const imageContainer = document.getElementById('stimulus-image-container');
+        if(!imageContainer) return;
         const resizeHandle = imageContainer.querySelector('.resize-handle');
         if (!resizeHandle) return;
         let isResizing = false;
@@ -113,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const newWidth = startWidth + (e.clientX - startX);
                 if (newWidth > 100) imageContainer.style.width = `${newWidth}px`;
             };
-            const stopDrag = () => { isResizing = false; window.removeEventListener('mousemove', doDrag); };
+            const stopDrag = () => { isResizing = false; window.removeEventListener('mousemove', doDrag); window.removeEventListener('mouseup', stopDrag); };
             window.addEventListener('mousemove', doDrag);
             window.addEventListener('mouseup', stopDrag);
         });
@@ -140,17 +143,42 @@ document.addEventListener('DOMContentLoaded', () => {
         const activeBtn = document.querySelector(`.q-nav-btn[data-q-number='${qNumber}'][data-module='${module}']`);
         if (activeBtn) activeBtn.classList.add('active');
 
-        if (!editorContainer.querySelector('#question-form')) {
-            const formClone = editorTemplate.content.cloneNode(true);
-            editorContainer.innerHTML = '';
-            editorContainer.appendChild(formClone);
-            passageEditor = new Quill('#stimulus-editor', { theme: 'snow', placeholder: 'Paste passage text here...' });
-            promptEditor = new Quill('#question-text-editor', { theme: 'snow', placeholder: 'Type question prompt here...' });
-            setupImageResizing();
-            editorContainer.querySelector('#question-form').addEventListener('submit', handleFormSubmit);
-        }
+        // This is the key: always rebuild the form from the template
+        editorContainer.innerHTML = '';
+        const formClone = editorTemplate.content.cloneNode(true);
+        editorContainer.appendChild(formClone);
         
         const questionForm = editorContainer.querySelector('#question-form');
+        const isMath = module > 2;
+
+        const stimulusEditorEl = document.getElementById('stimulus-editor');
+        const promptEditorEl = questionForm.querySelector('#question-text-editor');
+
+        // Initialize editors based on module type
+        if (isMath) {
+            passageEditor = MQ.MathField(stimulusEditorEl);
+            promptEditor = MQ.MathField(promptEditorEl);
+        } else {
+            passageEditor = initializeQuillEditor('#stimulus-editor', 'Paste passage text here...');
+            promptEditor = initializeQuillEditor('#question-text-editor', 'Type question prompt here...');
+        }
+        
+        // --- REPLACE THIS ENTIRE LOOP ---
+        const allAnswerFields = questionForm.querySelectorAll('.answer-input');
+        allAnswerFields.forEach(el => {
+        // This removes any old MathQuill instance from the element
+        if (MQ(el)) { MQ(el).revert(); }
+            el.innerHTML = ''; // Clear the span completely
+
+        if (isMath) {
+            // If it's a math module, make the span a MathQuill field
+            MQ.MathField(el);
+    }   else {
+        // If it's R&W, create a standard text input inside the span
+        el.innerHTML = `<input type="text" class="text-answer-input">`;
+    }
+});
+        
         const domainSelect = questionForm.querySelector('#q-domain');
         const skillSelect = questionForm.querySelector('#q-skill');
         const pointsSelect = questionForm.querySelector('#q-points');
@@ -158,10 +186,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const mcqContainer = questionForm.querySelector('#answer-options-container');
         const fillInContainer = questionForm.querySelector('#fill-in-answer-container');
         questionForm.querySelector('#q-number-display').textContent = qNumber;
-
-        const isMath = module > 2;
-
-        Object.values(questionForm.querySelectorAll('.math-input')).forEach(el => MQ.MathField(el));
         
         formatSelect.addEventListener('change', () => {
             mcqContainer.classList.toggle('hidden', formatSelect.value !== 'mcq');
@@ -192,19 +216,41 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = doc.exists ? doc.data() : {};
         
         renderStimulus(data);
-        passageEditor.root.innerHTML = data.passage || '';
-        promptEditor.root.innerHTML = data.prompt || '';
+        
+        if (isMath) {
+            passageEditor.latex(data.passage || '');
+            promptEditor.latex(data.prompt || '');
+        } else {
+            passageEditor.root.innerHTML = data.passage || '';
+            promptEditor.root.innerHTML = data.prompt || '';
+        }
         
         if (doc.exists) {
             formatSelect.value = data.format || 'mcq';
             formatSelect.dispatchEvent(new Event('change'));
             
-            MQ(questionForm.querySelector('#option-a')).latex(data.options.A || '');
-            MQ(questionForm.querySelector('#option-b')).latex(data.options.B || '');
-            MQ(questionForm.querySelector('#option-c')).latex(data.options.C || '');
-            MQ(questionForm.querySelector('#option-d')).latex(data.options.D || '');
-            MQ(questionForm.querySelector('#fill-in-answer')).latex(data.fillInAnswer || '');
-            
+            // --- REPLACE THIS BLOCK ---
+        ['A','B','C','D'].forEach(opt => {
+        const el = questionForm.querySelector(`#option-${opt.toLowerCase()}`);
+        const val = data.options ? data.options[opt] : '';
+        if (isMath) {
+            MQ(el).latex(val || '');
+        } else {
+            const input = el.querySelector('input');
+            if (input) input.value = val || '';
+        }
+    });
+        const fillEl = questionForm.querySelector('#fill-in-answer');
+        if (fillEl) {
+        const fillVal = data.fillInAnswer || '';
+        if (isMath) {
+        MQ(fillEl).latex(fillVal);
+    } else {
+        const input = fillEl.querySelector('input');
+        if (input) input.value = fillVal;
+    }
+}   
+
             if (data.correctAnswer) {
                 const radio = questionForm.querySelector(`input[name="correct-answer"][value="${data.correctAnswer}"]`);
                 if (radio) radio.checked = true;
@@ -215,6 +261,9 @@ document.addEventListener('DOMContentLoaded', () => {
             skillSelect.value = data.skill;
             pointsSelect.value = data.points;
         }
+
+        questionForm.addEventListener('submit', handleFormSubmit);
+        setupImageResizing();
     }
 
     function handleFormSubmit(e) {
@@ -225,25 +274,39 @@ document.addEventListener('DOMContentLoaded', () => {
         const activeBtn = document.querySelector(`.q-nav-btn[data-q-number='${currentQuestion}'][data-module='${currentModule}']`);
         const imageContainer = document.getElementById('stimulus-image-container');
         const questionForm = editorContainer.querySelector('#question-form');
-        
-        const dataToSave = {
-            passage: passageEditor.root.innerHTML,
-            imageUrl: imageContainer.classList.contains('hidden') ? null : document.getElementById('stimulus-image-preview').src,
-            imageWidth: imageContainer.classList.contains('hidden') ? null : imageContainer.style.width,
-            prompt: promptEditor.root.innerHTML,
-            module: parseInt(currentModule), questionNumber: parseInt(currentQuestion),
-            domain: questionForm.querySelector('#q-domain').value,
-            skill: questionForm.querySelector('#q-skill').value,
-            points: parseInt(questionForm.querySelector('#q-points').value),
-            format: questionForm.querySelector('#q-format').value,
-            options: {
-                A: MQ(questionForm.querySelector('#option-a')).latex(), B: MQ(questionForm.querySelector('#option-b')).latex(),
-                C: MQ(questionForm.querySelector('#option-c')).latex(), D: MQ(questionForm.querySelector('#option-d')).latex(),
-            },
-            fillInAnswer: MQ(questionForm.querySelector('#fill-in-answer')).latex(),
-            correctAnswer: questionForm.querySelector('input[name="correct-answer"]:checked')?.value || null,
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-        };
+        const isMath = currentModule > 2;
+
+        // --- REPLACE THIS FUNCTION AND OBJECT ---
+const getOptionValue = (id) => {
+    const el = questionForm.querySelector(id);
+    if (!el) return '';
+    if (isMath) {
+        return MQ(el).latex();
+    } else {
+        const input = el.querySelector('input');
+        return input ? input.value : '';
+    }
+};
+
+const dataToSave = {
+    passage: isMath ? MQ(document.getElementById('stimulus-editor')).latex() : passageEditor.root.innerHTML,
+    prompt: isMath ? MQ(questionForm.querySelector('#question-text-editor')).latex() : promptEditor.root.innerHTML,
+    imageUrl: imageContainer.classList.contains('hidden') ? null : document.getElementById('stimulus-image-preview').src,
+    imageWidth: imageContainer.classList.contains('hidden') ? null : imageContainer.style.width,
+    module: parseInt(currentModule), 
+    questionNumber: parseInt(currentQuestion),
+    domain: questionForm.querySelector('#q-domain').value,
+    skill: questionForm.querySelector('#q-skill').value,
+    points: parseInt(questionForm.querySelector('#q-points').value),
+    format: questionForm.querySelector('#q-format').value,
+    options: {
+        A: getOptionValue('#option-a'), B: getOptionValue('#option-b'),
+        C: getOptionValue('#option-c'), D: getOptionValue('#option-d'),
+    },
+    fillInAnswer: getOptionValue('#fill-in-answer'),
+    correctAnswer: questionForm.querySelector('input[name="correct-answer"]:checked')?.value || null,
+    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+};
         
         testRef.collection('questions').doc(questionId).set(dataToSave, { merge: true }).then(() => {
             alert(`Question ${currentQuestion} saved successfully.`);
@@ -271,10 +334,12 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('stimulus-image-container').classList.remove('hidden');
             document.getElementById('stimulus-image-preview').src = "https://i.gifer.com/ZZ5H.gif";
             const imageUrl = await uploadImageToTelegram(file);
+            const isMath = currentModule > 2;
+            const currentPassage = isMath ? MQ(document.getElementById('stimulus-editor')).latex() : passageEditor.root.innerHTML;
             if (imageUrl) {
-                renderStimulus({ passage: passageEditor.root.innerHTML, imageUrl: imageUrl });
+                renderStimulus({ passage: currentPassage, imageUrl: imageUrl });
             } else {
-                renderStimulus({ passage: passageEditor.root.innerHTML });
+                renderStimulus({ passage: currentPassage });
                 alert("Image upload failed. Please try again.");
             }
         };
@@ -283,7 +348,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     removeImageBtn.addEventListener('click', () => {
         if (!currentQuestion) return alert("Please select a question first!");
-        renderStimulus({ passage: passageEditor.root.innerHTML });
+        const isMath = currentModule > 2;
+        const currentPassage = isMath ? MQ(document.getElementById('stimulus-editor')).latex() : passageEditor.root.innerHTML;
+        renderStimulus({ passage: currentPassage });
     });
 
     moduleSwitcher.addEventListener('click', (e) => {
@@ -292,13 +359,12 @@ document.addEventListener('DOMContentLoaded', () => {
         e.target.classList.add('active');
         currentModule = parseInt(e.target.dataset.module);
         const questionCount = (currentModule <= 2) ? 27 : 22;
-        generateNavButtons(questionCount, currentModule);
-        editorContainer.innerHTML = `<div class="editor-placeholder"><i class="fa-solid fa-hand-pointer"></i><p>Select a question from the navigator below to begin editing.</p></div>`;
-        document.getElementById('stimulus-panel').querySelector('.panel-content').innerHTML = `<div id="stimulus-image-container" class="hidden"><img id="stimulus-image-preview" src=""><div class="resize-handle"></div></div><div id="stimulus-editor"></div>`;
-        // Reset the state to prevent any other bugs
-        currentQuestion = null;
+        
         passageEditor = null;
         promptEditor = null;
+        currentQuestion = null;
+        generateNavButtons(questionCount, currentModule);
+        editorContainer.innerHTML = `<div class="editor-placeholder"><i class="fa-solid fa-hand-pointer"></i><p>Select a question from the navigator below to begin editing.</p></div>`;
     });
 
     generateNavButtons(27, 1);
