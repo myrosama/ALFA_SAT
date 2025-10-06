@@ -415,6 +415,27 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
     gap: 15px; /* Reduced gap */
     overflow: hidden;
 }
+
+/* ADD THIS NEW RULE */
+#stimulus-editor.mq-editable-field,
+#question-text-editor.mq-editable-field {
+    min-height: 150px;
+    padding: 12px;
+    border: 1px solid var(--medium-gray);
+    border-radius: 8px;
+    font-size: 1.1rem;
+}
+
+
+/* REPLACE THIS RULE */
+.answer-input {
+    width: 100%;
+    border: 1px solid var(--medium-gray);
+    border-radius: 8px;
+    font-size: 1rem;
+    min-height: 42px; /* Taller by default */
+    padding: 8px 10px;
+}
 .editor-panel {
     background-color: var(--white);
     border: 1px solid var(--medium-gray);
