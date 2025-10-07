@@ -31,6 +31,59 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
         });
     }
+    // Add this entire function to js/main.js
+
+/**
+ * NINJA STRIKE: This is the core function for the dynamic dashboard.
+ * It fetches all documents from the 'tests' collection in Firestore
+ * and dynamically creates the test cards on the student dashboard.
+ */
+async function populateDashboard() {
+    const testGrid = document.getElementById('test-grid-container');
+    // Guard clause: If we're not on the dashboard page, do nothing.
+    if (!testGrid) {
+        return;
+    }
+
+    const db = firebase.firestore();
+    try {
+        const testsSnapshot = await db.collection('tests').get();
+        
+        if (testsSnapshot.empty) {
+            testGrid.innerHTML = '<p>No practice tests are available at the moment. Please check back later.</p>';
+            return;
+        }
+
+        // Clear the initial "Loading..." message
+        testGrid.innerHTML = '';
+
+        testsSnapshot.forEach(doc => {
+            const test = doc.data();
+            const testId = doc.id; // This is the unique ID like "pt3_2024"
+
+            // Create the card element from scratch
+            const card = document.createElement('div');
+            card.classList.add('test-card');
+
+            // Use the data from Firestore to populate the card's content.
+            // Note the link (`href`) now includes the unique testId.
+            card.innerHTML = `
+                <div class="card-content">
+                    <h4>${test.name || 'Unnamed Test'}</h4>
+                    <p>A full-length adaptive test covering Reading, Writing, and Math.</p>
+                    <span class="test-status not-started">Not Started</span>
+                </div>
+                <a href="test.html?id=${testId}" class="btn btn-primary card-btn">Start Test</a>
+            `;
+            
+            testGrid.appendChild(card);
+        });
+
+    } catch (error) {
+        console.error("Error fetching tests for dashboard:", error);
+        testGrid.innerHTML = '<p>Could not load tests due to an error. Please try refreshing the page.</p>';
+    }
+}
 
         // --- SIGN UP PAGE LOGIC ---
     const signupForm = document.getElementById('signup-form');
@@ -264,31 +317,33 @@ if (adminLoginForm) {
     }
 
     // +++ ADD THIS NEW BLOCK IN ITS PLACE +++
-auth.onAuthStateChanged(user => {
-    const isProtectedUserPage = window.location.pathname.includes('dashboard.html') || window.location.pathname.includes('test.html');
-    const isAdminPage = window.location.pathname.includes('admin.html');
-    
-    if (user) { // A user is logged in
-        db.collection('admins').doc(user.uid).get().then(doc => {
-            const isAdmin = doc.exists;
+// In js/main.js, find and modify this block
 
-            // If a non-admin tries to access admin.html, kick them out.
-            if (isAdminPage && !isAdmin) {
-                return window.location.replace('dashboard.html');
-            }
-            
-            // Update UI elements only on the user-facing pages
-            if (isProtectedUserPage) {
-                const welcomeUserName = document.querySelector('#welcome-user-name');
-                const footerUserName = document.querySelector('#footer-user-name');
-                if (welcomeUserName) welcomeUserName.textContent = user.displayName;
-                if (footerUserName) footerUserName.textContent = user.displayName;
-            }
-        });
-    } else { // No user is logged in
-        // If they are on any protected page, kick them to the login page.
-        if (isProtectedUserPage || isAdminPage) {
-            window.location.replace('index.html');
+firebase.auth().onAuthStateChanged(user => {
+    const protectedPages = ['dashboard.html', 'admin.html', 'edit-test.html', 'test.html'];
+    const currentPage = window.location.pathname.split('/').pop();
+
+    if (user) {
+        // User is logged in
+        
+        // NINJA MODIFICATION: Call our new dashboard function!
+        // We check if the current page is the dashboard before running it.
+        if (currentPage === 'dashboard.html') {
+            populateDashboard();
+        }
+
+        // Existing Logout Button Logic
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                firebase.auth().signOut();
+            });
+        }
+    } else {
+        // User is not logged in
+        if (protectedPages.includes(currentPage)) {
+            window.location.href = 'index.html';
         }
     }
 });

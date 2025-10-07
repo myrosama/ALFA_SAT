@@ -36,41 +36,12 @@
 
         <div class="test-list-container">
             <h3>Full-Length Practice Tests</h3>
-            <div class="test-grid">
-                <!-- Test Card 1 -->
-                <div class="test-card">
-                    <div class="card-content">
-                        <h4>Practice Test 1</h4>
-                        <p>A full-length adaptive test covering Reading, Writing, and Math.</p>
-                        <span class="test-status not-started">Not Started</span>
-                    </div>
-                    <a href="test.html" class="btn btn-primary card-btn">Start Test</a>
-                </div>
+            <!-- In dashboard.html, replace the old test-grid div -->
 
-                <!-- Test Card 2 -->
-                <div class="test-card">
-                     <div class="card-content">
-                        <h4>Practice Test 2</h4>
-                        <p>Challenge yourself with our second official practice test.</p>
-                        <span class="test-status not-started">Not Started</span>
-                    </div>
-                    <a href="test.html" class="btn btn-primary card-btn">Start Test</a>
-                </div>
-
-                <!-- Test Card 3 (Example of a completed test) -->
-                <div class="test-card completed">
-                     <div class="card-content">
-                        <h4>Practice Test 3</h4>
-                        <p>Previously completed. You can review your results.</p>
-                        <div class="score-display">
-                            <p>Your Score: <strong>1450</strong></p>
-                        </div>
-                    </div>
-                    <a href="#" class="btn btn-secondary card-btn">Review</a>
-                </div>
-
-                <!-- More cards will be added dynamically later -->
-            </div>
+        <div class="test-grid" id="test-grid-container">
+            <!-- Test cards will be dynamically inserted here by main.js -->
+            <p>Loading available tests...</p>
+        </div>
         </div>
     </main>
     <!-- Firebase SDKs -->

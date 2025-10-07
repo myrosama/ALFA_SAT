@@ -237,7 +237,34 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
 .test-footer .btn-primary { background-color: var(--white); color: var(--primary-purple); }
 .modal-backdrop { position: fixed; inset: 0; background-color: rgba(0,0,0,0.5); z-index: 1999; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
 .modal-backdrop.visible { opacity: 1; visibility: visible; }
-.question-navigator-modal { position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%) translateY(20px); width: 90%; max-width: 500px; background-color: var(--white); border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 2000; color: var(--text-color); visibility: hidden; opacity: 0; transition: opacity 0.3s, transform 0.3s, visibility 0.3s; }
+/* In style.css, find and REPLACE this entire block */
+.question-navigator-modal {
+    position: fixed;
+    bottom: 85px; /* Position it 85px from the bottom */
+    left: 480px;
+    width: 90%;
+    max-width: 500px;
+    background-color: var(--white);
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    z-index: 2000;
+    color: var(--text-color);
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(20px); /* Keep the initial slide-up position */
+    transition: opacity 0.3s, transform 0.3s, visibility 0.3s;
+}
+
+.question-navigator-modal.visible {
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0); /* Animate it sliding up to its final position */
+}
+
+/* Find and REMOVE the ::after rule, as we no longer need the arrow */
+.question-navigator-modal::after {
+   display: none;
+}
 .question-navigator-modal.visible { visibility: visible; opacity: 1; transform: translateX(-50%) translateY(0); }
 .question-navigator-modal::after { content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%) rotate(45deg); width: 20px; height: 20px; background-color: var(--white); z-index: -1; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid var(--medium-gray); }
@@ -534,3 +561,48 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
 .q-nav-btn:hover { background-color: #4e6a85; border-color: var(--white); }
 .q-nav-btn.active { background-color: var(--white); color: var(--primary-blue); transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
 .q-nav-btn.completed { background-color: #27ae60; border-color: #2ecc71; }
+
+/* ====================================================== */
+/* === ADD THIS CSS to the bottom of your style.css file === */
+/* ====================================================== */
+
+
+
+/* NINJA FIX: Ensure the Back and Next buttons in the footer are vertically centered. */
+.test-footer .footer-right {
+    display: flex;
+    align-items: center; /* This does the magic. */
+    gap: 10px; /* Adds a bit of space between the buttons */
+}
+/* ======================================================== */
+/* === NINJA UI FIX: Add this to the end of style.css === */
+/* ======================================================== */
+
+/* 1. Apply consistent padding to both columns for breathing room. */
+.stimulus-pane .pane-content,
+.question-pane .pane-content {
+    padding: 25px; /* Adjust this value if you want more/less space */
+}
+
+/* 2. CRITICAL: Remove the default top margin from the first paragraph in the stimulus. */
+/* This makes its text content align perfectly with the top of the question pane's content. */
+.stimulus-pane .pane-content p:first-child {
+    margin-top: 0;
+}
+
+/* 3. As requested: Add a small gap between the question header bar and the question text. */
+.question-header-bar {
+    margin-bottom: 20px;
+}
+
+/* --- Add this to style.css for the modal functionality --- */
+.modal-backdrop.visible {
+    visibility: visible;
+    opacity: 1;
+}
+
+.question-navigator-modal.visible {
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0); /* Animate it sliding up */
+}
