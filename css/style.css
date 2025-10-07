@@ -237,36 +237,42 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
 .test-footer .btn-primary { background-color: var(--white); color: var(--primary-purple); }
 .modal-backdrop { position: fixed; inset: 0; background-color: rgba(0,0,0,0.5); z-index: 1999; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
 .modal-backdrop.visible { opacity: 1; visibility: visible; }
-/* In style.css, find and REPLACE this entire block */
 .question-navigator-modal {
     position: fixed;
-    bottom: 85px; /* Position it 85px from the bottom */
-    left: 480px;
+    /* These three lines provide perfect centering */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.95); /* Start slightly smaller for animation */
+
     width: 90%;
-    max-width: 500px;
+    max-width: 500px; /* You can adjust this max-width */
     background-color: var(--white);
     border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
     z-index: 2000;
     color: var(--text-color);
+    
+    /* Start hidden */
     visibility: hidden;
     opacity: 0;
-    transform: translateY(20px); /* Keep the initial slide-up position */
-    transition: opacity 0.3s, transform 0.3s, visibility 0.3s;
+    
+    /* Smooth transition for the pop-in effect */
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
 }
 
 .question-navigator-modal.visible {
     visibility: visible;
     opacity: 1;
-    transform: translateY(0); /* Animate it sliding up to its final position */
+    /* Animate to full size for the pop-in effect */
+    transform: translate(-50%, -50%) scale(1);
 }
 
-/* Find and REMOVE the ::after rule, as we no longer need the arrow */
+/* We don't need the arrow for a centered modal, so ensure it's hidden */
 .question-navigator-modal::after {
    display: none;
 }
-.question-navigator-modal.visible { visibility: visible; opacity: 1; transform: translateX(-50%) translateY(0); }
-.question-navigator-modal::after { content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%) rotate(45deg); width: 20px; height: 20px; background-color: var(--white); z-index: -1; }
+
+
 .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid var(--medium-gray); }
 .modal-header h4 { margin: 0; font-size: 1.1rem; }
 .close-modal-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
@@ -601,8 +607,31 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
     opacity: 1;
 }
 
-.question-navigator-modal.visible {
-    visibility: visible;
-    opacity: 1;
-    transform: translateY(0); /* Animate it sliding up */
+
+/* In style.css */
+
+/* NINJA UI: Style for the "Marked for Review" state in the question navigator */
+.q-number.reviewed {
+    border-color: var(--primary-purple);
+    background-color: #f0e4f8;
+    font-weight: 700;
+}
+
+
+/* In style.css, add these rules */
+
+.option-wrapper.stricken-through {
+    background-color: #f8f9fa;
+    opacity: 0.6;
+}
+
+.option-wrapper.stricken-through .option-letter,
+.option-wrapper.stricken-through .option-text {
+    text-decoration: line-through;
+    color: #888;
+}
+
+.option-wrapper.stricken-through .strikethrough-btn {
+    background-color: var(--primary-purple);
+    color: var(--white);
 }
