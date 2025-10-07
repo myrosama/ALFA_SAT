@@ -121,12 +121,14 @@
         </div>
     </div>
 
-<!-- JQuery (Required by MathQuill) -->
+<!-- =================================================================== -->
+    <!-- === NINJA UPDATE: Replace the entire scripts section at the bottom of test.html with this === -->
+    <!-- =================================================================== -->
+
+    <!-- JQuery (Required by MathQuill) -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
     <!-- MathQuill Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.js"></script>
-    <!-- MathQuill CSS (Add this in the <head> section) -->
-    <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.css"/> -->
 
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
@@ -139,7 +141,7 @@
     <!-- Our main script for sitewide logic -->
     <script src="js/main.js"></script>
     
-    <!-- NINJA ADDITION: Our new Test Engine! -->
+    <!-- THE NEW TEST ENGINE SCRIPT -->
     <script src="js/test-engine.js"></script>
 
     <!-- Page-specific script for modal visibility -->
@@ -160,5 +162,7 @@
             if (backdrop) backdrop.addEventListener('click', () => toggleModal(false));
         });
     </script>
+</body>
+</html>
 </body>
 </html>
