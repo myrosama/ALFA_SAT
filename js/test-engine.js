@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let userAnswers = {}; // To store the student's selected answers
     let timerInterval = null; // Holds the setInterval instance for the timer
     const moduleTimers = [32 * 60, 32 * 60, 35 * 60, 35 * 60]; // Durations in seconds for M1, M2, M3, M4
+    let isHighlighterActive = false;
 
     // --- Page Element References ---
     const stimulusPaneContent = document.querySelector('.stimulus-pane .pane-content');
@@ -25,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const questionNavBtnText = document.querySelector('#question-nav-btn span');
     const modalGrid = document.getElementById('modal-question-grid');
     const calculatorBtn = document.querySelector('.tool-btn[title="Calculator"]');
+    const highlighterBtn = document.querySelector('.tool-btn[title="Highlighter"]');
     const timerDisplay = document.querySelector('.timer span');
     const modal = document.getElementById('question-navigator-modal');
     const backdrop = document.getElementById('modal-backdrop');
@@ -70,11 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function startModule(moduleIndex) {
         currentModuleIndex = moduleIndex;
         currentQuestionIndex = 0;
-        
         const currentModuleQuestions = allQuestionsByModule[currentModuleIndex];
         if (!currentModuleQuestions || currentModuleQuestions.length === 0) {
-            alert(`Module ${moduleIndex + 1} has no questions. Proceeding to next.`);
-            // In a real scenario, you'd handle this more gracefully
             if (currentModuleIndex < 3) {
                  startModule(currentModuleIndex + 1);
             } else {
@@ -82,7 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return;
         }
-
         populateModalGrid();
         renderQuestion(currentQuestionIndex);
         startTimer(moduleTimers[currentModuleIndex]);
@@ -209,8 +207,49 @@ function renderOptions(question) {
         });
     }
 
-    function startTimer(duration) { /* ... (This function is unchanged) ... */ }
-    
+    function startTimer(duration) {
+        let timer = duration;
+        clearInterval(timerInterval);
+
+        timerInterval = setInterval(() => {
+            let minutes = parseInt(timer / 60, 10);
+            let seconds = parseInt(timer % 60, 10);
+            minutes = minutes < 10 ? "0" + minutes : minutes;
+            seconds = seconds < 10 ? "0" + seconds : seconds;
+            timerDisplay.textContent = minutes + ":" + seconds;
+            if (--timer < 0) {
+                clearInterval(timerInterval);
+                alert("Time's up for this module!");
+                showReviewScreen(); // Automatically move to review
+            }
+        }, 1000);
+    }
+    function calculateScore() {
+        let correctAnswers = 0;
+        const totalQuestions = questions.length;
+
+        // Flatten the modules into a single array of questions for easier iteration
+        const allQuestions = allQuestionsByModule.flat();
+
+        allQuestions.forEach(question => {
+            const userAnswer = userAnswers[question.id];
+            if (userAnswer && userAnswer === question.correctAnswer) {
+                correctAnswers++;
+            }
+        });
+
+        // Simple scoring: (Correct / Total) * Max Score (1600)
+        // This is a placeholder; real scoring involves scaling tables.
+        const rawScore = (correctAnswers / totalQuestions) || 0;
+        const scaledScore = Math.round(rawScore * 1600);
+
+        return {
+            correct: correctAnswers,
+            total: totalQuestions,
+            score: scaledScore
+        };
+    }
+
     function showReviewScreen() {
         clearInterval(timerInterval);
         timerDisplay.textContent = "00:00";
@@ -220,9 +259,13 @@ function renderOptions(question) {
 
     function finishTest() {
         clearInterval(timerInterval);
-        // This is where you will redirect to a results page and pass the userAnswers object.
-        alert("Congratulations! You have completed the test. Scoring is next!");
-        // window.location.href = 'results.html';
+        const finalResult = calculateScore();
+        // For now, we'll just alert the result.
+        // In the future, we will save this to Firestore and redirect to a results page.
+        alert(`Test Complete!\n\nCorrect Answers: ${finalResult.correct} / ${finalResult.total}\nEstimated Score: ${finalResult.score}`);
+        
+        // Redirect to dashboard after showing results
+        window.location.href = 'dashboard.html';
     }
 
     function toggleModal(show) {
@@ -242,7 +285,12 @@ function renderOptions(question) {
         }
     });
     
-    backBtn.addEventListener('click', () => { /* ... (Unchanged) ... */ });
+    backBtn.addEventListener('click', () => {
+        if (currentQuestionIndex > 0) {
+            currentQuestionIndex--;
+            renderQuestion(currentQuestionIndex);
+        }
+    });
 
     // In js/test-engine.js
 
@@ -306,7 +354,53 @@ questionPaneContent.addEventListener('change', (event) => {
         }
     });
 
-    questionPaneContent.addEventListener('change', (event) => { /* ... (Unchanged) ... */ });
+    questionPaneContent.addEventListener('change', (event) => {
+    // 1. Handle when a student selects an answer (clicks a radio button)
+    if (event.target.type === 'radio') {
+        const questionId = event.target.name;
+        const selectedAnswer = event.target.value;
+        userAnswers[questionId] = selectedAnswer; // Save the answer to our state object
+
+        // A good UX touch: automatically un-strike an answer when selected.
+        const optionWrapper = event.target.closest('.option-wrapper');
+        if (optionWrapper) {
+            optionWrapper.classList.remove('stricken-through');
+        }
+    }
+
+    // 2. Handle when a student toggles "Mark for Review"
+    if (event.target.type === 'checkbox') {
+        const questionId = allQuestionsByModule[currentModuleIndex][currentQuestionIndex].id;
+        if (event.target.checked) {
+            markedQuestions[questionId] = true; // Mark as true if checked
+        } else {
+            delete markedQuestions[questionId]; // Remove if unchecked
+        }
+    }
+
+    // 3. After any change, update the navigator modal to reflect the new state.
+    updateModalGridHighlights();
+});
+
+    highlighterBtn.addEventListener('click', () => {
+        isHighlighterActive = !isHighlighterActive;
+        document.body.classList.toggle('highlighter-active', isHighlighterActive);
+        highlighterBtn.classList.toggle('active', isHighlighterActive); // Visual feedback
+    });
+
+    // Add a listener to the passage text itself to handle highlighting
+    stimulusPaneContent.addEventListener('mouseup', () => {
+        if (!isHighlighterActive) return;
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0 && !selection.isCollapsed) {
+            const range = selection.getRangeAt(0);
+            const span = document.createElement('span');
+            span.className = 'highlight';
+            span.appendChild(range.extractContents());
+            range.insertNode(span);
+        }
+    });
+
     
     // --- Initialize the test on page load ---
     initTest();

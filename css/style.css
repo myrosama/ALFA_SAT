@@ -635,3 +635,19 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
     background-color: var(--primary-purple);
     color: var(--white);
 }
+
+/* In style.css */
+
+/* NINJA UI: Styles for the Highlighter feature */
+.tool-btn.active {
+    background-color: rgba(255, 255, 255, 0.25);
+    border-radius: 4px;
+}
+
+body.highlighter-active .stimulus-pane {
+    cursor: text; /* Change cursor to indicate text can be selected */
+}
+
+.highlight {
+    background-color: #FFD700; /* A nice yellow highlight color */
+}
