@@ -46,6 +46,34 @@ document.addEventListener('DOMContentLoaded', () => {
         startModule(0);
     }
 
+    document.body.addEventListener('mouseup', (event) => {
+    // Only highlight if the feature is active and the mouse is inside our main content area
+    if (!isHighlighterActive || !event.target.closest('.main-content-body')) return;
+
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0 && !selection.isCollapsed) {
+        const range = selection.getRangeAt(0);
+        const span = document.createElement('span');
+        span.className = 'highlight';
+        
+        try {
+            // This method is safer for wrapping selections that may cross element boundaries
+            range.surroundContents(span);
+        } catch (e) {
+            console.warn("Could not wrap complex selection.", e);
+        }
+        
+        // Clear the browser's native selection after we've applied our highlight
+        selection.removeAllRanges(); 
+    }
+});
+
+// We still need to prevent the context menu in both panes
+document.body.addEventListener('contextmenu', (event) => {
+    if (isHighlighterActive && event.target.closest('.main-content-body')) {
+        event.preventDefault();
+    }
+});
     /**
      * NINJA UPGRADE: Fetches all questions and groups them by module.
      */
@@ -432,9 +460,9 @@ questionPaneContent.addEventListener('change', (event) => {
 });
 
     highlighterBtn.addEventListener('click', () => {
-        isHighlighterActive = !isHighlighterActive;
-        document.body.classList.toggle('highlighter-active', isHighlighterActive);
-        highlighterBtn.classList.toggle('active', isHighlighterActive); // Visual feedback
+    isHighlighterActive = !isHighlighterActive;
+    document.body.classList.toggle('highlighter-active', isHighlighterActive);
+    highlighterBtn.classList.toggle('active', isHighlighterActive);
     });
 
     // Add a listener to the passage text itself to handle highlighting
