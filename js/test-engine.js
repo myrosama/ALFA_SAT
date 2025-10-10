@@ -236,19 +236,31 @@ function renderOptions(question) {
     }
 
     function startTimer(duration) {
-        let timer = duration;
-        clearInterval(timerInterval);
+    let timer = duration;
+    clearInterval(timerInterval); // Ensure no other timers are running
 
-        timerInterval = setInterval(() => {
-            let minutes = parseInt(timer / 60, 10);
-            let seconds = parseInt(timer % 60, 10);
-            minutes = minutes < 10 ? "0" + minutes : minutes;
-            seconds = seconds < 10 ? "0" + seconds : seconds;
-            timerDisplay.textContent = minutes + ":" + seconds;
-            if (--timer < 0) {
+    timerInterval = setInterval(() => {
+        let minutes = parseInt(timer / 60, 10);
+        let seconds = parseInt(timer % 60, 10);
+
+        minutes = minutes < 10 ? "0" + minutes : minutes;
+        seconds = seconds < 10 ? "0" + seconds : seconds;
+
+        timerDisplay.textContent = minutes + ":" + seconds;
+
+        // Check if time has run out
+        if (--timer < 0) {
             clearInterval(timerInterval);
             alert("Time's up for this module!");
-            showReviewScreen(true); // Pass `true` to show the "Continue" button
+
+            // NINJA LOGIC: Automatically advance to the next stage
+            if (currentModuleIndex < 3) {
+                // If it's not the last module, start the next one
+                startModule(currentModuleIndex + 1);
+            } else {
+                // If it is the last module, finish the entire test
+                finishTest();
+            }
         }
     }, 1000);
 }
