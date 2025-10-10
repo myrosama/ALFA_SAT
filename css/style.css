@@ -651,3 +651,14 @@ body.highlighter-active .stimulus-pane {
 .highlight {
     background-color: #FFD700; /* A nice yellow highlight color */
 }
+
+/* In style.css */
+
+/* ====================================================== */
+/* === NINJA UX REFINEMENT: Highlighter Polish          === */
+/* ====================================================== */
+
+/* When the highlighter is active, make the browser's default blue selection invisible. */
+body.highlighter-active ::selection {
+    background-color: transparent;
+}

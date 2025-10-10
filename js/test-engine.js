@@ -218,12 +218,12 @@ function renderOptions(question) {
             seconds = seconds < 10 ? "0" + seconds : seconds;
             timerDisplay.textContent = minutes + ":" + seconds;
             if (--timer < 0) {
-                clearInterval(timerInterval);
-                alert("Time's up for this module!");
-                showReviewScreen(); // Automatically move to review
-            }
-        }, 1000);
-    }
+            clearInterval(timerInterval);
+            alert("Time's up for this module!");
+            showReviewScreen(true); // Pass `true` to show the "Continue" button
+        }
+    }, 1000);
+}
     function calculateScore() {
         let correctAnswers = 0;
         const totalQuestions = questions.length;
@@ -250,12 +250,23 @@ function renderOptions(question) {
         };
     }
 
-    function showReviewScreen() {
-        clearInterval(timerInterval);
-        timerDisplay.textContent = "00:00";
-        reviewBtn.textContent = (currentModuleIndex < 3) ? `Continue to Next Module` : `Finish Test and See Results`;
-        toggleModal(true);
+    function showReviewScreen(isEndOfModule) {
+    clearInterval(timerInterval);
+    timerDisplay.textContent = "00:00";
+    
+    // Set the button text based on whether it's the final module
+    reviewBtn.textContent = (currentModuleIndex < 3) ? `Continue to Next Module` : `Finish Test and See Results`;
+    
+    // NINJA LOGIC: Only show the button if the module has truly ended
+    // (either by finishing the last question or by timer running out).
+    if (isEndOfModule) {
+        reviewBtn.style.display = 'block';
+    } else {
+        reviewBtn.style.display = 'none';
     }
+
+    toggleModal(true); // Show the modal
+}
 
     function finishTest() {
         clearInterval(timerInterval);
@@ -275,15 +286,63 @@ function renderOptions(question) {
     }
 
     // --- Event Listeners ---
-    nextBtn.addEventListener('click', () => {
-        const currentModuleQuestions = allQuestionsByModule[currentModuleIndex];
-        if (currentQuestionIndex < currentModuleQuestions.length - 1) {
-            currentQuestionIndex++;
-            renderQuestion(currentQuestionIndex);
-        } else {
-            showReviewScreen();
+    // In js/test-engine.js
+/**
+ * NINJA UX REFINEMENT: Prevent the right-click context menu
+ * from appearing over the passage when the highlighter is active.
+ */
+
+const toggleBtn = document.getElementById('question-nav-btn');
+const closeModalBtn = document.getElementById('close-modal-btn');
+toggleBtn.addEventListener('click', () => {
+    // When the user opens the modal manually, it's just for navigation, not for review.
+    reviewBtn.style.display = 'none';
+    toggleModal(true);
+});
+
+closeModalBtn.addEventListener('click', () => toggleModal(false));
+backdrop.addEventListener('click', () => toggleModal(false));
+stimulusPaneContent.addEventListener('contextmenu', (event) => {
+    if (isHighlighterActive) {
+        event.preventDefault(); // This stops the menu from showing up.
+    }
+});
+
+// The 'mouseup' listener for applying the highlight should remain unchanged.
+stimulusPaneContent.addEventListener('mouseup', () => {
+    if (!isHighlighterActive) return;
+    const selection = window.getSelection();
+    // Only highlight if the user has actually selected text
+    if (selection.rangeCount > 0 && !selection.isCollapsed) {
+        const range = selection.getRangeAt(0);
+        // Use a more robust method to avoid breaking existing nodes
+        const span = document.createElement('span');
+        span.className = 'highlight';
+        
+        // This is a safer way to wrap the selection
+        try {
+            range.surroundContents(span);
+        } catch (e) {
+            // Fallback for complex selections, though less common here
+            console.warn("Could not wrap complex selection.", e);
         }
-    });
+        
+        // Clear the selection after highlighting
+        selection.removeAllRanges(); 
+    }
+});
+    // In js/test-engine.js, REPLACE the existing nextBtn listener
+
+nextBtn.addEventListener('click', () => {
+    const currentModuleQuestions = allQuestionsByModule[currentModuleIndex];
+    if (currentQuestionIndex < currentModuleQuestions.length - 1) {
+        currentQuestionIndex++;
+        renderQuestion(currentQuestionIndex);
+    } else {
+        // We've reached the end of the module.
+        showReviewScreen(true); // Pass `true` to show the "Continue" button
+    }
+});
     
     backBtn.addEventListener('click', () => {
         if (currentQuestionIndex > 0) {
@@ -292,17 +351,7 @@ function renderOptions(question) {
         }
     });
 
-    // In js/test-engine.js
 
-// --- Event Listeners ---
-
-// ... (keep the existing nextBtn, backBtn, and reviewBtn listeners) ...
-
-
-/**
- * NINJA FIX: Re-activating the Strikethrough functionality.
- * We use event delegation on the question pane for maximum efficiency.
- */
 questionPaneContent.addEventListener('click', (event) => {
     // Find the closest strikethrough button to where the user clicked
     const strikethroughBtn = event.target.closest('.strikethrough-btn');
