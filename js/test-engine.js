@@ -114,15 +114,14 @@ document.body.addEventListener('contextmenu', (event) => {
         startTimer(moduleTimers[currentModuleIndex]);
     }
 
-    /**
-     * Renders a question and its passage based on the current state.
-     */
-    // In js/test-engine.js, REPLACE the entire renderQuestion function
-
 /**
  * NINJA UPGRADE: Now correctly renders images alongside MathQuill content
  * by creating a separate container for the math passage.
  */
+// In js/test-engine.js, find and modify the renderQuestion function
+
+// In js/test-engine.js, REPLACE the entire renderQuestion function with this stable version
+
 function renderQuestion(index) {
     const question = allQuestionsByModule[currentModuleIndex][index];
     if (!question) return;
@@ -135,14 +134,23 @@ function renderQuestion(index) {
         imageHTML = `<img src="${question.imageUrl}" alt="Stimulus Image" style="width: ${question.imageWidth || '100%'}; margin-bottom: 15px; border-radius: 8px;">`;
     }
 
-    // If it's a math question, create a dedicated div for the passage text
+    // NINJA FIX: This is the corrected logic.
+    // We create the containers first, THEN safely add the text content.
     if (isMath) {
-        stimulusPaneContent.innerHTML = imageHTML + `<div id="math-passage">${question.passage || ''}</div>`;
+        // Step 1: Create the HTML structure with an empty container for the math passage.
+        stimulusPaneContent.innerHTML = imageHTML + `<div id="math-passage" class="mq-math-mode"></div>`;
+        
+        // Step 2: Find that new container and set its .textContent. This preserves the LaTeX.
+        const mathPassageEl = document.getElementById('math-passage');
+        if (mathPassageEl) {
+            mathPassageEl.textContent = question.passage || '';
+        }
     } else {
+        // Non-math modules are simple.
         stimulusPaneContent.innerHTML = imageHTML + (question.passage || '');
     }
 
-    // --- Question Pane Rendering ---
+    // --- Question Pane Rendering (Reverting to the stable, working version) ---
     const questionHTML = `
         <div class="question-header-bar">
             <div class="q-number-display">${question.questionNumber}</div>
@@ -156,20 +164,29 @@ function renderQuestion(index) {
     `;
     questionPaneContent.innerHTML = questionHTML;
 
+    // --- Post-Rendering MathQuill Initialization ---
     if (isMath) {
-        // The container already has the class, now we apply it to the question/options
+        // Step 3: Now that the LaTeX is safely in the DOM, render it.
+        const mathPassageEl = document.getElementById('math-passage');
+        if (mathPassageEl) {
+            MQ.StaticMath(mathPassageEl);
+        }
+        
+        // Reverting to the original, reliable forEach loop for questions and options.
         questionPaneContent.querySelectorAll('.question-text, .option-text').forEach(el => {
-            el.classList.add('mq-math-mode'); // Add the class
-            MQ.StaticMath(el);              // Then render
+            el.classList.add('mq-math-mode');
+            MQ.StaticMath(el);
         });
     }
-    // Restore user's saved answer
+
+    // Restore user's saved answer (Unchanged)
     const savedAnswer = userAnswers[question.id];
     if (savedAnswer) {
         const radioBtn = questionPaneContent.querySelector(`input[value="${savedAnswer}"]`);
         if (radioBtn) radioBtn.checked = true;
     }
     
+    // Update the rest of the UI (Unchanged)
     updateUI(question);
 }
 
