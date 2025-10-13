@@ -662,3 +662,22 @@ body.highlighter-active .stimulus-pane {
 body.highlighter-active ::selection {
     background-color: transparent;
 }
+
+
+/* In style.css */
+
+/* NINJA UI: Style for answered (but not current) questions in the navigator */
+.q-number.answered {
+    background-color: #ccc4c4; /* A light gray to indicate completion */
+    border-color: #ccc4c4;
+    text-decoration: none; /* Remove the old strikethrough */
+    color: #333; /* Ensure text is readable */
+}
+
+/* Ensure the current question style overrides the answered style */
+.q-number.current {
+    border: 2px solid var(--primary-blue);
+    font-weight: 700;
+    background-color: var(--white); /* Explicitly set background to white */
+}
+/** #f0f0f0

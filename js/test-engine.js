@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let markedQuestions = {}; // To store review status, e.g., { "m1_q5": true }
     let userAnswers = {}; // To store the student's selected answers
     let timerInterval = null; // Holds the setInterval instance for the timer
-    const moduleTimers = [32 * 60, 32 * 60, 35 * 60, 35 * 60]; // Durations in seconds for M1, M2, M3, M4
+    const moduleTimers = [32 * 60, 32 * 60, 35 * 60, 35 * 60 ]; // Durations in seconds for M1, M2, M3, M4
     let isHighlighterActive = false;
 
     // --- Page Element References ---
@@ -225,15 +225,32 @@ function renderOptions(question) {
      * NINJA FEATURE: Updates highlights in the modal (current, answered, marked).
      */
     function updateModalGridHighlights() {
-        const qBtns = modalGrid.querySelectorAll('.q-number');
-        qBtns.forEach((btn, index) => {
-            const questionId = allQuestionsByModule[currentModuleIndex][index].id;
-            btn.classList.remove('current', 'answered', 'reviewed');
-            if (index === currentQuestionIndex) btn.classList.add('current');
-            if (userAnswers[questionId]) btn.classList.add('answered');
-            if (markedQuestions[questionId]) btn.classList.add('reviewed');
-        });
-    }
+    const qBtns = modalGrid.querySelectorAll('.q-number');
+    const currentModuleQuestions = allQuestionsByModule[currentModuleIndex];
+
+    qBtns.forEach((btn, index) => {
+        // Make sure we don't get an error if the button doesn't match a question
+        if (!currentModuleQuestions[index]) return;
+
+        const questionId = currentModuleQuestions[index].id;
+        
+        // Reset all states first
+        btn.classList.remove('current', 'answered', 'reviewed');
+
+        // Apply state classes based on our state objects
+        if (userAnswers[questionId]) {
+            btn.classList.add('answered');
+        }
+        if (markedQuestions[questionId]) {
+            btn.classList.add('reviewed');
+        }
+        // The 'current' class should be the most prominent, applied last.
+        if (index === currentQuestionIndex) {
+            btn.classList.add('current');
+        }
+    });
+}
+
 
     function startTimer(duration) {
     let timer = duration;
@@ -319,11 +336,26 @@ function renderOptions(question) {
         window.location.href = 'dashboard.html';
     }
 
-    function toggleModal(show) {
-        updateModalGridHighlights(); // Always update highlights when opening
-        modal.classList.toggle('visible', show);
-        backdrop.classList.toggle('visible', show);
+    // In js/test-engine.js, find and REPLACE the toggleModal function
+
+
+function toggleModal(show) {
+    if (show) {
+        // Find the modal header element
+        const modalHeader = modal.querySelector('.modal-header h4');
+        
+        // Dynamically set the text based on the current module index
+        const moduleType = currentModuleIndex < 2 ? "Reading and Writing" : "Math";
+        const moduleNumber = currentModuleIndex < 2 ? currentModuleIndex + 1 : currentModuleIndex - 1;
+        modalHeader.textContent = `Section ${currentModuleIndex + 1}, Module ${moduleNumber}: ${moduleType} Questions`;
+        
+        // Always update the button highlights when the modal opens
+        updateModalGridHighlights();
     }
+    
+    modal.classList.toggle('visible', show);
+    backdrop.classList.toggle('visible', show);
+}
 
     // --- Event Listeners ---
     // In js/test-engine.js
