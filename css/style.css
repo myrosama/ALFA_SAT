@@ -680,4 +680,75 @@ body.highlighter-active ::selection {
     font-weight: 700;
     background-color: var(--white); /* Explicitly set background to white */
 }
-/** #f0f0f0
+/* In style.css */
+
+/* ====================================================== */
+/* === NINJA CSS: DEFINITIVE Math Text Wrapping Fix     === */
+/* ====================================================== */
+
+/*
+ This is the key: We target the innermost `span`s that MathQuill creates
+ and force their `white-space` property to `normal`. The `!important` flag
+ is used here as a final measure to ensure our style overrides any inline
+ styles that the MathQuill library might be applying directly.
+*/
+.math-input span, 
+#math-passage span,
+.question-text span[mathquill-command-id],
+.option-text span[mathquill-command-id] {
+    white-space: normal !important;
+    overflow-wrap: break-word;
+}
+
+/* In style.css */
+
+/* =================================================================== */
+/* === NINJA CSS: THE DEFINITIVE, FORCEFUL MATH WRAPPING FIX (v2)  === */
+/* =================================================================== */
+
+/* --- Step 1: Force wrapping in the EDITOR page --- */
+
+/* Target the text area that MathQuill uses for input */
+.mq-textarea textarea {
+    white-space: normal !important;
+}
+
+/* Target the visual containers in the editor to allow breaks */
+#stimulus-editor.math-input,
+#question-text-editor.math-input,
+.answer-input.mathquill-editable { /* This was the original rule */
+    overflow-wrap: break-word;
+    word-break: break-all;
+    white-space: normal;
+    cursor: text;
+}
+
+/* 
+   NINJA ADDITION: Specifically target the answer choice SPANs in the editor.
+   This is the missing piece. This forces the visual text of the answer
+   choices to wrap, matching the behavior of the passage and prompt.
+*/
+#option-a.mathquill-editable span,
+#option-b.mathquill-editable span,
+#option-c.mathquill-editable span,
+#option-d.mathquill-editable span,
+#fill-in-answer.mathquill-editable span {
+    white-space: normal !important;
+}
+
+
+/* --- Step 2: Force wrapping in the TEST page (static content) --- */
+
+/* This section for the test page is correct and remains unchanged */
+#math-passage,
+.question-text.mq-math-mode,
+.option-text.mq-math-mode {
+    overflow-wrap: break-word;
+    word-break: break-all;
+}
+
+.mq-math-mode span {
+    white-space: normal !important;
+    display: inline !important;
+    padding: 0 0.5px;
+}

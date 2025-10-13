@@ -117,45 +117,61 @@ document.body.addEventListener('contextmenu', (event) => {
     /**
      * Renders a question and its passage based on the current state.
      */
-    function renderQuestion(index) {
-        const question = allQuestionsByModule[currentModuleIndex][index];
-        if (!question) return;
+    // In js/test-engine.js, REPLACE the entire renderQuestion function
 
-        // NINJA FEATURE: Render the image if it exists
-        let imageHTML = '';
-        if (question.imageUrl) {
-            imageHTML = `<img src="${question.imageUrl}" alt="Stimulus Image" style="width: ${question.imageWidth || '100%'}; margin-bottom: 15px; border-radius: 8px;">`;
-        }
+/**
+ * NINJA UPGRADE: Now correctly renders images alongside MathQuill content
+ * by creating a separate container for the math passage.
+ */
+function renderQuestion(index) {
+    const question = allQuestionsByModule[currentModuleIndex][index];
+    if (!question) return;
 
-        stimulusPaneContent.innerHTML = imageHTML + (question.passage || '');
+    const isMath = question.module > 2;
 
-        const questionHTML = `
-            <div class="question-header-bar">
-                <div class="q-number-display">${question.questionNumber}</div>
-                <label class="mark-for-review">
-                    <input type="checkbox" id="mark-review-checkbox" ${markedQuestions[question.id] ? 'checked' : ''}>
-                    <i class="fa-regular fa-flag"></i> <span>Mark for Review</span>
-                </label>
-            </div>
-            <div class="question-text">${question.prompt || ''}</div>
-            <div class="question-options">${renderOptions(question)}</div>
-        `;
-        questionPaneContent.innerHTML = questionHTML;
-
-        // Re-render MathJax/MathQuill if it's a math module
-        if (question.module > 2) {
-            MQ.StaticMath(stimulusPaneContent);
-            questionPaneContent.querySelectorAll('.question-text, .option-text').forEach(el => MQ.StaticMath(el));
-        }
-        
-        const savedAnswer = userAnswers[question.id];
-        if (savedAnswer) {
-            const radioBtn = questionPaneContent.querySelector(`input[value="${savedAnswer}"]`);
-            if (radioBtn) radioBtn.checked = true;
-        }
-        
-        updateUI(question);
+    // --- Stimulus Pane Rendering ---
+    let imageHTML = '';
+    if (question.imageUrl) {
+        imageHTML = `<img src="${question.imageUrl}" alt="Stimulus Image" style="width: ${question.imageWidth || '100%'}; margin-bottom: 15px; border-radius: 8px;">`;
     }
+
+    // If it's a math question, create a dedicated div for the passage text
+    if (isMath) {
+        stimulusPaneContent.innerHTML = imageHTML + `<div id="math-passage">${question.passage || ''}</div>`;
+    } else {
+        stimulusPaneContent.innerHTML = imageHTML + (question.passage || '');
+    }
+
+    // --- Question Pane Rendering ---
+    const questionHTML = `
+        <div class="question-header-bar">
+            <div class="q-number-display">${question.questionNumber}</div>
+            <label class="mark-for-review">
+                <input type="checkbox" id="mark-review-checkbox" ${markedQuestions[question.id] ? 'checked' : ''}>
+                <i class="fa-regular fa-flag"></i> <span>Mark for Review</span>
+            </label>
+        </div>
+        <div class="question-text">${question.prompt || ''}</div>
+        <div class="question-options">${renderOptions(question)}</div>
+    `;
+    questionPaneContent.innerHTML = questionHTML;
+
+    if (isMath) {
+        // The container already has the class, now we apply it to the question/options
+        questionPaneContent.querySelectorAll('.question-text, .option-text').forEach(el => {
+            el.classList.add('mq-math-mode'); // Add the class
+            MQ.StaticMath(el);              // Then render
+        });
+    }
+    // Restore user's saved answer
+    const savedAnswer = userAnswers[question.id];
+    if (savedAnswer) {
+        const radioBtn = questionPaneContent.querySelector(`input[value="${savedAnswer}"]`);
+        if (radioBtn) radioBtn.checked = true;
+    }
+    
+    updateUI(question);
+}
 
     // In js/test-engine.js, REPLACE the line above with THIS function
 
