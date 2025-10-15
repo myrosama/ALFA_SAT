@@ -841,3 +841,11 @@ body.highlighter-active ::selection {
     border-radius: 8px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.15);
 }
+
+/* ====================================================== */
+/* === NINJA UI FIXES: Editor Polish (v2)             === */
+/* ====================================================== */
+.option-group .ql-container { border: 1px solid var(--medium-gray); border-radius: 8px; font-size: 1rem; background-color: #fff; }
+.option-group { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+.option-group .input-group { flex-grow: 1; }
+.ql-snow .ql-tooltip[data-mode=formula] { margin-top: 10px; margin-left: 10px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.15); }
