@@ -161,170 +161,178 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function showEditorForQuestion(module, qNumber) {
-        currentModule = module;
-        currentQuestion = qNumber;
+    // In js/editor.js, replace your old functions with these new ones.
 
-        // Update nav button states
-        document.querySelectorAll('.q-nav-btn').forEach(btn => btn.classList.remove('active'));
-        const activeBtn = document.querySelector(`.q-nav-btn[data-q-number='${qNumber}'][data-module='${module}']`);
-        if (activeBtn) activeBtn.classList.add('active');
+// In js/editor.js, replace your entire showEditorForQuestion function with this one.
 
-        // Call cleanup *before* building the new editor UI
-        cleanupStimulusPanel();
+/**
+ * NINJA UPGRADE: The definitive, corrected editor setup function.
+ * This version fixes the bug where dropdowns appeared empty by loading data FIRST,
+ * then populating the dropdowns, and THEN setting their values.
+ */
+async function showEditorForQuestion(module, qNumber) {
+    currentModule = module;
+    currentQuestion = qNumber;
 
-        // Build the editor form from the template
-        editorContainer.innerHTML = '';
-        const formClone = editorTemplate.content.cloneNode(true);
-        editorContainer.appendChild(formClone);
+    // Update nav button states
+    document.querySelectorAll('.q-nav-btn').forEach(btn => btn.classList.remove('active'));
+    const activeBtn = document.querySelector(`.q-nav-btn[data-q-number='${qNumber}'][data-module='${module}']`);
+    if (activeBtn) activeBtn.classList.add('active');
 
-        const questionForm = editorContainer.querySelector('#question-form');
-        const isMath = module > 2;
+    // Cleanup and build form from template
+    cleanupStimulusPanel();
+    editorContainer.innerHTML = '';
+    const formClone = editorTemplate.content.cloneNode(true);
+    editorContainer.appendChild(formClone);
 
-        const stimulusEditorEl = document.getElementById('stimulus-editor');
-        const promptEditorEl = questionForm.querySelector('#question-text-editor');
+    const questionForm = editorContainer.querySelector('#question-form');
 
-        // Initialize the correct editor type (Quill or MathQuill)
-        if (isMath) {
-            // NINJA FIX #3: Add a class for consistent CSS styling
-            stimulusEditorEl.classList.add('math-input');
-            promptEditorEl.classList.add('math-input');
-            editors.passage = MQ.MathField(stimulusEditorEl);
-            editors.prompt = MQ.MathField(promptEditorEl);
-        } else {
-            editors.passage = new Quill(stimulusEditorEl, { theme: 'snow', placeholder: 'Paste passage text here...', modules: { toolbar: [['bold', 'italic', 'underline']] } });
-            editors.prompt = new Quill(promptEditorEl, { theme: 'snow', placeholder: 'Type question prompt here...', modules: { toolbar: [['bold', 'italic', 'underline']] } });
+    // --- Unified Quill Editor Setup ---
+    const quillToolbarOptions = [
+        ['bold', 'italic', 'underline'],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'align': [] }],
+        ['formula'],
+        ['clean']
+    ];
+    const quillOptions = {
+        modules: { toolbar: quillToolbarOptions },
+        placeholder: 'Type or paste content here...',
+        theme: 'snow'
+    };
+
+    editors.passage = new Quill('#stimulus-editor', quillOptions);
+    editors.prompt = new Quill('#question-text-editor', quillOptions);
+    editors.options.A = new Quill('#option-a', quillOptions);
+    editors.options.B = new Quill('#option-b', quillOptions);
+    editors.options.C = new Quill('#option-c', quillOptions);
+    editors.options.D = new Quill('#option-d', quillOptions);
+    editors.fillIn = new Quill('#fill-in-answer', quillOptions);
+
+    // --- CRITICAL: Load data from Firestore BEFORE populating the form ---
+    const questionId = `m${module}_q${qNumber}`;
+    const doc = await testRef.collection('questions').doc(questionId).get();
+    const data = doc.exists ? doc.data() : {};
+
+    // --- Get Form Element References ---
+    const domainSelect = questionForm.querySelector('#q-domain');
+    const skillSelect = questionForm.querySelector('#q-skill');
+    const pointsSelect = questionForm.querySelector('#q-points');
+    const formatSelect = questionForm.querySelector('#q-format');
+    const isMath = module > 2;
+
+    // --- Populate Dropdowns and Static Form Elements ---
+    formatSelect.addEventListener('change', () => {
+        questionForm.querySelector('#answer-options-container').classList.toggle('hidden', formatSelect.value !== 'mcq');
+        questionForm.querySelector('#fill-in-answer-container').classList.toggle('hidden', formatSelect.value !== 'fill-in');
+    });
+
+    const domains = isMath ? Object.keys(questionTypes.Math) : Object.keys(questionTypes["Reading & Writing"]);
+    domainSelect.innerHTML = domains.map(d => `<option value="${d}">${d}</option>`).join('');
+
+    domainSelect.addEventListener('change', () => {
+        const selectedDomain = domainSelect.value;
+        const skills = isMath ? questionTypes.Math[selectedDomain] : questionTypes["Reading & Writing"][selectedDomain];
+        skillSelect.innerHTML = skills.map(skill => `<option value="${skill}">${skill}</option>`).join('');
+    });
+    pointsSelect.innerHTML = pointValues.map(v => `<option value="${v}">${v} points</option>`).join('');
+
+    // --- Set Form Values and Editor Content from Loaded Data ---
+    if (doc.exists) {
+        // Load content into Quill editors
+        editors.passage.root.innerHTML = data.passage || '';
+        editors.prompt.root.innerHTML = data.prompt || '';
+        if (data.options) {
+            editors.options.A.root.innerHTML = data.options.A || '';
+            editors.options.B.root.innerHTML = data.options.B || '';
+            editors.options.C.root.innerHTML = data.options.C || '';
+            editors.options.D.root.innerHTML = data.options.D || '';
         }
-        
-        // Initialize answer choice fields
-        questionForm.querySelectorAll('.answer-input').forEach(el => {
-            if (isMath) MQ.MathField(el);
-            else el.innerHTML = '<input type="text" class="text-answer-input">';
-        });
+        editors.fillIn.root.innerHTML = data.fillInAnswer || '';
 
-        // --- Form Population Logic ---
-        const domainSelect = questionForm.querySelector('#q-domain');
-        const skillSelect = questionForm.querySelector('#q-skill');
-        const pointsSelect = questionForm.querySelector('#q-points');
-        const formatSelect = questionForm.querySelector('#q-format');
-
-        formatSelect.addEventListener('change', () => {
-            questionForm.querySelector('#answer-options-container').classList.toggle('hidden', formatSelect.value !== 'mcq');
-            questionForm.querySelector('#fill-in-answer-container').classList.toggle('hidden', formatSelect.value !== 'fill-in');
-        });
-
-        const domains = isMath ? Object.keys(questionTypes.Math) : Object.keys(questionTypes["Reading & Writing"]);
-        domainSelect.innerHTML = domains.map(d => `<option value="${d}">${d}</option>`).join('');
-
-        domainSelect.addEventListener('change', () => {
-            const selectedDomain = domainSelect.value;
-            const skills = isMath ? questionTypes.Math[selectedDomain] : questionTypes["Reading & Writing"][selectedDomain];
-            skillSelect.innerHTML = skills.map(skill => `<option value="${skill}">${skill}</option>`).join('');
-        });
-        domainSelect.dispatchEvent(new Event('change'));
-
-        pointsSelect.innerHTML = pointValues.map(v => `<option value="${v}">${v} points</option>`).join('');
-
-        // --- Load Data from Firestore ---
-        const questionId = `m${module}_q${qNumber}`;
-        const doc = await testRef.collection('questions').doc(questionId).get();
-        const data = doc.exists ? doc.data() : {};
-
+        // Load image
         renderStimulus(data);
-
-        if (isMath) {
-            editors.passage.latex(data.passage || '');
-            editors.prompt.latex(data.prompt || '');
-        } else {
-            editors.passage.root.innerHTML = data.passage || '';
-            editors.prompt.root.innerHTML = data.prompt || '';
+        
+        // Set form control values
+        formatSelect.value = data.format || 'mcq';
+        if (data.correctAnswer) {
+            const radio = questionForm.querySelector(`input[name="correct-answer"][value="${data.correctAnswer}"]`);
+            if (radio) radio.checked = true;
         }
 
-        if (doc.exists) {
-            formatSelect.value = data.format || 'mcq';
-            formatSelect.dispatchEvent(new Event('change'));
-
-            ['A', 'B', 'C', 'D'].forEach(opt => {
-                const el = questionForm.querySelector(`#option-${opt.toLowerCase()}`);
-                const val = data.options ? data.options[opt] : '';
-                if (isMath) { MQ(el).latex(val || ''); } 
-                else { const input = el.querySelector('input'); if (input) input.value = val || ''; }
-            });
-
-            const fillEl = questionForm.querySelector('#fill-in-answer');
-            if (fillEl) {
-                const fillVal = data.fillInAnswer || '';
-                if (isMath) { MQ(fillEl).latex(fillVal); } 
-                else { const input = fillEl.querySelector('input'); if (input) input.value = fillVal; }
-            }
-
-            if (data.correctAnswer) {
-                const radio = questionForm.querySelector(`input[name="correct-answer"][value="${data.correctAnswer}"]`);
-                if (radio) radio.checked = true;
-            }
-
-            domainSelect.value = data.domain || domains[0];
-            domainSelect.dispatchEvent(new Event('change'));
-            skillSelect.value = data.skill;
-            pointsSelect.value = data.points;
-        }
-
-        // --- Attach Event Listeners ---
-        questionForm.addEventListener('submit', handleFormSubmit);
-        // NINJA FIX #2: Attach the delete button event listener
-        questionForm.querySelector('#delete-question-btn').addEventListener('click', handleDeleteQuestion);
-        setupImageResizing();
+        // Set dropdown values in the correct order
+        domainSelect.value = data.domain || domains[0];
+        domainSelect.dispatchEvent(new Event('change')); // Trigger skill population
+        skillSelect.value = data.skill; // Now set the skill
+        pointsSelect.value = data.points;
+    }
+    
+    // Trigger change events even for new questions to ensure UI consistency
+    formatSelect.dispatchEvent(new Event('change'));
+    if (!doc.exists) {
+        domainSelect.dispatchEvent(new Event('change'));
     }
 
-    function handleFormSubmit(e) {
-        e.preventDefault();
-        if (!currentQuestion) return;
+    // --- Attach Final Event Listeners ---
+    questionForm.addEventListener('submit', handleFormSubmit);
+    questionForm.querySelector('#delete-question-btn').addEventListener('click', handleDeleteQuestion);
+    setupImageResizing();
+}
 
-        const questionId = `m${currentModule}_q${currentQuestion}`;
-        const questionForm = editorContainer.querySelector('#question-form');
-        const imageContainer = document.getElementById('stimulus-image-container');
-        const isMath = currentModule > 2;
+/**
+ * NINJA UPGRADE: The new data submission handler.
+ * It now gets the full HTML content from each Quill editor, which includes
+ * rich text formatting and KaTeX math formulas.
+ */
+function handleFormSubmit(e) {
+    e.preventDefault();
+    if (!currentQuestion) return;
 
-        const getOptionValue = (id) => {
-            const el = questionForm.querySelector(id);
-            if (!el) return '';
-            if (isMath) return MQ(el).latex();
-            const input = el.querySelector('input');
-            return input ? input.value : '';
-        };
+    const questionId = `m${currentModule}_q${currentQuestion}`;
+    const questionForm = editorContainer.querySelector('#question-form');
+    const imageContainer = document.getElementById('stimulus-image-container');
 
-        const dataToSave = {
-            passage: isMath ? editors.passage.latex() : editors.passage.root.innerHTML,
-            prompt: isMath ? editors.prompt.latex() : editors.prompt.root.innerHTML,
-            imageUrl: imageContainer.classList.contains('hidden') ? null : document.getElementById('stimulus-image-preview').src,
-            imageWidth: imageContainer.classList.contains('hidden') ? null : imageContainer.style.width,
-            module: parseInt(currentModule),
-            questionNumber: parseInt(currentQuestion),
-            domain: questionForm.querySelector('#q-domain').value,
-            skill: questionForm.querySelector('#q-skill').value,
-            points: parseInt(questionForm.querySelector('#q-points').value),
-            format: questionForm.querySelector('#q-format').value,
-            options: {
-                A: getOptionValue('#option-a'), B: getOptionValue('#option-b'),
-                C: getOptionValue('#option-c'), D: getOptionValue('#option-d'),
-            },
-            fillInAnswer: getOptionValue('#fill-in-answer'),
-            correctAnswer: questionForm.querySelector('input[name="correct-answer"]:checked')?.value || null,
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-        };
+    const dataToSave = {
+        // Get content using .root.innerHTML from all editors
+        passage: editors.passage.root.innerHTML,
+        prompt: editors.prompt.root.innerHTML,
+        
+        // Standard data
+        imageUrl: imageContainer.classList.contains('hidden') ? null : document.getElementById('stimulus-image-preview').src,
+        imageWidth: imageContainer.classList.contains('hidden') ? null : imageContainer.style.width,
+        module: parseInt(currentModule),
+        questionNumber: parseInt(currentQuestion),
+        domain: questionForm.querySelector('#q-domain').value,
+        skill: questionForm.querySelector('#q-skill').value,
+        points: parseInt(questionForm.querySelector('#q-points').value),
+        format: questionForm.querySelector('#q-format').value,
+        
+        // Get options content
+        options: {
+            A: editors.options.A.root.innerHTML,
+            B: editors.options.B.root.innerHTML,
+            C: editors.options.C.root.innerHTML,
+            D: editors.options.D.root.innerHTML,
+        },
+        fillInAnswer: editors.fillIn.root.innerHTML,
+        correctAnswer: questionForm.querySelector('input[name="correct-answer"]:checked')?.value || null,
+        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+    };
 
-        testRef.collection('questions').doc(questionId).set(dataToSave, { merge: true }).then(() => {
-            const saveBtn = questionForm.querySelector('button[type="submit"]');
-            saveBtn.textContent = 'Saved!';
-            setTimeout(() => { saveBtn.textContent = 'Save Question'; }, 2000);
+    testRef.collection('questions').doc(questionId).set(dataToSave, { merge: true }).then(() => {
+        const saveBtn = questionForm.querySelector('button[type="submit"]');
+        saveBtn.textContent = 'Saved!';
+        setTimeout(() => { saveBtn.textContent = 'Save Question'; }, 2000);
 
-            document.querySelector(`.q-nav-btn.active`)?.classList.add('completed');
-            savedQuestions[questionId] = true;
-        }).catch(err => {
-            console.error("Error saving question:", err);
-            alert("Error saving question. See console for details.");
-        });
-    }
+        document.querySelector(`.q-nav-btn.active`)?.classList.add('completed');
+        savedQuestions[questionId] = true;
+    }).catch(err => {
+        console.error("Error saving question:", err);
+        alert("Error saving question. See console for details.");
+    });
+}
+
+    
 
     /**
      * NINJA FIX #2: Implemented the delete question functionality.

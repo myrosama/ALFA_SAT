@@ -114,13 +114,6 @@ document.body.addEventListener('contextmenu', (event) => {
         startTimer(moduleTimers[currentModuleIndex]);
     }
 
-/**
- * NINJA UPGRADE: Now correctly renders images alongside MathQuill content
- * by creating a separate container for the math passage.
- */
-// In js/test-engine.js, find and modify the renderQuestion function
-
-// In js/test-engine.js, REPLACE the entire renderQuestion function with this stable version
 
 function renderQuestion(index) {
     const question = allQuestionsByModule[currentModuleIndex][index];

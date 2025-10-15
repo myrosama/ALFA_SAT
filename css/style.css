@@ -752,3 +752,92 @@ body.highlighter-active ::selection {
     display: inline !important;
     padding: 0 0.5px;
 }
+
+/* In style.css */
+
+/* ====================================================== */
+/* === NINJA LAYOUT: Dynamic Math Module Styles       === */
+/* ====================================================== */
+
+.test-main.math-layout-active .main-content-body {
+    flex-direction: column; /* Stack items vertically instead of side-by-side */
+    align-items: center;    /* Center the column */
+}
+
+.test-main.math-layout-active .stimulus-pane,
+.test-main.math-layout-active .question-pane {
+    width: 100%;
+    max-width: 700px; /* A comfortable reading width */
+    height: auto;
+    border-right: none; /* Remove the dividing line */
+}
+
+/* Hide the stimulus pane if it's marked as empty */
+.stimulus-pane.is-empty {
+    display: none;
+}
+
+/* When the calculator is open, revert to a split-screen layout */
+.test-main.calculator-open .main-content-body {
+    flex-direction: row; /* Go back to side-by-side */
+    align-items: stretch;
+}
+
+/* Define the calculator pane (we will add this in JS) */
+.calculator-pane {
+    width: 350px; /* Fixed width for the calculator */
+    padding: 20px;
+    border-right: 1px solid var(--border-color);
+}
+
+/* In the <head> of your HTML files, you would add: */
+/* <link href="https://fonts.googleapis.com/css2?family=Merriweather&display=swap" rel="stylesheet"> */
+
+/* In style.css */
+.stimulus-pane .pane-content {
+    font-family: 'Merriweather', serif;
+    font-size: 16px;
+    line-height: 1.7;
+}
+
+.question-text {
+    font-family: 'Poppins', sans-serif; /* Your current font */
+    font-size: 18px; /* Slightly larger for clarity */
+    font-weight: 500;
+}
+
+/* In style.css */
+
+/* ====================================================== */
+/* === NINJA UI FIXES: Editor Polish                  === */
+/* ====================================================== */
+
+/* --- Fix 1: Mismatched Answer Fields --- */
+/* Apply the same styles from the main editor to the answer choice editors */
+.option-group .ql-container {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    background-color: #fff;
+}
+
+/* Add a bit more space for the radio button */
+.option-group {
+    display: flex;
+    align-items: flex-start; /* Align to the top */
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.option-group .input-group {
+    flex-grow: 1; /* Allow the editor to take up the remaining space */
+}
+
+/* --- Fix 2: Formula Input Collision --- */
+/* Target the formula tooltip and give it some breathing room */
+.ql-snow .ql-tooltip[data-mode=formula] {
+    margin-top: 10px;
+    margin-left: 10px;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+}
