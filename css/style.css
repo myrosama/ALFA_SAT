@@ -835,12 +835,7 @@ body.highlighter-active ::selection {
 
 /* --- Fix 2: Formula Input Collision --- */
 /* Target the formula tooltip and give it some breathing room */
-.ql-snow .ql-tooltip[data-mode=formula] {
-    margin-top: 10px;
-    margin-left: 10px;
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.15);
-}
+
 
 /* ====================================================== */
 /* === NINJA UI FIXES: Editor Polish (v2)             === */
@@ -848,4 +843,51 @@ body.highlighter-active ::selection {
 .option-group .ql-container { border: 1px solid var(--medium-gray); border-radius: 8px; font-size: 1rem; background-color: #fff; }
 .option-group { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
 .option-group .input-group { flex-grow: 1; }
-.ql-snow .ql-tooltip[data-mode=formula] { margin-top: 10px; margin-left: 10px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.15); }
+
+/* ====================================================== */
+/* === NINJA UI FIXES: Editor Polish (v2)             === */
+/* ====================================================== */
+
+/* --- Fix 1: Mismatched & Overlapping Answer Fields --- */
+
+/* Target the container that Quill generates and style it like a proper input field. */
+.option-group .ql-container {
+    border: 1px solid var(--medium-gray);
+    border-radius: 8px;
+    font-size: 1rem;
+    background-color: #fff;
+    min-height: 42px; /* Ensure it has a minimum height */
+}
+
+/* Make the toolbar that Quill generates look clean and attached to its container. */
+.option-group .ql-toolbar {
+    background-color: #f8f9fa;
+    border: 1px solid var(--medium-gray);
+    border-bottom: none; /* Remove bottom border to merge with the container */
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+/* Adjust the main flex container for the answer options. */
+.option-group {
+    display: flex;
+    align-items: flex-start; /* CRITICAL: Align radio button to the top of the editor */
+    gap: 10px;
+    margin-bottom: 15px; /* Add space between each answer option */
+}
+
+/* Ensure the editor container takes up all available space. */
+.option-group .input-group {
+    flex-grow: 1; 
+}
+
+/* --- Fix 2: Formula Input Collision --- */
+
+/* Target the formula tooltip and give it some breathing room so it doesn't overlap. */
+.ql-snow .ql-tooltip[data-mode=formula] {
+    margin-top: 10px;
+    margin-left: 10px;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+    z-index: 10; /* Ensures it's on top of other elements */
+}
