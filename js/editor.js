@@ -11,6 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const editorContainer = document.getElementById('question-editor-container');
     const editorTemplate = document.getElementById('question-editor-template');
     const stimulusPanelContent = document.getElementById('stimulus-panel').querySelector('.panel-content');
+    // Just after the line for stimulusPanelContent, add these:
+    const addImageBtn = document.getElementById('add-image-btn');
+    const removeImageBtn = document.getElementById('remove-image-btn');
 
     // --- Page State ---
     const urlParams = new URLSearchParams(window.location.search);
@@ -67,6 +70,74 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         editors = {};
     }
+    // Place this block right after the cleanupStimulusPanel function
+
+async function uploadImageToTelegram(file) {
+    if (typeof TELEGRAM_BOT_TOKEN === 'undefined' || typeof TELEGRAM_CHANNEL_ID === 'undefined') {
+        alert('Error: Telegram configuration is missing. Check your config.js file.');
+        return null;
+    }
+    const formData = new FormData();
+    formData.append('chat_id', TELEGRAM_CHANNEL_ID);
+    formData.append('photo', file);
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`;
+    try {
+        const response = await fetch(url, { method: 'POST', body: formData });
+        const data = await response.json();
+        if (data.ok) {
+            const photoArray = data.result.photo;
+            const fileId = photoArray[photoArray.length - 1].file_id;
+            const fileUrlDataRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
+            const fileUrlData = await fileUrlDataRes.json();
+            if (fileUrlData.ok) {
+                return `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${fileUrlData.result.file_path}`;
+            } else { throw new Error(fileUrlData.description); }
+        } else { throw new Error(data.description); }
+    } catch (error) {
+        console.error('Telegram Upload Error:', error);
+        alert('Error uploading image: ' + error.message);
+        return null;
+    }
+}
+
+function renderStimulus(data = {}) {
+    const imageContainer = document.getElementById('stimulus-image-container');
+    const imagePreview = document.getElementById('stimulus-image-preview');
+    if (imageContainer && imagePreview) {
+        if (data.imageUrl) {
+            imagePreview.src = data.imageUrl;
+            imageContainer.style.width = data.imageWidth || '100%';
+            imageContainer.classList.remove('hidden');
+        } else {
+            imageContainer.classList.add('hidden');
+        }
+    }
+}
+
+function setupImageResizing() {
+    const imageContainer = document.getElementById('stimulus-image-container');
+    if (!imageContainer) return;
+    const resizeHandle = imageContainer.querySelector('.resize-handle');
+    if (!resizeHandle) return;
+    let isResizing = false;
+    resizeHandle.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        isResizing = true;
+        const startX = e.clientX;
+        const startWidth = imageContainer.offsetWidth;
+        const doDrag = (dragEvent) => {
+            if (!isResizing) return;
+            imageContainer.style.width = `${startWidth + (dragEvent.clientX - startX)}px`;
+        };
+        const stopDrag = () => {
+            isResizing = false;
+            window.removeEventListener('mousemove', doDrag);
+            window.removeEventListener('mouseup', stopDrag);
+        };
+        window.addEventListener('mousemove', doDrag);
+        window.addEventListener('mouseup', stopDrag);
+    });
+}
 
     /**
      * Initializes all Quill editors with correct bounds.
@@ -186,6 +257,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const questionId = `m${module}_q${qNumber}`;
         const doc = await testRef.collection('questions').doc(questionId).get();
+        const data = doc.exists ? doc.data() : {};
+        renderStimulus(data);
 
         if (doc.exists) {
             const data = doc.data();
@@ -214,6 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         questionForm.addEventListener('submit', handleFormSubmit);
         questionForm.querySelector('#delete-question-btn').addEventListener('click', handleDeleteQuestion);
+        setupImageResizing()
     }
     
     function handleFormSubmit(e) {
@@ -223,10 +297,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const questionId = `m${currentModule}_q${currentQuestion}`;
         const questionForm = editorContainer.querySelector('#question-form');
         const saveBtn = questionForm.querySelector('button[type="submit"]');
+        const imageContainer = document.getElementById('stimulus-image-container');
 
         const dataToSave = {
             passage: editors.passage.root.innerHTML,
             prompt: editors.prompt.root.innerHTML,
+            imageUrl: imageContainer.classList.contains('hidden') ? null : document.getElementById('stimulus-image-preview').src,
+            imageWidth: imageContainer.classList.contains('hidden') ? null : imageContainer.style.width,
             module: currentModule,
             questionNumber: currentQuestion,
             domain: questionForm.querySelector('#q-domain').value,
@@ -299,4 +376,35 @@ document.addEventListener('DOMContentLoaded', () => {
             switchModule(parseInt(e.target.dataset.module));
         }
     });
+    // Add this entire block at the end of the file
+
+addImageBtn.addEventListener('click', async () => {
+    if (!currentQuestion) return alert("Please select a question first!");
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        // Show a loading state
+        const imagePreview = document.getElementById('stimulus-image-preview');
+        imagePreview.src = "https://i.gifer.com/ZZ5H.gif"; // Simple loading GIF
+        document.getElementById('stimulus-image-container').classList.remove('hidden');
+
+        const imageUrl = await uploadImageToTelegram(file);
+        if (imageUrl) {
+            renderStimulus({ imageUrl: imageUrl });
+        } else {
+            renderStimulus({}); // Hide image container on failure
+            alert("Image upload failed. Please try again.");
+        }
+    };
+    input.click();
+});
+
+removeImageBtn.addEventListener('click', () => {
+    if (!currentQuestion) return alert("Please select a question first!");
+    renderStimulus({}); // Renders with no image data, effectively hiding it.
+});
 });
