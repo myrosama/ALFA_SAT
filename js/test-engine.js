@@ -61,30 +61,30 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     // In js/test-engine.js
 
+// In js/test-engine.js, replace the entire renderQuestion function
+
 function renderQuestion(index) {
     const question = allQuestionsByModule[currentModuleIndex][index];
     if (!question) return;
 
     const isMath = question.module > 2;
 
-    // --- NINJA LAYOUT LOGIC: Apply correct classes based on question type ---
+    // --- Layout Logic ---
     const mainWrapper = document.querySelector('.test-main');
     const stimulusPane = document.querySelector('.stimulus-pane');
-
-    // Toggle the main layout class based on whether it's a math module
+    
     mainWrapper.classList.toggle('math-layout-active', isMath);
 
-    // The "Skipper" Logic: Check if the stimulus is effectively empty.
-    // An empty Quill editor saves '<p><br></p>', so we check for that too.
     const isStimulusEmpty = (!question.passage || question.passage.trim() === '' || question.passage === '<p><br></p>') && !question.imageUrl;
-    
-    // Toggle the class that hides the stimulus pane
     stimulusPane.classList.toggle('is-empty', isStimulusEmpty);
-    // --- END OF NINJA LAYOUT LOGIC ---
 
-    // --- Render Content (this part is from our last fix and remains correct) ---
-    let imageHTML = question.imageUrl ? `<img src="${question.imageUrl}" alt="Stimulus Image" style="width: ${question.imageWidth || '100%'};">` : '';
-    stimulusPaneContent.innerHTML = imageHTML + (question.passage || '');
+    // --- Render Content ---
+    const imagePosition = question.imagePosition || 'above'; // Get the saved position
+    const imageHTML = question.imageUrl ? `<img src="${question.imageUrl}" alt="Stimulus Image" style="width: ${question.imageWidth || '100%'};">` : '';
+    const passageHTML = question.passage || '';
+    
+    // Conditionally order the stimulus content based on the saved property
+    stimulusPaneContent.innerHTML = (imagePosition === 'below') ? (passageHTML + imageHTML) : (imageHTML + passageHTML);
 
     const questionHTML = `
         <div class="question-header-bar">

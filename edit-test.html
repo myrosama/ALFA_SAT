@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Test - ALFA SAT Admin</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/editor.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Merriweather&display=swap" rel="stylesheet">
@@ -60,49 +61,47 @@
         </footer>
     </div>
     
-    <template id="question-editor-template">
-        <form class="question-editor-form" id="question-form">
-            <div class="editor-toolbar">
-                <div class="tool-group"><label>Domain</label><select id="q-domain"></select></div>
-                <div class="tool-group"><label>Skill</label><select id="q-skill"></select></div>
-                <div class="tool-group"><label>Points</label><select id="q-points"></select></div>
-                <div class="tool-group"><label>Question Format</label><select id="q-format"><option value="mcq">Multiple Choice</option><option value="fill-in">Fill-in-the-Blank</option></select></div>
+    <!-- In edit-test.html, replace the entire <template> -->
+<template id="question-editor-template">
+    <form class="question-editor-form" id="question-form">
+        <div class="editor-toolbar">
+            <div class="tool-group"><label>Domain</label><select id="q-domain"></select></div>
+            <div class="tool-group"><label>Skill</label><select id="q-skill"></select></div>
+            <div class="tool-group"><label>Points</label><select id="q-points"></select></div>
+            <div class="tool-group"><label>Question Format</label><select id="q-format"><option value="mcq">Multiple Choice</option><option value="fill-in">Fill-in-the-Blank</option></select></div>
+            <!-- THIS IS THE NEW DROPDOWN -->
+            <div class="tool-group">
+                <label>Image Position</label>
+                <select id="q-image-position">
+                    <option value="above">Above Text</option>
+                    <option value="below">Below Text</option>
+                </select>
             </div>
-            <div class="question-number-bar">Question <span id="q-number-display">1</span></div>
-            <div class="form-scroll-area">
-                <div class="input-group"><label>Question Prompt</label><div id="question-text-editor"></div></div>
-                <div id="answer-options-container">
-                    <h4>Answer Choices</h4>
-                    <!-- Notice the change from <span> to <div> below -->
-                    <div class="option-group">
-                        <label class="correct-answer-label"><input type="radio" name="correct-answer" value="A" checked> A</label>
-                        <div class="input-group"><div class="answer-input" id="option-a"></div></div>
-                    </div>
-                    <div class="option-group">
-                        <label class="correct-answer-label"><input type="radio" name="correct-answer" value="B"> B</label>
-                        <div class="input-group"><div class="answer-input" id="option-b"></div></div>
-                    </div>
-                    <div class="option-group">
-                        <label class="correct-answer-label"><input type="radio" name="correct-answer" value="C"> C</label>
-                        <div class="input-group"><div class="answer-input" id="option-c"></div></div>
-                    </div>
-                    <div class="option-group">
-                        <label class="correct-answer-label"><input type="radio" name="correct-answer" value="D"> D</label>
-                        <div class="input-group"><div class="answer-input" id="option-d"></div></div>
-                    </div>
+        </div>
+        <div class="question-number-bar">Question <span id="q-number-display">1</span></div>
+        <div class="form-scroll-area">
+            <div class="input-group"><label>Question Prompt</label><div id="question-text-editor"></div></div>
+            <div id="answer-options-container">
+                <h4>Answer Choices</h4>
+                <div class="option-group">
+                    <label class="correct-answer-label"><input type="radio" name="correct-answer" value="A" checked> A</label>
+                    <div class="input-group"><div class="answer-input" id="option-a"></div></div>
                 </div>
-                <div id="fill-in-answer-container" class="hidden">
-                    <h4>Correct Answer</h4>
-                    <!-- Changed this to a <div> as well for consistency -->
-                    <div class="input-group"><div class="answer-input" id="fill-in-answer"></div></div>
-                </div>
+                <div class="option-group"><label class="correct-answer-label"><input type="radio" name="correct-answer" value="B"> B</label><div class="input-group"><div class="answer-input" id="option-b"></div></div></div>
+                <div class="option-group"><label class="correct-answer-label"><input type="radio" name="correct-answer" value="C"> C</label><div class="input-group"><div class="answer-input" id="option-c"></div></div></div>
+                <div class="option-group"><label class="correct-answer-label"><input type="radio" name="correct-answer" value="D"> D</label><div class="input-group"><div class="answer-input" id="option-d"></div></div></div>
             </div>
-            <div class="form-actions">
-                 <button type="button" class="btn btn-secondary danger" id="delete-question-btn">Delete Question</button>
-                 <button type="submit" class="btn btn-primary">Save Question</button>
+            <div id="fill-in-answer-container" class="hidden">
+                <h4>Correct Answer</h4>
+                <div class="input-group"><div class="answer-input" id="fill-in-answer"></div></div>
             </div>
-        </form>
-    </template>
+        </div>
+        <div class="form-actions">
+             <button type="button" class="btn btn-secondary danger" id="delete-question-btn">Delete Question</button>
+             <button type="submit" class="btn btn-primary">Save Question</button>
+        </div>
+    </form>
+</template>
     
     <!-- Firebase, Quill, and other JS Libraries -->
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>

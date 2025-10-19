@@ -226,13 +226,14 @@ function setupImageResizing() {
         editorContainer.innerHTML = '';
         const formClone = editorTemplate.content.cloneNode(true);
         editorContainer.appendChild(formClone);
-        initializeQuillEditors(); // This will now use the correct bounds
+        initializeQuillEditors(); 
 
         const questionForm = editorContainer.querySelector('#question-form');
         const domainSelect = questionForm.querySelector('#q-domain');
         const skillSelect = questionForm.querySelector('#q-skill');
         const pointsSelect = questionForm.querySelector('#q-points');
         const formatSelect = questionForm.querySelector('#q-format');
+        const imagePosSelect = questionForm.querySelector('#q-image-position'); 
         
         document.getElementById('q-number-display').textContent = qNumber;
 
@@ -254,7 +255,12 @@ function setupImageResizing() {
             questionForm.querySelector('#answer-options-container').classList.toggle('hidden', formatSelect.value !== 'mcq');
             questionForm.querySelector('#fill-in-answer-container').classList.toggle('hidden', formatSelect.value !== 'fill-in');
         });
-
+        const stimulusContentEl = document.querySelector('#stimulus-panel .panel-content');
+            stimulusContentEl.style.display = 'flex';
+            stimulusContentEl.style.flexDirection = 'column'; // Default to column
+            imagePosSelect.addEventListener('change', () => {
+            stimulusContentEl.style.flexDirection = imagePosSelect.value === 'below' ? 'column-reverse' : 'column';
+        });
         const questionId = `m${module}_q${qNumber}`;
         const doc = await testRef.collection('questions').doc(questionId).get();
         const data = doc.exists ? doc.data() : {};
@@ -281,6 +287,8 @@ function setupImageResizing() {
             populateSkills();
             skillSelect.value = data.skill || '';
             pointsSelect.value = data.points || POINT_VALUES[0];
+            imagePosSelect.value = data.imagePosition || 'above';
+            imagePosSelect.dispatchEvent(new Event('change'));
         }
 
         formatSelect.dispatchEvent(new Event('change'));
@@ -291,35 +299,36 @@ function setupImageResizing() {
     }
     
     function handleFormSubmit(e) {
-        e.preventDefault();
-        if (!currentQuestion) return;
+    e.preventDefault();
+    if (!currentQuestion) return;
 
-        const questionId = `m${currentModule}_q${currentQuestion}`;
-        const questionForm = editorContainer.querySelector('#question-form');
-        const saveBtn = questionForm.querySelector('button[type="submit"]');
-        const imageContainer = document.getElementById('stimulus-image-container');
+    const questionId = `m${currentModule}_q${currentQuestion}`;
+    const questionForm = editorContainer.querySelector('#question-form');
+    const saveBtn = questionForm.querySelector('button[type="submit"]');
+    const imageContainer = document.getElementById('stimulus-image-container');
 
-        const dataToSave = {
-            passage: editors.passage.root.innerHTML,
-            prompt: editors.prompt.root.innerHTML,
-            imageUrl: imageContainer.classList.contains('hidden') ? null : document.getElementById('stimulus-image-preview').src,
-            imageWidth: imageContainer.classList.contains('hidden') ? null : imageContainer.style.width,
-            module: currentModule,
-            questionNumber: currentQuestion,
-            domain: questionForm.querySelector('#q-domain').value,
-            skill: questionForm.querySelector('#q-skill').value,
-            points: parseInt(questionForm.querySelector('#q-points').value),
-            format: questionForm.querySelector('#q-format').value,
-            options: {
-                A: editors.options.A.root.innerHTML,
-                B: editors.options.B.root.innerHTML,
-                C: editors.options.C.root.innerHTML,
-                D: editors.options.D.root.innerHTML,
-            },
-            fillInAnswer: editors.fillIn.root.innerHTML,
-            correctAnswer: questionForm.querySelector('input[name="correct-answer"]:checked')?.value || null,
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-        };
+    const dataToSave = {
+        passage: editors.passage.root.innerHTML,
+        prompt: editors.prompt.root.innerHTML,
+        imageUrl: imageContainer.classList.contains('hidden') ? null : document.getElementById('stimulus-image-preview').src,
+        imageWidth: imageContainer.classList.contains('hidden') ? null : imageContainer.style.width,
+        imagePosition: questionForm.querySelector('#q-image-position').value, // SAVE THE NEW VALUE
+        module: currentModule,
+        questionNumber: currentQuestion,
+        domain: questionForm.querySelector('#q-domain').value,
+        skill: questionForm.querySelector('#q-skill').value,
+        points: parseInt(questionForm.querySelector('#q-points').value),
+        format: questionForm.querySelector('#q-format').value,
+        options: {
+            A: editors.options.A.root.innerHTML,
+            B: editors.options.B.root.innerHTML,
+            C: editors.options.C.root.innerHTML,
+            D: editors.options.D.root.innerHTML,
+        },
+        fillInAnswer: editors.fillIn.root.innerHTML,
+        correctAnswer: questionForm.querySelector('input[name="correct-answer"]:checked')?.value || null,
+        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+    };
 
         saveBtn.textContent = 'Saving...';
         saveBtn.disabled = true;

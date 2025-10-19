@@ -1,376 +1,79 @@
-/* --- Universal Box Sizing & Reset --- */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root { --primary-blue: #003366; --primary-purple: #6A0DAD; --light-gray: #f4f7f6; --medium-gray: #e8e8e8; --dark-gray: #555; --text-color: #333; --white: #ffffff; --font-family: 'Poppins', sans-serif; --error-red: #e74c3c; }
-html, body { height: 100%; }
-body { font-family: var(--font-family); color: var(--text-color); line-height: 1.5; }
-.hidden { display: none !important; }
+/* ====================================================== */
+/* === ALFA SAT: CORE STYLESHEET (style.css)          === */
+/* ====================================================== */
 
-/* --- Authentication Pages --- */
-.auth-body {
-    background: linear-gradient(135deg, var(--primary-blue), var(--primary-purple));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    padding: 20px;
-    position: relative;
-    overflow-y: auto; /* Adds a scrollbar ONLY if the content is too tall for the screen */
-}
-
-.background-shapes {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    z-index: 1;
-    overflow: hidden; /* Important */
-}
-.shape {
-    position: absolute;
-    border-radius: 50%;
-    background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0));
-}
-.shape-1 { width: 400px; height: 400px; top: -100px; left: -150px; }
-.shape-2 { width: 500px; height: 500px; bottom: -200px; right: -150px; }
-
-.auth-container {
-    position: relative;
-    z-index: 2;
-    width: 100%;
-    max-width: 420px;
-}
-
-.auth-card {
-    background-color: var(--white);
-    padding: 40px;
-    border-radius: 16px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-    text-align: center;
-    width: 100%;
-}
-
-.auth-card-header {
-    display: flex;
-    flex-direction: row; /* This is the key change: makes it horizontal */
-    align-items: center;  /* Vertically aligns the logo and text */
-    justify-content: center; /* Centers the whole block in the card */
-    gap: 15px; /* Adds a nice space between the logo and text */
-    margin-bottom: 20px;
-}
-
-
-.auth-card-header .logo { 
-    width: 60px; /* Made the logo slightly smaller to fit better */
-    height: 60px; 
-}
-.auth-card-header h1 {
-    margin: 0; /* Removed the old top margin */
-    font-size: 2.2rem; /* Made the text slightly smaller */
-    font-weight: 700;
-    letter-spacing: 1px;
-    color: var(--primary-blue);
-}
-.auth-card-slogan {
-    color: var(--dark-gray);
-    margin-bottom: 25px; /* Sets the space between slogan and form */
-    margin-top: -15px;   /* Pulls the slogan closer to the header */
-}
-.auth-form { display: flex; flex-direction: column; gap: 15px; }
-.error-message {
-    color: var(--error-red);
-    font-weight: 600;
-    font-size: 0.9rem;
-    text-align: center;
-    /* New styles for the smooth transition */
-    opacity: 0;
-    max-height: 0;
-    margin-bottom: 0;
-    overflow: hidden;
-    transition: all 0.3s ease-in-out;
-}
-.error-message.visible {
-    opacity: 1;
-    max-height: 50px; /* Allows the element to grow */
-    margin-bottom: 15px; /* Adds space ONLY when the error is visible */
-}
-.input-group { text-align: left; }
-.input-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; color: var(--dark-gray); }
-.input-group input { width: 100%; padding: 12px 15px; border: 1px solid var(--medium-gray); border-radius: 8px; font-size: 1rem; transition: border-color 0.3s, box-shadow 0.3s; font-family: inherit; }
-.input-group input:focus { outline: none; border-color: var(--primary-purple); box-shadow: 0 0 0 3px rgba(106, 13, 173, 0.15); }
-.btn { padding: 12px 20px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: background-color 0.3s, transform 0.2s; font-family: inherit; }
-.btn-primary { background-color: var(--primary-purple); color: var(--white); margin-top: 10px; }
-.btn-primary:hover { background-color: #56088f; transform: translateY(-2px); }
-.auth-switch { margin-top: 25px; font-size: 0.9rem; }
-.auth-switch a { color: var(--primary-purple); text-decoration: none; font-weight: 600; }
-.auth-switch a:hover { text-decoration: underline; }
-/* --- Dashboard Page --- */
-.dashboard-body { background-color: var(--light-gray); }
-.main-header { background-color: var(--white); border-bottom: 1px solid var(--medium-gray); padding: 0 40px; position: sticky; top: 0; z-index: 1000; }
-.header-content { display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; height: 70px; }
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.5rem; color: var(--primary-blue); }
-.logo-small { width: 40px; height: 40px; }
-.main-header nav a { text-decoration: none; color: var(--primary-purple); font-weight: 600; padding: 8px 16px; border-radius: 6px; transition: background-color 0.2s; }
-.main-header nav a:hover { background-color: #f8f9fa; }
-.dashboard-main { max-width: 1200px; margin: 0 auto; padding: 40px; }
-.welcome-section { background: linear-gradient(135deg, var(--primary-blue), var(--primary-purple)); color: var(--white); padding: 30px; border-radius: 12px; margin-bottom: 40px; }
-.welcome-section h2 { margin: 0 0 10px 0; font-size: 2rem; }
-.test-code-section { margin-bottom: 40px; }
-.test-code-section form { display: flex; gap: 10px; }
-.test-code-input { flex-grow: 1; padding: 12px 15px; border: 1px solid var(--medium-gray); border-radius: 8px; font-size: 1rem; max-width: 300px; text-transform: uppercase; }
-.test-code-input::placeholder { text-transform: none; }
-.btn-secondary { background-color: var(--primary-blue); color: var(--white); }
-.btn-secondary:hover { background-color: #002244; }
-.test-list-container h3 { font-size: 1.5rem; color: var(--primary-blue); border-bottom: 2px solid var(--light-gray); padding-bottom: 10px; margin-bottom: 20px; }
-.test-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; }
-.test-card { background-color: var(--white); border: 1px solid var(--medium-gray); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.3s, box-shadow 0.3s; }
-.test-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08); }
-.card-content { padding: 25px; flex-grow: 1; }
-.test-card h4 { margin: 0 0 10px 0; font-size: 1.2rem; color: var(--primary-blue); }
-.test-card p { color: var(--dark-gray); font-size: 0.95rem; line-height: 1.5; margin-bottom: 20px; }
-.test-status { font-weight: 600; font-size: 0.8rem; padding: 4px 8px; border-radius: 20px; }
-.not-started { background-color: #e3d3f8; color: var(--primary-purple); }
-.card-btn { display: block; background-color: var(--primary-purple); color: var(--white); text-align: center; padding: 15px; text-decoration: none; font-weight: 600; border-radius: 0 0 10px 10px; }
-.test-card.completed .card-btn { background-color: var(--primary-blue); }
-.score-display { background-color: var(--light-gray); border-radius: 8px; padding: 10px; margin-top: 15px; text-align: center; }
-.score-display p { margin: 0; color: var(--primary-blue); }
-
-/* --- Test Interface --- */
-/* +++ ADD ALL THESE NEW RULES +++ */
-.main-content-header {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    align-items: end;
-    padding: 25px 0 15px 0;
-    margin: 0 25px;
-    border-bottom: 1px solid var(--medium-gray);
-    flex-shrink: 0;
-}
-.stimulus-title h3 {
+/* --- 1. Universal Styles & CSS Variables --- */
+*, *::before, *::after {
+    box-sizing: border-box;
     margin: 0;
-    font-size: 1.5rem;
-    color: var(--primary-blue);
-}
-.question-title-bar {
-    padding-left: 25px;
-}
-.main-content-body {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    height: 100%;
-    overflow: hidden;
-}
-.test-body { background-color: var(--light-gray); }
-.test-wrapper { display: flex; flex-direction: column; height: 100vh; }
-.test-header { background: var(--primary-purple); color: var(--white); flex-shrink: 0; padding: 0 20px; height: 60px; border-bottom: 1px solid #56088f; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
-.header-left { display: flex; align-items: center; gap: 15px; justify-self: start; }
-.header-center { text-align: center; font-weight: 600; font-size: 1.1rem; }
-.header-center i { margin-right: 8px; }
-.header-right { display: flex; align-items: center; gap: 15px; justify-self: end; }
-.test-title h4, .timer, .tool-btn { color: var(--white); }
-.test-title span { color: #e3d3f8; }
-.tool-btn { background: none; border: none; cursor: pointer; font-size: 1.2rem; color: var(--white); padding: 5px; }
-.tool-btn:hover { background-color: rgba(255, 255, 255, 0.15); border-radius: 4px; }
-.test-main {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column; /* This is the key change */
-    overflow: hidden;
-}
-.test-main .stimulus-pane.is-empty {
-    display: none;
+    padding: 0;
 }
 
-.test-main .main-content-body.stimulus-hidden {
-    grid-template-columns: 1fr; /* Change from 1fr 1fr to a single column */
+:root {
+    --primary-blue: #003366;
+    --primary-purple: #6A0DAD;
+    --light-gray: #f4f7f6;
+    --medium-gray: #e8e8e8;
+    --border-color: #e8e8e8; /* Consistent variable for borders */
+    --dark-gray: #555;
+    --text-color: #333;
+    --white: #ffffff;
+    --error-red: #e74c3c;
+    --font-family-sans: 'Poppins', sans-serif;
+    --font-family-serif: 'Merriweather', serif;
+    --font-family-math: 'Source Serif 4', serif;
 }
 
-.test-main .main-content-body.stimulus-hidden .question-pane {
-    border-left: none;
-}
-/* ADD THIS NEW RULE */
-.stimulus-pane h3 {
-    margin-top: 0;
-}
-.stimulus-pane {
+html, body {
     height: 100%;
-    overflow-y: auto;
-    background-color: var(--white);
-    padding: 15px 25px; /* Adjust padding */
 }
-.question-pane {
-    height: 100%;
-    overflow-y: auto;
-    background-color: var(--white);
-    padding: 15px 25px; /* Adjust padding */
-    border-left: 1px solid var(--medium-gray);
-}
-.question-header-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: #e9ecef;
-    padding: 8px 12px;
-    border-radius: 8px;
-    margin-bottom: 0; /* CHANGE THIS from 20px to 0 */
-}
-.q-number-display { background-color: var(--primary-blue); color: var(--white); font-weight: 700; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
-.question-header-bar .mark-for-review { padding: 5px 10px; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; }
-.question-header-bar .mark-for-review:hover { background-color: #d3d9df; }
-.question-header-bar .mark-for-review input { display: none; }
-.question-header-bar .mark-for-review span { font-weight: 600; color: var(--text-color); }
-.question-header-bar .mark-for-review i { font-size: 1.2rem; color: var(--dark-gray); }
-.question-header-bar .mark-for-review input:checked ~ i { color: var(--primary-purple); font-weight: 900; }
-.question-text { font-size: 1.1rem; font-weight: 600; margin-bottom: 20px; }
-.question-options { display: flex; flex-direction: column; gap: 15px; }
-.option-wrapper { display: flex; align-items: center; gap: 10px; border: 1px solid var(--medium-gray); border-radius: 8px; transition: border-color 0.2s, background-color 0.2s; }
-.option-wrapper:hover { border-color: var(--primary-purple); }
-.option-wrapper .option { border: none; flex-grow: 1; display: flex; align-items: center; gap: 15px; padding: 15px; cursor: pointer; }
-.option-wrapper .option input[type="radio"] { display: none; }
-.option-wrapper .option-letter { display: flex; justify-content: center; align-items: center; width: 30px; height: 30px; border: 2px solid var(--dark-gray); border-radius: 50%; font-weight: 600; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s, color 0.2s; }
-.option-wrapper .option input[type="radio"]:checked + .option-letter { background-color: var(--primary-blue); border-color: var(--primary-blue); color: var(--white); }
-.option-wrapper .option input[type="radio"]:checked ~ .option-text { font-weight: 600; }
-.strikethrough-btn { background: none; border: 1px solid transparent; color: var(--dark-gray); cursor: pointer; width: 32px; height: 32px; border-radius: 50%; font-size: 1rem; margin-right: 10px; flex-shrink: 0; }
-.strikethrough-btn:hover { background-color: var(--light-gray); border-color: var(--medium-gray); }
-.option-wrapper.stricken-through { background-color: #f8f9fa; }
-.option-wrapper.stricken-through .option-letter, .option-wrapper.stricken-through .option-text { text-decoration: line-through; color: #999; }
-.option-wrapper.stricken-through .strikethrough-btn { background-color: var(--primary-purple); color: var(--white); }
-.test-footer { background: var(--primary-purple); color: var(--white); height: 70px; border-top: 1px solid #56088f; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 20px; flex-shrink: 0; }
-.footer-user-name { font-weight: 500; justify-self: start; }
-.footer-center { justify-self: center; }
-.footer-center .question-nav-btn { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); color: var(--white); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 10px; transition: background-color 0.2s; }
-.footer-center .question-nav-btn:hover { background: rgba(255, 255, 255, 0.2); }
-.footer-center .question-nav-btn i { transition: transform 0.3s; }
-.footer-center .question-nav-btn.open i { transform: rotate(180deg); }
-.footer-right { display: flex; align-items: center; gap: 15px; justify-self: end; }
-.footer-toggle {
-    position: absolute; /* Takes the button out of the layout flow */
-    right: 0; /* Pins it to the right side */
-}
-.test-footer .btn-secondary { background-color: var(--primary-blue); }
-.test-footer .btn-primary { background-color: var(--white); color: var(--primary-purple); }
-.modal-backdrop { position: fixed; inset: 0; background-color: rgba(0,0,0,0.5); z-index: 1999; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
-.modal-backdrop.visible { opacity: 1; visibility: visible; }
-.question-navigator-modal {
-    position: fixed;
-    /* These three lines provide perfect centering */
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0.95); /* Start slightly smaller for animation */
 
-    width: 90%;
-    max-width: 500px; /* You can adjust this max-width */
-    background-color: var(--white);
-    border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-    z-index: 2000;
+body {
+    font-family: var(--font-family-sans);
     color: var(--text-color);
-    
-    /* Start hidden */
-    visibility: hidden;
-    opacity: 0;
-    
-    /* Smooth transition for the pop-in effect */
-    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+    line-height: 1.6;
+    background-color: var(--light-gray); /* Default background */
 }
 
-.question-navigator-modal.visible {
-    visibility: visible;
-    opacity: 1;
-    /* Animate to full size for the pop-in effect */
-    transform: translate(-50%, -50%) scale(1);
+.hidden {
+    display: none !important;
 }
 
-/* We don't need the arrow for a centered modal, so ensure it's hidden */
-.question-navigator-modal::after {
-   display: none;
-}
-
-
-.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid var(--medium-gray); }
-.modal-header h4 { margin: 0; font-size: 1.1rem; }
-.close-modal-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
-.modal-filters { display: flex; gap: 20px; padding: 15px 20px; font-size: 0.9rem; color: var(--dark-gray); }
-.modal-filters i { margin-right: 5px; }
-.modal-filters .current-q { color: var(--primary-blue); }
-.modal-filters .for-review { color: var(--primary-purple); }
-.modal-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 0 20px 20px 20px; }
-.q-number { border: 1px solid var(--medium-gray); border-radius: 4px; padding: 10px; text-align: center; cursor: pointer; font-weight: 500; }
-.q-number:hover { border-color: var(--primary-purple); }
-.q-number.current { border: 2px solid var(--primary-blue); font-weight: 700; }
-.q-number.answered { text-decoration: line-through; color: var(--dark-gray); }
-.q-number.reviewed { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%236a0dad' d='M96 0C60.7 0 32 28.7 32 64V448c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V64c0-35.3-28.7-64-64-64H96z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: top 2px right 2px; background-size: 8px; }
-.modal-footer { padding: 15px 20px; border-top: 1px solid var(--medium-gray); text-align: center; }
-
-/* --- Admin Panel Styles --- */
-.admin-welcome {
-    background: var(--primary-blue);
-    color: var(--white);
-    padding: 30px;
-    border-radius: 12px;
-    margin-bottom: 40px;
-}
-.admin-welcome h2 {
-    margin: 0 0 10px 0;
-    font-size: 2rem;
-}
-
-.admin-section {
-    background-color: var(--white);
-    border: 1px solid var(--medium-gray);
-    border-radius: 12px;
-    padding: 30px;
-}
-
-.section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--medium-gray);
-    padding-bottom: 20px;
-    margin-bottom: 20px;
-}
-.section-header h3 {
-    margin: 0;
-    color: var(--primary-blue);
-}
-.section-header .btn {
-    margin-top: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.test-list-admin {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.test-item-admin {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px;
-    border: 1px solid var(--medium-gray);
+/* --- 2. Generic Components (Buttons, Inputs) --- */
+.btn {
+    padding: 12px 20px;
+    border: none;
     border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+    font-family: inherit;
+    text-decoration: none;
+    display: inline-block;
 }
 
-.test-info h4 {
-    margin: 0 0 5px 0;
-    color: var(--primary-blue);
+.btn-primary {
+    background-color: var(--primary-purple);
+    color: var(--white);
+    margin-top: 10px;
 }
-.test-info span {
-    font-size: 0.9rem;
-    color: var(--dark-gray);
-    font-family: monospace;
+.btn-primary:hover {
+    background-color: #56088f;
+    transform: translateY(-2px);
 }
 
-.test-actions {
-    display: flex;
-    gap: 10px;
+.btn-secondary {
+    background-color: var(--primary-blue);
+    color: var(--white);
+}
+.btn-secondary:hover {
+    background-color: #002244;
 }
 
 .btn-icon {
     background-color: var(--light-gray);
-    border: 1px solid var(--medium-gray);
+    border: 1px solid var(--border-color);
     color: var(--dark-gray);
     width: 40px;
     height: 40px;
@@ -387,528 +90,228 @@ body { font-family: var(--font-family); color: var(--text-color); line-height: 1
     color: var(--white);
 }
 .btn-icon.danger:hover {
-    background-color: #e74c3c;
+    background-color: var(--error-red);
     color: var(--white);
 }
 
-/* --- Admin Modal Styles --- */
-.admin-modal {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0.95);
-    width: 90%;
-    max-width: 500px;
-    background-color: var(--white);
-    border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-    z-index: 2000;
-    padding: 30px;
-    visibility: hidden;
-    opacity: 0;
-    transition: opacity 0.3s, transform 0.3s, visibility 0.3s;
+.input-group {
+    text-align: left;
+    margin-bottom: 15px;
 }
-.admin-modal.visible {
-    visibility: visible;
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+.input-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--dark-gray);
 }
-.admin-modal h3 {
-    margin: 0 0 25px 0;
-    color: var(--primary-blue);
+.input-group input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    font-family: inherit;
 }
-.admin-modal .input-group small {
+.input-group input:focus {
+    outline: none;
+    border-color: var(--primary-purple);
+    box-shadow: 0 0 0 3px rgba(106, 13, 173, 0.15);
+}
+.input-group small {
     display: block;
     margin-top: 5px;
     font-size: 0.8rem;
     color: var(--dark-gray);
 }
-.admin-modal form {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-.form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
-}
-.form-scroll-area textarea {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--medium-gray);
-    border-radius: 8px;
-    font-size: 1.1rem;
-    font-family: 'Source Serif 4', serif;
-    resize: none;
-    /* ADD THESE LINES */
-    min-height: 100px;
-    height: auto;
-}
 
-/* --- Final Editor Page Styles --- */
-.editor-body { background-color: var(--light-gray); overflow: hidden; }
-.editor-wrapper { display: flex; flex-direction: column; height: 100vh; }
-
-.editor-main-content {
-    flex-grow: 1;
-    padding: 15px; /* Reduced padding */
-    display: grid;
-    grid-template-columns: 1fr 1.25fr;
-    gap: 15px; /* Reduced gap */
-    overflow: hidden;
-}
-
-/* ADD THIS NEW RULE */
-#stimulus-editor.mq-editable-field,
-#question-text-editor.mq-editable-field {
-    min-height: 150px;
-    padding: 12px;
-    border: 1px solid var(--medium-gray);
-    border-radius: 8px;
-    font-size: 1.1rem;
-}
-
-
-/* REPLACE THIS RULE */
-.answer-input {
-    width: 100%;
-    border: 1px solid var(--medium-gray);
-    border-radius: 8px;
-    font-size: 1rem;
-    min-height: 42px; /* Taller by default */
-    padding: 8px 10px;
-}
-.editor-panel {
+/* --- 3. Main Header (Shared across Dashboard/Admin) --- */
+.main-header {
     background-color: var(--white);
-    border: 1px solid var(--medium-gray);
-    border-radius: 12px;
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 40px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+.header-content {
     display: flex;
-    flex-direction: column;
-    height: 100%;
-    overflow: hidden;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    height: 70px;
 }
-.panel-header {
-    padding: 12px 15px; /* Reduced padding */
-    border-bottom: 1px solid var(--medium-gray);
-    display: flex; justify-content: space-between; align-items: center;
-    flex-shrink: 0;
-}
-.panel-header h3 { margin: 0; color: var(--primary-blue); font-size: 1rem; } /* Reduced font size */
-.panel-tools { display: flex; gap: 10px; }
-.panel-content { padding: 15px; overflow-y: auto; height: 100%; }
-.editor-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #bdc3c7; text-align: center; }
-.editor-placeholder i { font-size: 4rem; }
-.editor-placeholder p { margin-top: 15px; font-size: 1.1rem; font-weight: 500; }
-
-#stimulus-image-container { position: relative; width: 100%; margin-bottom: 15px; }
-#stimulus-image-preview { width: 100%; height: auto; display: block; border-radius: 8px; }
-.resize-handle { position: absolute; bottom: 5px; right: 5px; width: 15px; height: 15px; background-color: rgba(0,0,0,0.5); border: 2px solid white; cursor: nwse-resize; }
-#stimulus-image-container.hidden { display: none; }
-
-.question-editor-form { display: flex; flex-direction: column; height: 100%; }
-.editor-toolbar {
-    display: grid; /* CHANGE to grid */
-    grid-template-columns: repeat(4, 1fr); /* Four equal columns */
-    gap: 15px;
-    padding: 12px;
-    border-radius: 8px;
-    background-color: #f8f9fa;
-    margin-bottom: 12px;
-}
-.tool-group {
+.brand {
     display: flex;
-    flex-direction: column;
-    gap: 5px;
-    min-width: 0; /* Important for grid layout */
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--primary-blue);
 }
-.tool-group label { font-size: 0.75rem; font-weight: 600; color: var(--dark-gray); }
-.tool-group select, .tool-group input {
-    padding: 6px 8px;
-    border: 1px solid var(--medium-gray);
+.logo-small {
+    width: 40px;
+    height: 40px;
+}
+.main-header nav a {
+    text-decoration: none;
+    color: var(--primary-purple);
+    font-weight: 600;
+    padding: 8px 16px;
     border-radius: 6px;
-    font-family: inherit;
-    font-size: 0.85rem;
-    width: 100%; /* Make them fill the grid column */
+    transition: background-color 0.2s;
 }
-.question-number-bar { background-color: #e9ecef; color: var(--primary-blue); font-weight: 600; padding: 6px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 0.9rem; }
-
-.form-scroll-area { flex-grow: 1; overflow-y: auto; padding: 0 10px 5px 0; }
-.form-scroll-area .input-group { margin-bottom: 12px; }
-.form-scroll-area h4 { color: var(--primary-blue); margin-top: 12px; margin-bottom: 10px; border-bottom: 1px solid var(--medium-gray); padding-bottom: 8px; font-size: 1rem; }
-.form-scroll-area label { display: block; font-weight: 600; margin-bottom: 5px; color: var(--primary-blue); }
-.form-scroll-area .option-group { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.correct-answer-label { display: flex; align-items: center; gap: 8px; font-weight: 600; padding: 8px; }
-.option-group .input-group { flex-grow: 1; margin-bottom: 0; }
-.option-group .input-group .math-input { font-size: 1rem; min-height: 40px; padding: 8px 10px; }
-
-.form-actions { flex-shrink: 0; display: flex; justify-content: space-between; gap: 10px; margin-top: 15px; border-top: 1px solid var(--medium-gray); padding-top: 15px; }
-.form-actions .btn { padding: 8px 16px; font-size: 0.9rem; margin-top: 0; }
-.btn-secondary.danger { background-color: #e74c3c; color: white; }
-.btn-secondary.danger:hover { background-color: #c0392b; }
-
-.ql-toolbar.ql-snow { border: 1px solid var(--medium-gray); border-top-left-radius: 8px; border-top-right-radius: 8px; background-color: #f8f9fa; }
-.ql-container.ql-snow { border: 1px solid var(--medium-gray); border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
-.ql-editor {
-    font-family: 'Source Serif 4', serif;
-    font-size: 1rem;
-    line-height: 1.6;
-    min-height: 80px; /* A much smaller default height */
-}
-
-.math-input { width: 100%; padding: 10px 12px; border: 1px solid var(--medium-gray); border-radius: 8px; font-size: 1.1rem; min-height: 45px; }
-.math-input.mq-focused { border-color: var(--primary-purple); box-shadow: 0 0 0 3px rgba(106, 13, 173, 0.15); }
-
-.editor-footer { flex-shrink: 0; background-color: #2c3e50; color: var(--white); padding: 8px 15px; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); }
-.footer-controls { display: flex; justify-content: center; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #7f8c8d; padding-bottom: 8px; }
-.module-switcher { display: flex; justify-content: center; gap: 8px; }
-.module-btn { background: none; border: 1px solid #7f8c8d; color: #ecf0f1; padding: 5px 12px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 0.8rem; transition: background-color 0.2s, border-color 0.2s; }
-.module-btn:hover { background-color: rgba(255, 255, 255, 0.1); }
-.module-btn.active { background-color: var(--primary-purple); border-color: var(--primary-purple); color: var(--white); }
-/* Find and replace this rule */
-.question-navigator {
-    display: grid; /* Switched back to grid */
-    grid-template-columns: repeat(auto-fit, minmax(38px, 1fr)); /* Responsive columns */
-    justify-content: start; /* THIS IS THE KEY: Aligns items to the beginning */
-    gap: 6px;
-    padding-top: 10px;
-}
-.q-nav-btn { background-color: #34495e; border: 1px solid #7f8c8d; color: #ecf0f1; height: 36px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-.q-nav-btn:hover { background-color: #4e6a85; border-color: var(--white); }
-.q-nav-btn.active { background-color: var(--white); color: var(--primary-blue); transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
-.q-nav-btn.completed { background-color: #27ae60; border-color: #2ecc71; }
-
-/* ====================================================== */
-/* === ADD THIS CSS to the bottom of your style.css file === */
-/* ====================================================== */
-
-
-
-/* NINJA FIX: Ensure the Back and Next buttons in the footer are vertically centered. */
-.test-footer .footer-right {
-    display: flex;
-    align-items: center; /* This does the magic. */
-    gap: 10px; /* Adds a bit of space between the buttons */
-}
-/* ======================================================== */
-/* === NINJA UI FIX: Add this to the end of style.css === */
-/* ======================================================== */
-
-/* 1. Apply consistent padding to both columns for breathing room. */
-.stimulus-pane .pane-content,
-.question-pane .pane-content {
-    padding: 25px; /* Adjust this value if you want more/less space */
-}
-
-/* 2. CRITICAL: Remove the default top margin from the first paragraph in the stimulus. */
-/* This makes its text content align perfectly with the top of the question pane's content. */
-.stimulus-pane .pane-content p:first-child {
-    margin-top: 0;
-}
-
-/* 3. As requested: Add a small gap between the question header bar and the question text. */
-.question-header-bar {
-    margin-bottom: 20px;
-}
-
-/* --- Add this to style.css for the modal functionality --- */
-.modal-backdrop.visible {
-    visibility: visible;
-    opacity: 1;
-}
-
-
-/* In style.css */
-
-/* NINJA UI: Style for the "Marked for Review" state in the question navigator */
-.q-number.reviewed {
-    border-color: var(--primary-purple);
-    background-color: #f0e4f8;
-    font-weight: 700;
-}
-
-
-/* In style.css, add these rules */
-
-.option-wrapper.stricken-through {
+.main-header nav a:hover {
     background-color: #f8f9fa;
-    opacity: 0.6;
 }
 
-.option-wrapper.stricken-through .option-letter,
-.option-wrapper.stricken-through .option-text {
-    text-decoration: line-through;
-    color: #888;
-}
-
-.option-wrapper.stricken-through .strikethrough-btn {
-    background-color: var(--primary-purple);
-    color: var(--white);
-}
-
-/* In style.css */
-
-/* NINJA UI: Styles for the Highlighter feature */
-.tool-btn.active {
-    background-color: rgba(255, 255, 255, 0.25);
-    border-radius: 4px;
-}
-
-body.highlighter-active .stimulus-pane {
-    cursor: text; /* Change cursor to indicate text can be selected */
-}
-
-.highlight {
-    background-color: #FFD700; /* A nice yellow highlight color */
-}
-
-/* In style.css */
-
-/* ====================================================== */
-/* === NINJA UX REFINEMENT: Highlighter Polish          === */
-/* ====================================================== */
-
-/* When the highlighter is active, make the browser's default blue selection invisible. */
-body.highlighter-active ::selection {
-    background-color: transparent;
-}
-
-
-/* In style.css */
-
-/* NINJA UI: Style for answered (but not current) questions in the navigator */
-.q-number.answered {
-    background-color: #ccc4c4; /* A light gray to indicate completion */
-    border-color: #ccc4c4;
-    text-decoration: none; /* Remove the old strikethrough */
-    color: #333; /* Ensure text is readable */
-}
-
-/* Ensure the current question style overrides the answered style */
-.q-number.current {
-    border: 2px solid var(--primary-blue);
-    font-weight: 700;
-    background-color: var(--white); /* Explicitly set background to white */
-}
-/* In style.css */
-
-/* ====================================================== */
-/* === NINJA CSS: DEFINITIVE Math Text Wrapping Fix     === */
-/* ====================================================== */
-
-/*
- This is the key: We target the innermost `span`s that MathQuill creates
- and force their `white-space` property to `normal`. The `!important` flag
- is used here as a final measure to ensure our style overrides any inline
- styles that the MathQuill library might be applying directly.
-*/
-.math-input span, 
-#math-passage span,
-.question-text span[mathquill-command-id],
-.option-text span[mathquill-command-id] {
-    white-space: normal !important;
-    overflow-wrap: break-word;
-}
-
-/* In style.css */
-
-/* =================================================================== */
-/* === NINJA CSS: THE DEFINITIVE, FORCEFUL MATH WRAPPING FIX (v2)  === */
-/* =================================================================== */
-
-/* --- Step 1: Force wrapping in the EDITOR page --- */
-
-/* Target the text area that MathQuill uses for input */
-.mq-textarea textarea {
-    white-space: normal !important;
-}
-
-/* Target the visual containers in the editor to allow breaks */
-#stimulus-editor.math-input,
-#question-text-editor.math-input,
-.answer-input.mathquill-editable { /* This was the original rule */
-    overflow-wrap: break-word;
-    word-break: break-all;
-    white-space: normal;
-    cursor: text;
-}
-
-/* 
-   NINJA ADDITION: Specifically target the answer choice SPANs in the editor.
-   This is the missing piece. This forces the visual text of the answer
-   choices to wrap, matching the behavior of the passage and prompt.
-*/
-#option-a.mathquill-editable span,
-#option-b.mathquill-editable span,
-#option-c.mathquill-editable span,
-#option-d.mathquill-editable span,
-#fill-in-answer.mathquill-editable span {
-    white-space: normal !important;
-}
-
-
-/* --- Step 2: Force wrapping in the TEST page (static content) --- */
-
-/* This section for the test page is correct and remains unchanged */
-#math-passage,
-.question-text.mq-math-mode,
-.option-text.mq-math-mode {
-    overflow-wrap: break-word;
-    word-break: break-all;
-}
-
-.mq-math-mode span {
-    white-space: normal !important;
-    display: inline !important;
-    padding: 0 0.5px;
-}
-
-.mq-math-mode .mq-root-block,
-.mq-math-mode .mq-root-block * {
-    vertical-align: middle !important;
-}
-
-/* In style.css */
-
-/* ====================================================== */
-/* === NINJA LAYOUT: Dynamic Math Module Styles       === */
-/* ====================================================== */
-
-.test-main.math-layout-active .main-content-body {
-    display: flex; /* Change from grid to flexbox */
-    flex-direction: column; /* Stack items vertically */
-    align-items: center;    /* Center the column horizontally on the page */
-    overflow-y: auto;       /* Allow the whole column to scroll if needed */
-    padding: 20px 0;
-}
-
-/* For the panes inside the new math layout... */
-.test-main.math-layout-active .stimulus-pane,
-.test-main.math-layout-active .question-pane {
-    width: 100%;
-    max-width: 800px; /* A comfortable reading width for questions */
-    height: auto;       /* Let height be determined by content */
-    border-left: none;  /* Remove the vertical dividing line */
-    overflow-y: visible; /* Disable individual scrolling for the panes */
-}
-
-.stimulus-pane.is-empty {
-    display: none !important; /* Hide the stimulus pane completely */
-}
-
-/* When the calculator is open, revert to a split-screen layout */
-.test-main.calculator-open .main-content-body {
-    flex-direction: row; /* Go back to side-by-side */
-    align-items: stretch;
-}
-
-/* Define the calculator pane (we will add this in JS) */
-.calculator-pane {
-    width: 350px; /* Fixed width for the calculator */
+/* --- 4. Authentication Pages (Login/Signup) --- */
+.auth-body {
+    background: linear-gradient(135deg, var(--primary-blue), var(--primary-purple));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
     padding: 20px;
-    border-right: 1px solid var(--border-color);
+    position: relative;
+    overflow-y: auto;
 }
-
-/* In the <head> of your HTML files, you would add: */
-/* <link href="https://fonts.googleapis.com/css2?family=Merriweather&display=swap" rel="stylesheet"> */
-
-/* In style.css */
-.stimulus-pane .pane-content {
-    font-family: 'Merriweather', serif;
-    font-size: 17px; /* Slightly larger for readability */
-    line-height: 1.7;
-    color: #333;
+.background-shapes {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 1; overflow: hidden;
 }
-
-.question-text {
-    font-family: 'Poppins', sans-serif; /* Your current font */
-    font-size: 18px; /* Slightly larger for clarity */
-    font-weight: 500;
+.shape {
+    position: absolute; border-radius: 50%;
+    background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0));
 }
+.shape-1 { width: 400px; height: 400px; top: -100px; left: -150px; }
+.shape-2 { width: 500px; height: 500px; bottom: -200px; right: -150px; }
 
-/* In style.css */
-
-/* ====================================================== */
-/* === NINJA UI FIXES: Editor Polish                  === */
-/* ====================================================== */
-
-/* --- Fix 1: Mismatched Answer Fields --- */
-/* Apply the same styles from the main editor to the answer choice editors */
-.option-group .ql-container {
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 1rem;
-    background-color: #fff;
+.auth-container {
+    position: relative; z-index: 2;
+    width: 100%; max-width: 420px;
 }
-
-/* Add a bit more space for the radio button */
-.option-group {
-    display: flex;
-    align-items: flex-start; /* Align to the top */
-    gap: 10px;
-    margin-bottom: 10px;
+.auth-card {
+    background-color: var(--white);
+    padding: 40px; border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    text-align: center; width: 100%;
 }
-
-.option-group .input-group {
-    flex-grow: 1; /* Allow the editor to take up the remaining space */
+.auth-card-header {
+    display: flex; flex-direction: row;
+    align-items: center; justify-content: center;
+    gap: 15px; margin-bottom: 20px;
 }
-
-/* --- Fix 2: Formula Input Collision --- */
-/* Target the formula tooltip and give it some breathing room */
-
-
-/* ====================================================== */
-/* === NINJA UI FIXES: Editor Polish (v2)             === */
-/* ====================================================== */
-.option-group .ql-container { border: 1px solid var(--medium-gray); border-radius: 8px; font-size: 1rem; background-color: #fff; }
-.option-group { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
-.option-group .input-group { flex-grow: 1; }
-
-/* ====================================================== */
-/* === NINJA UI FIXES: Editor Polish (v2)             === */
-/* ====================================================== */
-
-/* --- Fix 1: Mismatched & Overlapping Answer Fields --- */
-
-/* Target the container that Quill generates and style it like a proper input field. */
-.option-group .ql-container {
-    border: 1px solid var(--medium-gray);
-    border-radius: 8px;
-    font-size: 1rem;
-    background-color: #fff;
-    min-height: 42px; /* Ensure it has a minimum height */
+.auth-card-header .logo { width: 60px; height: 60px; }
+.auth-card-header h1 {
+    margin: 0; font-size: 2.2rem; font-weight: 700;
+    letter-spacing: 1px; color: var(--primary-blue);
 }
-
-/* Make the toolbar that Quill generates look clean and attached to its container. */
-.option-group .ql-toolbar {
-    background-color: #f8f9fa;
-    border: 1px solid var(--medium-gray);
-    border-bottom: none; /* Remove bottom border to merge with the container */
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
+.auth-card-slogan {
+    color: var(--dark-gray); margin-bottom: 25px; margin-top: -15px;
 }
-
-/* Adjust the main flex container for the answer options. */
-.option-group {
-    display: flex;
-    align-items: flex-start; /* CRITICAL: Align radio button to the top of the editor */
-    gap: 10px;
-    margin-bottom: 15px; /* Add space between each answer option */
+.auth-form { display: flex; flex-direction: column; gap: 15px; }
+.error-message {
+    color: var(--error-red); font-weight: 600; font-size: 0.9rem;
+    text-align: center; opacity: 0; max-height: 0; margin-bottom: 0;
+    overflow: hidden; transition: all 0.3s ease-in-out;
 }
-
-/* Ensure the editor container takes up all available space. */
-.option-group .input-group {
-    flex-grow: 1; 
+.error-message.visible {
+    opacity: 1; max-height: 50px; margin-bottom: 15px;
 }
+.auth-switch { margin-top: 25px; font-size: 0.9rem; }
+.auth-switch a { color: var(--primary-purple); text-decoration: none; font-weight: 600; }
+.auth-switch a:hover { text-decoration: underline; }
 
-/* --- Fix 2: Formula Input Collision --- */
+/* --- 5. Student Dashboard Page --- */
+.dashboard-main { max-width: 1200px; margin: 0 auto; padding: 40px; }
+.welcome-section {
+    background: linear-gradient(135deg, var(--primary-blue), var(--primary-purple));
+    color: var(--white); padding: 30px; border-radius: 12px; margin-bottom: 40px;
+}
+.welcome-section h2 { margin: 0 0 10px 0; font-size: 2rem; }
+.test-code-section { margin-bottom: 40px; }
+.test-code-section form { display: flex; gap: 10px; }
+.test-code-input {
+    flex-grow: 1; padding: 12px 15px; border: 1px solid var(--border-color);
+    border-radius: 8px; font-size: 1rem; max-width: 300px; text-transform: uppercase;
+}
+.test-code-input::placeholder { text-transform: none; }
+.test-list-container h3 {
+    font-size: 1.5rem; color: var(--primary-blue);
+    border-bottom: 2px solid var(--light-gray); padding-bottom: 10px; margin-bottom: 20px;
+}
+.test-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 25px;
+}
+.test-card {
+    background-color: var(--white); border: 1px solid var(--border-color);
+    border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+.test-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08); }
+.card-content { padding: 25px; flex-grow: 1; }
+.test-card h4 { margin: 0 0 10px 0; font-size: 1.2rem; color: var(--primary-blue); }
+.test-card p { color: var(--dark-gray); font-size: 0.95rem; line-height: 1.5; margin-bottom: 20px; }
+.test-status { font-weight: 600; font-size: 0.8rem; padding: 4px 8px; border-radius: 20px; }
+.not-started { background-color: #e3d3f8; color: var(--primary-purple); }
+.card-btn {
+    display: block; background-color: var(--primary-purple); color: var(--white);
+    text-align: center; padding: 15px; text-decoration: none; font-weight: 600;
+    border-radius: 0 0 10px 10px; margin-top: 0;
+}
+.test-card.completed .card-btn { background-color: var(--primary-blue); }
 
-/* Target the formula tooltip and give it some breathing room so it doesn't overlap. */
-.ql-snow .ql-tooltip[data-mode=formula] {
-    margin-top: 10px;
-    margin-left: 10px;
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.15);
-    z-index: 10; /* Ensures it's on top of other elements */
+/* --- 6. Admin Panel Page --- */
+.admin-welcome {
+    background: var(--primary-blue); color: var(--white);
+    padding: 30px; border-radius: 12px; margin-bottom: 40px;
+}
+.admin-welcome h2 { margin: 0 0 10px 0; font-size: 2rem; }
+.admin-section {
+    background-color: var(--white); border: 1px solid var(--border-color);
+    border-radius: 12px; padding: 30px;
+}
+.section-header {
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--border-color); padding-bottom: 20px; margin-bottom: 20px;
+}
+.section-header h3 { margin: 0; color: var(--primary-blue); }
+.section-header .btn { margin-top: 0; display: flex; align-items: center; gap: 8px; }
+.test-list-admin { display: flex; flex-direction: column; gap: 15px; }
+.test-item-admin {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 20px; border: 1px solid var(--border-color); border-radius: 8px;
+}
+.test-info h4 { margin: 0 0 5px 0; color: var(--primary-blue); }
+.test-info span { font-size: 0.9rem; color: var(--dark-gray); font-family: monospace; }
+.test-actions { display: flex; gap: 10px; }
+
+/* --- 7. Modal Styles (Shared by Admin & Test pages) --- */
+.modal-backdrop {
+    position: fixed; inset: 0; background-color: rgba(0,0,0,0.5);
+    z-index: 1999; opacity: 0; visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+}
+.modal-backdrop.visible { opacity: 1; visibility: visible; }
+
+.admin-modal {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(0.95);
+    width: 90%; max-width: 500px; background-color: var(--white);
+    border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    z-index: 2000; padding: 30px; visibility: hidden; opacity: 0;
+    transition: opacity 0.3s, transform 0.3s, visibility 0.3s;
+}
+.admin-modal.visible {
+    visibility: visible; opacity: 1; transform: translate(-50%, -50%) scale(1);
+}
+.admin-modal h3 { margin: 0 0 25px 0; color: var(--primary-blue); }
+.admin-modal form { display: flex; flex-direction: column; gap: 20px; }
+.form-actions {
+    display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;
 }
