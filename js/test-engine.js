@@ -59,46 +59,57 @@ document.addEventListener('DOMContentLoaded', () => {
      * NINJA FIX #1: The fully corrected renderQuestion function.
      * It now uses .innerHTML and calls renderAllMath() at the end.
      */
-    function renderQuestion(index) {
-        const question = allQuestionsByModule[currentModuleIndex][index];
-        if (!question) return;
+    // In js/test-engine.js
 
-        // --- Step 1: Render all HTML content using .innerHTML ---
-        
-        // Stimulus Pane
-        let imageHTML = '';
-        if (question.imageUrl) {
-            imageHTML = `<img src="${question.imageUrl}" alt="Stimulus Image" style="width: ${question.imageWidth || '100%'};">`;
-        }
-        // ALWAYS use innerHTML for content from Quill
-        stimulusPaneContent.innerHTML = imageHTML + (question.passage || '');
+function renderQuestion(index) {
+    const question = allQuestionsByModule[currentModuleIndex][index];
+    if (!question) return;
 
-        // Question Pane
-        const questionHTML = `
-            <div class="question-header-bar">
-                <div class="q-number-display">${question.questionNumber}</div>
-                <label class="mark-for-review">
-                    <input type="checkbox" id="mark-review-checkbox" ${markedQuestions[question.id] ? 'checked' : ''}>
-                    <i class="fa-regular fa-flag"></i> <span>Mark for Review</span>
-                </label>
-            </div>
-            <div class="question-text">${question.prompt || ''}</div>
-            <div class="question-options">${renderOptions(question)}</div>
-        `;
-        questionPaneContent.innerHTML = questionHTML;
+    const isMath = question.module > 2;
 
-        // --- Step 2: Now that HTML is in the DOM, find and render the math ---
-        renderAllMath();
+    // --- NINJA LAYOUT LOGIC: Apply correct classes based on question type ---
+    const mainWrapper = document.querySelector('.test-main');
+    const stimulusPane = document.querySelector('.stimulus-pane');
 
-        // --- Step 3: Restore state and update UI (unchanged) ---
-        const savedAnswer = userAnswers[question.id];
-        if (savedAnswer) {
-            const radioBtn = questionPaneContent.querySelector(`input[value="${savedAnswer}"]`);
-            if (radioBtn) radioBtn.checked = true;
-        }
-        
-        updateUI(question);
+    // Toggle the main layout class based on whether it's a math module
+    mainWrapper.classList.toggle('math-layout-active', isMath);
+
+    // The "Skipper" Logic: Check if the stimulus is effectively empty.
+    // An empty Quill editor saves '<p><br></p>', so we check for that too.
+    const isStimulusEmpty = (!question.passage || question.passage.trim() === '' || question.passage === '<p><br></p>') && !question.imageUrl;
+    
+    // Toggle the class that hides the stimulus pane
+    stimulusPane.classList.toggle('is-empty', isStimulusEmpty);
+    // --- END OF NINJA LAYOUT LOGIC ---
+
+    // --- Render Content (this part is from our last fix and remains correct) ---
+    let imageHTML = question.imageUrl ? `<img src="${question.imageUrl}" alt="Stimulus Image" style="width: ${question.imageWidth || '100%'};">` : '';
+    stimulusPaneContent.innerHTML = imageHTML + (question.passage || '');
+
+    const questionHTML = `
+        <div class="question-header-bar">
+            <div class="q-number-display">${question.questionNumber}</div>
+            <label class="mark-for-review">
+                <input type="checkbox" id="mark-review-checkbox" ${markedQuestions[question.id] ? 'checked' : ''}>
+                <i class="fa-regular fa-flag"></i> <span>Mark for Review</span>
+            </label>
+        </div>
+        <div class="question-text">${question.prompt || ''}</div>
+        <div class="question-options">${renderOptions(question)}</div>
+    `;
+    questionPaneContent.innerHTML = questionHTML;
+
+    renderAllMath();
+
+    // --- Restore State and Update UI ---
+    const savedAnswer = userAnswers[question.id];
+    if (savedAnswer) {
+        const radioBtn = questionPaneContent.querySelector(`input[value="${savedAnswer}"]`);
+        if (radioBtn) radioBtn.checked = true;
     }
+    
+    updateUI(question);
+}
     
     // The rest of the file remains largely the same... I'm including it all for a simple copy-paste replacement.
 

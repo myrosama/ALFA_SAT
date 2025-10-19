@@ -776,21 +776,25 @@ body.highlighter-active ::selection {
 /* ====================================================== */
 
 .test-main.math-layout-active .main-content-body {
-    flex-direction: column; /* Stack items vertically instead of side-by-side */
-    align-items: center;    /* Center the column */
+    display: flex; /* Change from grid to flexbox */
+    flex-direction: column; /* Stack items vertically */
+    align-items: center;    /* Center the column horizontally on the page */
+    overflow-y: auto;       /* Allow the whole column to scroll if needed */
+    padding: 20px 0;
 }
 
+/* For the panes inside the new math layout... */
 .test-main.math-layout-active .stimulus-pane,
 .test-main.math-layout-active .question-pane {
     width: 100%;
-    max-width: 700px; /* A comfortable reading width */
-    height: auto;
-    border-right: none; /* Remove the dividing line */
+    max-width: 800px; /* A comfortable reading width for questions */
+    height: auto;       /* Let height be determined by content */
+    border-left: none;  /* Remove the vertical dividing line */
+    overflow-y: visible; /* Disable individual scrolling for the panes */
 }
 
-/* Hide the stimulus pane if it's marked as empty */
 .stimulus-pane.is-empty {
-    display: none;
+    display: none !important; /* Hide the stimulus pane completely */
 }
 
 /* When the calculator is open, revert to a split-screen layout */
