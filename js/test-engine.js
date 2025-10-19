@@ -63,6 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // In js/test-engine.js, replace the entire renderQuestion function
 
+// In js/test-engine.js, replace the entire function
+
 function renderQuestion(index) {
     const question = allQuestionsByModule[currentModuleIndex][index];
     if (!question) return;
@@ -78,12 +80,12 @@ function renderQuestion(index) {
     const isStimulusEmpty = (!question.passage || question.passage.trim() === '' || question.passage === '<p><br></p>') && !question.imageUrl;
     stimulusPane.classList.toggle('is-empty', isStimulusEmpty);
 
-    // --- Render Content ---
-    const imagePosition = question.imagePosition || 'above'; // Get the saved position
+    // --- Content Rendering with Image Position Logic ---
+    const imagePosition = question.imagePosition || 'above'; // Get saved position, default to 'above'
     const imageHTML = question.imageUrl ? `<img src="${question.imageUrl}" alt="Stimulus Image" style="width: ${question.imageWidth || '100%'};">` : '';
     const passageHTML = question.passage || '';
     
-    // Conditionally order the stimulus content based on the saved property
+    // Conditionally order the HTML based on the saved property
     stimulusPaneContent.innerHTML = (imagePosition === 'below') ? (passageHTML + imageHTML) : (imageHTML + passageHTML);
 
     const questionHTML = `

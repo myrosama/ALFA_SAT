@@ -213,90 +213,115 @@ function setupImageResizing() {
         });
     }
 
-    async function showEditorForQuestion(module, qNumber) {
-        currentModule = parseInt(module);
-        currentQuestion = parseInt(qNumber);
-        
-        document.querySelectorAll('.q-nav-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.qNumber == qNumber && btn.dataset.module == module);
-        });
+    // In js/editor.js, replace the entire showEditorForQuestion function
 
-        cleanupStimulusPanel();
+async function showEditorForQuestion(module, qNumber) {
+    currentModule = parseInt(module);
+    currentQuestion = parseInt(qNumber);
+    
+    // Update the active state of the navigation buttons
+    document.querySelectorAll('.q-nav-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.qNumber == qNumber && btn.dataset.module == module);
+    });
 
-        editorContainer.innerHTML = '';
-        const formClone = editorTemplate.content.cloneNode(true);
-        editorContainer.appendChild(formClone);
-        initializeQuillEditors(); 
+    // Reset the panels for a clean slate
+    cleanupStimulusPanel();
 
-        const questionForm = editorContainer.querySelector('#question-form');
-        const domainSelect = questionForm.querySelector('#q-domain');
-        const skillSelect = questionForm.querySelector('#q-skill');
-        const pointsSelect = questionForm.querySelector('#q-points');
-        const formatSelect = questionForm.querySelector('#q-format');
-        const imagePosSelect = questionForm.querySelector('#q-image-position'); 
-        
-        document.getElementById('q-number-display').textContent = qNumber;
+    // Inject the editor form from the template
+    editorContainer.innerHTML = '';
+    const formClone = editorTemplate.content.cloneNode(true);
+    editorContainer.appendChild(formClone);
+    
+    // Initialize all the rich text editors for the new form
+    initializeQuillEditors();
 
-        const isMath = currentModule > 2;
-        const domainSource = isMath ? QUESTION_DOMAINS.Math : QUESTION_DOMAINS["Reading & Writing"];
-        
-        domainSelect.innerHTML = Object.keys(domainSource).map(d => `<option value="${d}">${d}</option>`).join('');
-        
-        const populateSkills = () => {
-            const skills = domainSource[domainSelect.value] || [];
-            skillSelect.innerHTML = skills.map(s => `<option value="${s}">${s}</option>`).join('');
-        };
-        domainSelect.addEventListener('change', populateSkills);
-        populateSkills();
+    // --- Select all form elements ---
+    const questionForm = editorContainer.querySelector('#question-form');
+    const domainSelect = questionForm.querySelector('#q-domain');
+    const skillSelect = questionForm.querySelector('#q-skill');
+    const pointsSelect = questionForm.querySelector('#q-points');
+    const formatSelect = questionForm.querySelector('#q-format');
+    const imagePosSelect = questionForm.querySelector('#q-image-position'); // Get the new dropdown
+    
+    document.getElementById('q-number-display').textContent = qNumber;
 
-        pointsSelect.innerHTML = POINT_VALUES.map(v => `<option value="${v}">${v} points</option>`).join('');
+    const isMath = currentModule > 2;
+    const domainSource = isMath ? QUESTION_DOMAINS.Math : QUESTION_DOMAINS["Reading & Writing"];
+    
+    // --- Populate and configure form controls ---
+    domainSelect.innerHTML = Object.keys(domainSource).map(d => `<option value="${d}">${d}</option>`).join('');
+    
+    const populateSkills = () => {
+        const skills = domainSource[domainSelect.value] || [];
+        skillSelect.innerHTML = skills.map(s => `<option value="${s}">${s}</option>`).join('');
+    };
+    domainSelect.addEventListener('change', populateSkills);
+    
+    pointsSelect.innerHTML = POINT_VALUES.map(v => `<option value="${v}">${v} points</option>`).join('');
 
-        formatSelect.addEventListener('change', () => {
-            questionForm.querySelector('#answer-options-container').classList.toggle('hidden', formatSelect.value !== 'mcq');
-            questionForm.querySelector('#fill-in-answer-container').classList.toggle('hidden', formatSelect.value !== 'fill-in');
-        });
-        const stimulusContentEl = document.querySelector('#stimulus-panel .panel-content');
-            stimulusContentEl.style.display = 'flex';
-            stimulusContentEl.style.flexDirection = 'column'; // Default to column
-            imagePosSelect.addEventListener('change', () => {
+    formatSelect.addEventListener('change', () => {
+        questionForm.querySelector('#answer-options-container').classList.toggle('hidden', formatSelect.value !== 'mcq');
+        questionForm.querySelector('#fill-in-answer-container').classList.toggle('hidden', formatSelect.value !== 'fill-in');
+    });
+
+    // THIS IS THE NEW LOGIC FOR IMAGE POSITION
+    const stimulusContentEl = document.querySelector('#stimulus-panel .panel-content');
+    if (stimulusContentEl) {
+         stimulusContentEl.style.display = 'flex';
+         stimulusContentEl.style.flexDirection = 'column'; // Default to image above text
+         imagePosSelect.addEventListener('change', () => {
+            // Use flexbox to visually re-order the image and the editor div
             stimulusContentEl.style.flexDirection = imagePosSelect.value === 'below' ? 'column-reverse' : 'column';
-        });
-        const questionId = `m${module}_q${qNumber}`;
-        const doc = await testRef.collection('questions').doc(questionId).get();
-        const data = doc.exists ? doc.data() : {};
-        renderStimulus(data);
-
-        if (doc.exists) {
-            const data = doc.data();
-            editors.passage.root.innerHTML = data.passage || '';
-            editors.prompt.root.innerHTML = data.prompt || '';
-            if (data.options) {
-                ['A', 'B', 'C', 'D'].forEach(opt => {
-                    if (editors.options[opt]) {
-                        editors.options[opt].root.innerHTML = data.options[opt] || '';
-                    }
-                });
-            }
-            editors.fillIn.root.innerHTML = data.fillInAnswer || '';
-            
-            formatSelect.value = data.format || 'mcq';
-            const radio = questionForm.querySelector(`input[name="correct-answer"][value="${data.correctAnswer}"]`);
-            if (radio) radio.checked = true;
-            
-            domainSelect.value = data.domain || Object.keys(domainSource)[0];
-            populateSkills();
-            skillSelect.value = data.skill || '';
-            pointsSelect.value = data.points || POINT_VALUES[0];
-            imagePosSelect.value = data.imagePosition || 'above';
-            imagePosSelect.dispatchEvent(new Event('change'));
-        }
-
-        formatSelect.dispatchEvent(new Event('change'));
-
-        questionForm.addEventListener('submit', handleFormSubmit);
-        questionForm.querySelector('#delete-question-btn').addEventListener('click', handleDeleteQuestion);
-        setupImageResizing()
+         });
     }
+    
+    // --- Fetch and Load Existing Question Data from Firestore ---
+    const questionId = `m${module}_q${qNumber}`;
+    const doc = await testRef.collection('questions').doc(questionId).get();
+    const data = doc.exists ? doc.data() : {};
+    
+    // Render the stimulus image based on loaded data
+    renderStimulus(data);
+
+    if (doc.exists) {
+        // Populate editors with content
+        editors.passage.root.innerHTML = data.passage || '';
+        editors.prompt.root.innerHTML = data.prompt || '';
+        if (data.options) {
+            ['A', 'B', 'C', 'D'].forEach(opt => {
+                if (editors.options[opt]) {
+                    editors.options[opt].root.innerHTML = data.options[opt] || '';
+                }
+            });
+        }
+        editors.fillIn.root.innerHTML = data.fillInAnswer || '';
+        
+        // Populate form controls with saved values
+        formatSelect.value = data.format || 'mcq';
+        const radio = questionForm.querySelector(`input[name="correct-answer"][value="${data.correctAnswer}"]`);
+        if (radio) radio.checked = true;
+        
+        domainSelect.value = data.domain || Object.keys(domainSource)[0];
+        populateSkills(); // Must call this after setting domainSelect.value
+        skillSelect.value = data.skill || '';
+        pointsSelect.value = data.points || POINT_VALUES[0];
+
+        // Load and apply the saved image position
+        imagePosSelect.value = data.imagePosition || 'above';
+        imagePosSelect.dispatchEvent(new Event('change')); // Trigger the visual re-order
+    } else {
+        // If no doc exists, still need to initialize the dropdowns
+        populateSkills();
+    }
+
+    // Trigger initial show/hide for answer format
+    formatSelect.dispatchEvent(new Event('change'));
+
+    // --- Attach Event Listeners for the new form ---
+    questionForm.addEventListener('submit', handleFormSubmit);
+    questionForm.querySelector('#delete-question-btn').addEventListener('click', handleDeleteQuestion);
+    setupImageResizing();
+}
     
     function handleFormSubmit(e) {
     e.preventDefault();

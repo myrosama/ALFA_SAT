@@ -91,9 +91,16 @@ body.test-body {
 
 /* --- Question Components --- */
 .question-header-bar {
-    display: flex; justify-content: space-between; align-items: center;
-    background-color: #e9ecef; padding: 8px 12px; border-radius: 8px;
-    margin-bottom: 20px; position: sticky; top: 0; z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f0f0f0; 
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
 .q-number-display {
     background-color: var(--primary-blue); color: var(--white); font-weight: 700;
@@ -211,3 +218,10 @@ body.highlighter-active ::selection { background-color: transparent; }
 .q-number.answered { text-decoration: line-through; color: var(--dark-gray); }
 .q-number.reviewed { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%236a0dad' d='M96 0C60.7 0 32 28.7 32 64V448c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V64c0-35.3-28.7-64-64-64H96z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: top 2px right 2px; background-size: 8px; }
 .modal-footer { padding: 15px 20px; border-top: 1px solid var(--medium-gray); text-align: center; }
+
+.stimulus-pane img {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
