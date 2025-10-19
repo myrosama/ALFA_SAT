@@ -43,52 +43,43 @@
         </header>
 
         <!-- MAIN SPLIT-SCREEN CONTENT -->
-        <main class="test-main">
-            <div class="main-content-body">
-                <div class="stimulus-pane">
-                    <div class="pane-content">
-                        <!-- Passage content will be loaded here -->
-                        <p>In the intricate dance of pollination, bees are unparalleled masters. Their fuzzy bodies are perfect for trapping pollen, and their tireless flights ensure the propagation of countless plant species. However, with bee populations facing threats from climate change and habitat loss, scientists are exploring technological stand-ins. Enter the "RoboBee," a tiny, insect-sized robot developed by researchers at Harvard University.</p>
-                        <p>Initially, the challenge was immense. Creating a machine that could replicate the delicate, agile flight of a bee required breakthroughs in micro-robotics and artificial muscle technology. The first prototypes were tethered to a power source, unable to venture far. But years of refinement led to autonomous versions capable of controlled flight.</p>
-                    </div>
-                </div>
+<main class="test-main">
+    <!-- This is the main body for BOTH layout types -->
+    <div class="main-content-body">
 
-                <div class="question-pane">
-                    <div class="pane-content">
-                        <div class="question-header-bar">
-                            <div class="q-number-display">1</div>
-                            <label class="mark-for-review">
-                                <input type="checkbox">
-                                <i class="fa-regular fa-flag"></i>
-                                <span>Mark for Review</span>
-                            </label>
-                        </div>
+        <!-- HEADER FOR MATH: Lives at the top of the scrollable body -->
+        <div class="question-header-bar" id="math-question-header">
+            <div class="q-number-display"></div>
+            <label class="mark-for-review">
+                <input type="checkbox" class="mark-review-checkbox">
+                <i class="fa-regular fa-flag"></i>
+                <span>Mark for Review</span>
+            </label>
+        </div>
 
-                        <p class="question-text">Which finding, if true, would most directly weaken the author's claim about the potential of RoboBees as a "safety net"?</p>
-                        
-                        <div class="question-options">
-                    <!-- Options with Strikethrough Buttons -->
-                    <div class="option-wrapper">
-                        <label class="option"><input type="radio" name="question1" value="A"><span class="option-letter">A</span><span class="option-text">The materials used in RoboBee construction are biodegradable and ethically sourced.</span></label>
-                        <button class="strikethrough-btn" title="Eliminate choice"><i class="fa-solid fa-ban"></i></button>
-                    </div>
-                    <div class="option-wrapper">
-                        <label class="option"><input type="radio" name="question1" value="B"><span class="option-letter">B</span><span class="option-text">Field trials show that many plant species' reproductive structures are too delicate and are damaged by the RoboBee's brush.</span></label>
-                        <button class="strikethrough-btn" title="Eliminate choice"><i class="fa-solid fa-ban"></i></button>
-                    </div>
-                    <div class="option-wrapper">
-                        <label class="option"><input type="radio" name="question1" value="C"><span class="option-letter">C</span><span class="option-text">The flight algorithm of the RoboBee can be updated remotely to improve its navigation through complex environments.</span></label>
-                        <button class="strikethrough-btn" title="Eliminate choice"><i class="fa-solid fa-ban"></i></button>
-                    </div>
-                    <div class="option-wrapper">
-                        <label class="option"><input type="radio" name="question1" value="D"><span class="option-letter">D</span><span class="option-text">A single natural bee colony can pollinate an area equivalent to what 500 current-generation RoboBees can cover.</span></label>
-                        <button class="strikethrough-btn" title="Eliminate choice"><i class="fa-solid fa-ban"></i></button>
-                    </div>
-                </div
-                    </div>
-                </div>
+        <div class="stimulus-pane">
+            <div class="pane-content">
+                <!-- Stimulus content will be loaded here by the engine -->
             </div>
-        </main>
+        </div>
+        <div class="question-pane">
+            
+            <!-- HEADER FOR R&W: Lives inside the question pane -->
+            <div class="question-header-bar" id="rw-question-header">
+                <div class="q-number-display"></div>
+                <label class="mark-for-review">
+                    <input type="checkbox" class="mark-review-checkbox">
+                    <i class="fa-regular fa-flag"></i>
+                    <span>Mark for Review</span>
+                </label>
+            </div>
+
+            <div class="pane-content">
+                <!-- Question prompt and options will be loaded here by the engine -->
+            </div>
+        </div>
+    </div>
+</main>
 
         <!-- FOOTER -->
         <footer class="test-footer">

@@ -1,22 +1,26 @@
-/* ====================================================== */
-/* === ALFA SAT: TEST ENGINE STYLES (test.css)        === */
-/* ====================================================== */
+/* ================================================================= */
+/* === ALFA SAT: TEST ENGINE STYLES (test.css) - FINAL VERSION   === */
+/* ================================================================= */
 
-/* --- Base Layout & Typography --- */
+/* --- 1. Base Layout & Typography --- */
+.hidden { display: none !important; }
+
 body.test-body {
     background-color: var(--white);
     overflow: hidden;
 }
-.test-wrapper { display: flex; flex-direction: column; height: 100vh; }
-
+.test-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
 .stimulus-pane .pane-content {
     font-family: var(--font-family-serif);
     font-size: 17px;
     line-height: 1.7;
     color: #333;
-    padding: 25px;
 }
-.question-text, .option-text {
+.question-text, .option-text, .mq-math-mode {
     font-family: var(--font-family-sans);
 }
 .question-text {
@@ -27,138 +31,138 @@ body.test-body {
     margin-top: 0;
 }
 
-/* --- Header & Footer --- */
-.test-header {
+/* --- 2. Shared Header & Footer --- */
+.test-header, .test-footer {
     background: var(--primary-purple); color: var(--white); flex-shrink: 0;
-    padding: 0 20px; height: 60px; border-bottom: 1px solid #56088f;
     display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+    padding: 0 20px;
 }
-.header-left { display: flex; align-items: center; gap: 15px; justify-self: start; }
-.header-center { text-align: center; font-weight: 600; font-size: 1.1rem; }
+.test-header { height: 60px; border-bottom: 1px solid #56088f; }
+.test-footer { height: 70px; border-top: 1px solid #56088f; }
+.header-left, .footer-user-name { justify-self: start; }
+.header-center, .footer-center { justify-self: center; }
+.header-right, .footer-right { justify-self: end; }
+.header-left, .header-right, .footer-right { display: flex; align-items: center; gap: 15px; }
+.header-center { font-weight: 600; font-size: 1.1rem; }
 .header-center i { margin-right: 8px; }
-.header-right { display: flex; align-items: center; gap: 15px; justify-self: end; }
 .test-title h4, .timer, .tool-btn { color: var(--white); }
 .test-title span { color: #e3d3f8; }
-.tool-btn {
-    background: none; border: none; cursor: pointer;
-    font-size: 1.2rem; color: var(--white); padding: 5px;
-}
+.tool-btn { background: none; border: none; cursor: pointer; font-size: 1.2rem; color: var(--white); padding: 5px; }
 .tool-btn:hover { background-color: rgba(255, 255, 255, 0.15); border-radius: 4px; }
 .tool-btn.active { background-color: rgba(255, 255, 255, 0.25); border-radius: 4px; }
-
-.test-footer {
-    background: var(--primary-purple); color: var(--white); height: 70px;
-    border-top: 1px solid #56088f; display: grid; grid-template-columns: 1fr auto 1fr;
-    align-items: center; padding: 0 20px; flex-shrink: 0;
-}
-.footer-user-name { font-weight: 500; justify-self: start; }
-.footer-center { justify-self: center; }
-.footer-right { display: flex; align-items: center; gap: 15px; justify-self: end; }
 .test-footer .btn-secondary { background-color: var(--primary-blue); }
 .test-footer .btn-primary { background-color: var(--white); color: var(--primary-purple); }
-.question-nav-btn {
-    background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3);
-    color: var(--white); padding: 8px 16px; border-radius: 6px; cursor: pointer;
-    font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 10px;
-    transition: background-color 0.2s;
-}
+.question-nav-btn { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); color: var(--white); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 10px; transition: background-color 0.2s; }
 .question-nav-btn:hover { background: rgba(255, 255, 255, 0.2); }
 .question-nav-btn i { transition: transform 0.3s; }
 .question-nav-btn.open i { transform: rotate(180deg); }
 
+/* --- 3. Main Content Layout --- */
+.test-main {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.main-content-body {
+    height: 100%;
+    overflow: hidden;
+}
 
-/* --- Main Content Layouts (Reading vs. Math) --- */
-.test-main { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
-.main-content-body { display: grid; grid-template-columns: 1fr 1fr; height: 100%; overflow: hidden; }
-.stimulus-pane { border-right: 1px solid var(--border-color); overflow-y: auto; }
-.question-pane { overflow-y: auto; background-color: transparent; }
-.stimulus-pane, .question-pane { padding: 25px; }
+/* --- Default R&W Split-Screen Layout --- */
+.main-content-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+.stimulus-pane {
+    border-right: 1px solid var(--border-color);
+    overflow-y: auto;
+    padding: 25px;
+}
+.question-pane {
+    overflow-y: auto;
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+}
 
-/* Math Layout Overrides */
+/* --- Math Layout Overrides --- */
 .test-main.math-layout-active .main-content-body {
-    display: flex; flex-direction: column; align-items: center;
-    overflow-y: auto; padding: 25px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-y: auto;
+    padding: 25px;
+    gap: 25px;
 }
 .test-main.math-layout-active .stimulus-pane,
 .test-main.math-layout-active .question-pane {
-    width: 100%; max-width: 800px; height: auto;
-    border: none; overflow-y: visible; padding: 0 25px;
+    width: 100%;
+    max-width: 800px;
+    height: auto;
+    border: none;
+    overflow: visible;
+    padding: 0;
 }
-.test-main.math-layout-active .stimulus-pane {
-    padding-bottom: 25px;
+.test-main.math-layout-active .question-pane {
+    flex-direction: column-reverse; /* Put pane-content before header */
 }
-.stimulus-pane.is-empty { display: none !important; }
 
-/* --- Question Components --- */
+/* Hide empty stimulus */
+.stimulus-pane.is-empty {
+    display: none !important;
+}
+
+/* --- 4. Question Components --- */
 .question-header-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: #f0f0f0; 
+    background-color: #f0f0f0;
     padding: 8px 12px;
     border-radius: 8px;
     margin-bottom: 20px;
-    position: sticky;
-    top: 0;
-    z-index: 10;
+    flex-shrink: 0; /* Prevent from shrinking */
 }
+/* For Math layout, the header is full-width and has no bottom margin */
+#math-question-header {
+    width: 100%;
+    max-width: 800px;
+    margin-bottom: 0;
+}
+
 .q-number-display {
     background-color: var(--primary-blue); color: var(--white); font-weight: 700;
     width: 32px; height: 32px; display: flex; align-items: center;
     justify-content: center; border-radius: 50%;
 }
-.mark-for-review {
-    padding: 5px 10px; cursor: pointer; border-radius: 6px;
-    display: flex; align-items: center; gap: 8px;
-}
+.mark-for-review { padding: 5px 10px; cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 8px; }
 .mark-for-review:hover { background-color: #d3d9df; }
 .mark-for-review input { display: none; }
 .mark-for-review span { font-weight: 600; color: var(--text-color); }
 .mark-for-review i { font-size: 1.2rem; color: var(--dark-gray); }
 .mark-for-review input:checked ~ i { color: var(--primary-purple); font-weight: 900; }
-
 .question-options { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
-.option-wrapper {
-    display: flex; align-items: center; gap: 10px;
-    border: 1px solid var(--border-color); border-radius: 8px;
-    transition: border-color 0.2s, background-color 0.2s;
-}
+.option-wrapper { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border-color); border-radius: 8px; transition: border-color 0.2s, background-color 0.2s; }
 .option-wrapper:hover { border-color: var(--primary-purple); }
-.option-wrapper label.option {
-    border: none; flex-grow: 1; display: flex; align-items: center;
-    gap: 15px; padding: 15px; cursor: pointer;
-}
-.option-wrapper .option-letter {
-    display: flex; justify-content: center; align-items: center; width: 30px;
-    height: 30px; border: 2px solid var(--dark-gray); border-radius: 50%;
-    font-weight: 600; flex-shrink: 0;
-    transition: border-color 0.2s, background-color 0.2s, color 0.2s;
-}
+.option-wrapper label.option { border: none; flex-grow: 1; display: flex; align-items: center; gap: 15px; padding: 15px; cursor: pointer; }
+.option-wrapper .option-letter { display: flex; justify-content: center; align-items: center; width: 30px; height: 30px; border: 2px solid var(--dark-gray); border-radius: 50%; font-weight: 600; flex-shrink: 0; transition: border-color 0.2s, background-color 0.2s, color 0.2s; }
 .option-wrapper input[type="radio"] { display: none; }
-.option-wrapper input[type="radio"]:checked + .option-letter {
-    background-color: var(--primary-blue); border-color: var(--primary-blue); color: var(--white);
-}
+.option-wrapper input[type="radio"]:checked + .option-letter { background-color: var(--primary-blue); border-color: var(--primary-blue); color: var(--white); }
 .option-wrapper input[type="radio"]:checked ~ .option-text { font-weight: 600; }
-
-.strikethrough-btn {
-    background: none; border: 1px solid transparent; color: var(--dark-gray);
-    cursor: pointer; width: 32px; height: 32px; border-radius: 50%;
-    font-size: 1rem; margin-right: 10px; flex-shrink: 0;
-}
+.strikethrough-btn { background: none; border: 1px solid transparent; color: var(--dark-gray); cursor: pointer; width: 32px; height: 32px; border-radius: 50%; font-size: 1rem; margin-right: 10px; flex-shrink: 0; }
 .strikethrough-btn:hover { background-color: var(--light-gray); border-color: var(--border-color); }
 .option-wrapper.stricken-through { background-color: #f8f9fa; opacity: 0.6; }
-.option-wrapper.stricken-through .option-letter,
-.option-wrapper.stricken-through .option-text {
-    text-decoration: line-through; color: #888;
-}
+.option-wrapper.stricken-through .option-letter, .option-wrapper.stricken-through .option-text { text-decoration: line-through; color: #888; }
 .option-wrapper.stricken-through .strikethrough-btn { background-color: var(--primary-purple); color: var(--white); }
 
-/* --- Highlighter --- */
+/* --- 5. Tools & Rendering Helpers --- */
 body.highlighter-active .stimulus-pane { cursor: text; }
 body.highlighter-active ::selection { background-color: transparent; }
 .highlight { background-color: #FFD700; }
 
-/* --- Alignment & Math Rendering --- */
+.stimulus-pane img { display: block; margin-left: auto; margin-right: auto; max-width: 100%; }
+
 .stimulus-pane .ql-align-center, .question-pane .ql-align-center { text-align: center; }
 .stimulus-pane .ql-align-right, .question-pane .ql-align-right { text-align: right; }
 .stimulus-pane .ql-align-justify, .question-pane .ql-align-justify { text-align: justify; }
@@ -168,60 +172,20 @@ body.highlighter-active ::selection { background-color: transparent; }
     vertical-align: middle !important;
 }
 
-.question-navigator-modal {
-    position: fixed;
-    /* These three lines provide perfect centering */
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0.95); /* Start slightly smaller for animation */
-
-    width: 90%;
-    max-width: 500px; /* You can adjust this max-width */
-    background-color: var(--white);
-    border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-    z-index: 2000;
-    color: var(--text-color);
-    
-    /* Start hidden */
-    visibility: hidden;
-    opacity: 0;
-    
-    /* Smooth transition for the pop-in effect */
-    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
-}
-
-.question-navigator-modal.visible {
-    visibility: visible;
-    opacity: 1;
-    /* Animate to full size for the pop-in effect */
-    transform: translate(-50%, -50%) scale(1);
-}
-
-/* We don't need the arrow for a centered modal, so ensure it's hidden */
-.question-navigator-modal::after {
-   display: none;
-}
-
-
-.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid var(--medium-gray); }
+/* --- 6. Question Navigator Modal --- */
+.question-navigator-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.95); width: 90%; max-width: 500px; background-color: var(--white); border-radius: 12px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2); z-index: 2000; color: var(--text-color); visibility: hidden; opacity: 0; transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s; }
+.question-navigator-modal.visible { visibility: visible; opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid var(--border-color); }
 .modal-header h4 { margin: 0; font-size: 1.1rem; }
 .close-modal-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
 .modal-filters { display: flex; gap: 20px; padding: 15px 20px; font-size: 0.9rem; color: var(--dark-gray); }
 .modal-filters i { margin-right: 5px; }
 .modal-filters .current-q { color: var(--primary-blue); }
 .modal-filters .for-review { color: var(--primary-purple); }
-.modal-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 0 20px 20px 20px; }
-.q-number { border: 1px solid var(--medium-gray); border-radius: 4px; padding: 10px; text-align: center; cursor: pointer; font-weight: 500; }
+.modal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(60px, 1fr)); gap: 10px; padding: 0 20px 20px 20px; }
+.q-number { border: 1px solid var(--border-color); border-radius: 4px; padding: 10px; text-align: center; cursor: pointer; font-weight: 500; }
 .q-number:hover { border-color: var(--primary-purple); }
-.q-number.current { border: 2px solid var(--primary-blue); font-weight: 700; }
-.q-number.answered { text-decoration: line-through; color: var(--dark-gray); }
-.q-number.reviewed { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%236a0dad' d='M96 0C60.7 0 32 28.7 32 64V448c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V64c0-35.3-28.7-64-64-64H96z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: top 2px right 2px; background-size: 8px; }
-.modal-footer { padding: 15px 20px; border-top: 1px solid var(--medium-gray); text-align: center; }
-
-.stimulus-pane img {
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
-}
-
+.q-number.current { border: 2px solid var(--primary-blue); font-weight: 700; background-color: var(--white); }
+.q-number.answered { background-color: #e0e0e0; border-color: #e0e0e0; color: #333; }
+.q-number.reviewed { border-color: var(--primary-purple); background-color: #f0e4f8; font-weight: 700; }
+.modal-footer { padding: 15px 20px; border-top: 1px solid var(--border-color); text-align: center; }

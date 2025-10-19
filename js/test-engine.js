@@ -62,51 +62,57 @@ document.addEventListener('DOMContentLoaded', () => {
     // In js/test-engine.js
 
 // In js/test-engine.js, replace the entire renderQuestion function
-
-// In js/test-engine.js, replace the entire function
-
 function renderQuestion(index) {
     const question = allQuestionsByModule[currentModuleIndex][index];
     if (!question) return;
 
     const isMath = question.module > 2;
 
-    // --- Layout Logic ---
+    // --- References to Elements ---
     const mainWrapper = document.querySelector('.test-main');
     const stimulusPane = document.querySelector('.stimulus-pane');
     
+    // Get references to BOTH headers
+    const mathHeader = document.getElementById('math-question-header');
+    const rwHeader = document.getElementById('rw-question-header');
+
+    // --- Layout & Visibility Logic ---
     mainWrapper.classList.toggle('math-layout-active', isMath);
+    
+    // Show the correct header and hide the other
+    mathHeader.classList.toggle('hidden', !isMath);
+    rwHeader.classList.toggle('hidden', isMath);
+
+    // Determine which header is currently active to populate it
+    const activeHeader = isMath ? mathHeader : rwHeader;
+    const qNumberDisplay = activeHeader.querySelector('.q-number-display');
+    const markReviewCheckbox = activeHeader.querySelector('.mark-review-checkbox');
 
     const isStimulusEmpty = (!question.passage || question.passage.trim() === '' || question.passage === '<p><br></p>') && !question.imageUrl;
     stimulusPane.classList.toggle('is-empty', isStimulusEmpty);
 
-    // --- Content Rendering with Image Position Logic ---
-    const imagePosition = question.imagePosition || 'above'; // Get saved position, default to 'above'
+    // --- Content Rendering ---
+    const imagePosition = question.imagePosition || 'above';
     const imageHTML = question.imageUrl ? `<img src="${question.imageUrl}" alt="Stimulus Image" style="width: ${question.imageWidth || '100%'};">` : '';
     const passageHTML = question.passage || '';
-    
-    // Conditionally order the HTML based on the saved property
     stimulusPaneContent.innerHTML = (imagePosition === 'below') ? (passageHTML + imageHTML) : (imageHTML + passageHTML);
-
-    const questionHTML = `
-        <div class="question-header-bar">
-            <div class="q-number-display">${question.questionNumber}</div>
-            <label class="mark-for-review">
-                <input type="checkbox" id="mark-review-checkbox" ${markedQuestions[question.id] ? 'checked' : ''}>
-                <i class="fa-regular fa-flag"></i> <span>Mark for Review</span>
-            </label>
-        </div>
+    
+    // Populate the active header bar
+    qNumberDisplay.textContent = question.questionNumber;
+    markReviewCheckbox.checked = !!markedQuestions[question.id];
+    
+    // Populate the question prompt and options
+    questionPaneContent.innerHTML = `
         <div class="question-text">${question.prompt || ''}</div>
         <div class="question-options">${renderOptions(question)}</div>
     `;
-    questionPaneContent.innerHTML = questionHTML;
 
     renderAllMath();
 
     // --- Restore State and Update UI ---
     const savedAnswer = userAnswers[question.id];
     if (savedAnswer) {
-        const radioBtn = questionPaneContent.querySelector(`input[value="${savedAnswer}"]`);
+        const radioBtn = document.querySelector(`.question-pane input[value="${savedAnswer}"]`);
         if (radioBtn) radioBtn.checked = true;
     }
     
