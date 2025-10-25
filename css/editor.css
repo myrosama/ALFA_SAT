@@ -62,13 +62,20 @@
 
 /* NEW: Rules to make the Quill editor fill the remaining space */
 #stimulus-editor {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* This is the magic: tells the editor to take all available space */
+    min-height: 200px; /* Ensures the editor has a decent minimum size even with no image */
+}
+
+#stimulus-editor .ql-container {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    min-height: 0; /* Fixes scrolling issues inside flex containers */
 }
-#stimulus-editor .ql-container {
-    flex-grow: 1;
+#stimulus-editor .ql-editor {
+    height: 100%;
+    overflow-y: auto;
 }
 
 
