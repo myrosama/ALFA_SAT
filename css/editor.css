@@ -5,9 +5,6 @@
 .editor-body { background-color: var(--light-gray); overflow: hidden; }
 .editor-wrapper { display: flex; flex-direction: column; height: 100vh; }
 
-/* --- Header --- */
-/* The header is shared, so its styles are in style.css */
-
 /* --- Main Layout --- */
 .editor-main-content {
     flex-grow: 1;
@@ -37,13 +34,21 @@
 .panel-content { padding: 15px; overflow-y: auto; height: 100%; }
 
 /* --- Stimulus Panel (Left) --- */
+
+/* THIS IS THE KEY FIX: Making the panel a flex container */
+#stimulus-panel .panel-content {
+    display: flex;
+    flex-direction: column;
+}
+
 #stimulus-image-container {
     position: relative;
     width: 100%;
     margin-bottom: 15px;
-    display: block; /* For centering */
+    display: block;
     margin-left: auto;
     margin-right: auto;
+    flex-shrink: 0; /* Prevent the image from shrinking */
 }
 #stimulus-image-preview {
     width: 100%; height: auto; display: block;
@@ -54,6 +59,18 @@
     width: 15px; height: 15px; background-color: rgba(0,0,0,0.5);
     border: 2px solid white; cursor: nwse-resize;
 }
+
+/* NEW: Rules to make the Quill editor fill the remaining space */
+#stimulus-editor {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Fixes scrolling issues inside flex containers */
+}
+#stimulus-editor .ql-container {
+    flex-grow: 1;
+}
+
 
 /* --- Question Panel (Right) --- */
 .editor-placeholder {
