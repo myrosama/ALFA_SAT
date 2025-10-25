@@ -63,13 +63,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function cleanupStimulusPanel() {
-        if (stimulusPanelContent) {
-            stimulusPanelContent.innerHTML = `
-                <div id="stimulus-image-container" class="hidden"><img id="stimulus-image-preview" src=""><div class="resize-handle"></div></div>
-                <div id="stimulus-editor"></div>`;
-        }
-        editors = {};
+    if (stimulusPanelContent) {
+        stimulusPanelContent.innerHTML = `
+            <div id="stimulus-image-container" class="hidden"><img id="stimulus-image-preview" src=""><div class="resize-handle"></div></div>
+            <div id="stimulus-editor"></div>`;
+        // NEW LINE:
+        stimulusPanelContent.classList.remove('image-below'); // Reset the class
     }
+    editors = {};
+}
     // Place this block right after the cleanupStimulusPanel function
 
 async function uploadImageToTelegram(file) {
@@ -269,10 +271,9 @@ async function showEditorForQuestion(module, qNumber) {
     if (stimulusContentEl) {
          stimulusContentEl.style.display = 'flex';
          stimulusContentEl.style.flexDirection = 'column'; // Default to image above text
-         imagePosSelect.addEventListener('change', () => {
-            // Use flexbox to visually re-order the image and the editor div
-            stimulusContentEl.style.flexDirection = imagePosSelect.value === 'below' ? 'column-reverse' : 'column';
-         });
+        imagePosSelect.addEventListener('change', () => {
+    stimulusPanelContent.classList.toggle('image-below', imagePosSelect.value === 'below');
+});
     }
     
     // --- Fetch and Load Existing Question Data from Firestore ---
