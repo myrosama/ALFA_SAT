@@ -6,13 +6,12 @@
     <title>Practice Test - ALFA SAT</title>
      <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/test.css">
-    <!-- Fonts and Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
-    <!-- MathQuill -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.css"/>
+    <!-- Removed duplicate Merriweather font link -->
 </head>
 <body class="test-body">
 
@@ -25,70 +24,74 @@
             <div class="header-left">
                 <img src="assets/logo.png" alt="Logo" class="logo-small">
                 <div class="test-title">
-                    <h4>Reading & Writing</h4>
-                    <span>Module 1</span>
+                    <h4>Reading & Writing</h4> <!-- Dynamically updated -->
+                    <span>Module 1</span> <!-- Dynamically updated -->
                 </div>
             </div>
             <div class="header-center timer">
                 <i class="fa-regular fa-clock"></i>
-                <span id="timer-display">--:--</span> <!-- Give timer an ID -->
+                <span id="timer-display">00:00</span> <!-- Added ID -->
             </div>
             <div class="header-right">
                 <div class="test-tools">
                     <button class="tool-btn" title="Calculator"><i class="fa-solid fa-calculator"></i></button>
                     <button class="tool-btn" title="Highlighter"><i class="fa-solid fa-highlighter"></i></button>
+                    <!-- Add more tools here if needed -->
                 </div>
             </div>
         </header>
 
         <!-- MAIN CONTENT AREA -->
         <main class="test-main">
-            <!-- CALCULATOR CONTAINER -->
+            <!-- CALCULATOR CONTAINER (Absolutely Positioned) -->
             <div class="calculator-container" id="calculator-container">
-                 <!-- ADD DRAGGABLE HEADER -->
                 <div class="calculator-header" id="calculator-header">
                     <span>Calculator</span>
-                    <button class="close-calculator-btn" id="close-calculator-btn" title="Close Calculator">&times;</button>
+                    <div class="calc-header-buttons">
+                         <!-- ADD Maximize/Restore Button -->
+                        <button class="calc-size-toggle-btn" id="calc-size-toggle-btn" title="Maximize Calculator">
+                            <i class="fa-solid fa-expand"></i> <!-- Initial icon -->
+                        </button>
+                        <button class="close-calculator-btn" id="close-calculator-btn" title="Close Calculator">&times;</button>
+                    </div>
                 </div>
-                <!-- The iframe will be added here by JavaScript -->
+                <!-- Iframe will be added here by JS -->
+                <!-- ADD Resize Handle -->
+                <div class="calculator-resize-handle" id="calculator-resize-handle"></div>
             </div>
 
-            <!-- Main content body (R&W and Math) -->
+            <!-- MAIN CONTENT BODY (Handles Layout Switching) -->
             <div class="main-content-body">
-                <!-- Header for Math (inside body for layout) -->
-                <div class="question-header-bar hidden" id="math-question-header"> <!-- Start hidden -->
-                    <div class="q-number-display">--</div>
+                <!-- HEADER FOR MATH (Only visible in Math Layout) -->
+                <div class="question-header-bar hidden" id="math-question-header">
+                    <div class="q-number-display"></div>
                     <label class="mark-for-review">
-                        <input type="checkbox" class="mark-review-checkbox" data-question-id="">
+                        <input type="checkbox" class="mark-review-checkbox" data-question-id=""> <!-- data-question-id added dynamically -->
                         <i class="fa-regular fa-flag"></i>
                         <span>Mark for Review</span>
                     </label>
                 </div>
 
-                <!-- Stimulus Pane (for R&W mostly, sometimes Math) -->
+                <!-- STIMULUS PANE (Used in R&W, sometimes Math) -->
                 <div class="stimulus-pane">
                     <div class="pane-content">
                         <!-- Stimulus content loaded here -->
-                        <p>Loading...</p>
                     </div>
                 </div>
 
-                <!-- Question Pane (for R&W and Math) -->
+                <!-- QUESTION PANE (Always Visible, layout changes) -->
                 <div class="question-pane">
-                    <!-- Header for R&W (inside pane) -->
-                    <div class="question-header-bar hidden" id="rw-question-header"> <!-- Start hidden -->
-                         <div class="q-number-display">--</div>
-                        <label class="mark-for-review">
-                            <input type="checkbox" class="mark-review-checkbox" data-question-id="">
-                            <i class="fa-regular fa-flag"></i>
-                            <span>Mark for Review</span>
-                        </label>
+                    <!-- HEADER FOR R&W (Only visible in R&W Layout) -->
+                    <div class="question-header-bar" id="rw-question-header">
+                         <div class="q-number-display"></div>
+                         <label class="mark-for-review">
+                            <input type="checkbox" class="mark-review-checkbox" data-question-id=""> <!-- data-question-id added dynamically -->
+                             <i class="fa-regular fa-flag"></i>
+                             <span>Mark for Review</span>
+                         </label>
                     </div>
-
-                    <!-- Question Content Area -->
                     <div class="pane-content">
-                        <!-- Question prompt and options loaded here -->
-                         <p>Loading question...</p>
+                        <!-- Question content loaded here -->
                     </div>
                 </div>
             </div>
@@ -97,17 +100,17 @@
         <!-- FOOTER -->
         <footer class="test-footer">
             <div class="footer-user-name" id="user-name-display">
-                <!-- User name loaded here -->
+                Student <!-- Dynamically updated -->
             </div>
             <div class="footer-center">
                 <button class="question-nav-btn" id="question-nav-btn">
-                    <span>Question -- of --</span>
+                    <span>Question 1 of N</span> <!-- Dynamically updated -->
                     <i class="fa-solid fa-chevron-up"></i>
                 </button>
             </div>
             <div class="footer-right">
-                <button class="btn btn-secondary" disabled>Back</button> <!-- Start disabled -->
-                <button class="btn btn-primary" disabled>Next</button> <!-- Start disabled -->
+                <button class="btn btn-secondary">Back</button>
+                <button class="btn btn-primary">Next</button>
             </div>
         </footer>
     </div>
@@ -115,17 +118,16 @@
     <!-- QUESTION NAVIGATOR MODAL -->
     <div class="question-navigator-modal" id="question-navigator-modal">
         <div class="modal-header">
-            <h4>Section X, Module X: Questions</h4> <!-- Updated dynamically -->
+            <h4>Section X, Module Y: Subject Questions</h4> <!-- Dynamically updated -->
             <button class="close-modal-btn" id="close-modal-btn"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="modal-filters">
             <span><i class="fa-solid fa-circle-dot current-q"></i> Current</span>
-            <span><i class="fa-regular fa-square"></i> Unanswered</span>
+            <span><i class="fa-regular fa-square"></i> Unanswered</span> <!-- Consider adding class/logic -->
             <span><i class="fa-solid fa-flag for-review"></i> For Review</span>
         </div>
         <div class="modal-grid" id="modal-question-grid">
             <!-- Grid numbers loaded here -->
-            <p>Loading navigation...</p>
         </div>
         <div class="modal-footer">
             <button class="btn btn-primary" id="modal-proceed-btn" style="display: none;">Continue</button>
@@ -133,44 +135,17 @@
     </div>
 
     <!-- SCRIPTS -->
-    <!-- JQuery (Required by MathQuill) -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
-    <!-- MathQuill Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.js"></script>
-
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
-
-    <!-- Our Firebase initialization script -->
     <script src="js/firebase-init.js"></script>
+    <script src="js/main.js"></script> <!-- General site logic -->
+    <script src="js/test-engine.js"></script> <!-- Test page specific logic -->
 
-    <!-- Test Engine Script (Handles test logic) -->
-    <script src="js/test-engine.js"></script>
+    <!-- Inline script removed as modal logic is now in test-engine.js -->
 
-    <!-- Main Script (Handles auth state, logout - minimal UI interaction on this page) -->
-    <script src="js/main.js"></script>
-
-    <!-- Inline script for elements not handled by test-engine (like basic modal toggling if needed, though test-engine handles most) -->
-    <script>
-        // Basic modal toggle might still be useful as fallback or if test-engine fails
-        // document.addEventListener('DOMContentLoaded', () => {
-        //     const toggleBtn = document.getElementById('question-nav-btn');
-        //     const modal = document.getElementById('question-navigator-modal');
-        //     const closeModalBtn = document.getElementById('close-modal-btn');
-        //     const backdrop = document.getElementById('modal-backdrop');
-
-        //     function simpleToggleModal(show) {
-        //         if(modal) modal.classList.toggle('visible', show);
-        //         if(backdrop) backdrop.classList.toggle('visible', show);
-        //     }
-
-        //     // Let test-engine.js handle the main logic, these are fallbacks/secondary
-        //     // if (toggleBtn) toggleBtn.addEventListener('click', () => simpleToggleModal(true));
-        //     // if (closeModalBtn) closeModalBtn.addEventListener('click', () => simpleToggleModal(false));
-        //     // if (backdrop) backdrop.addEventListener('click', () => simpleToggleModal(false));
-        // });
-    </script>
 </body>
 </html>
+
