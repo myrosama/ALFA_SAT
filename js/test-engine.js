@@ -1,4 +1,4 @@
-// js/test-engine.js - Fix Drag/Resize/Maximize Logic & Missing Vars
+// js/test-engine.js - Fix Drag/Resize/Maximize Logic & Content Shift
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Initialize Firebase and MathQuill ---
@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentCalcWidth = 360;
     let currentCalcHeight = 500;
     try {
+        // Try to read default size from CSS variables
         currentCalcWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--calculator-width')) || 360;
         currentCalcHeight = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--calculator-height')) || 500;
     } catch (e) { console.warn("Could not read initial calc size from CSS vars."); }
@@ -63,10 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const calcSizeToggleBtn = document.getElementById('calc-size-toggle-btn');
     const calcSizeToggleIcon = calcSizeToggleBtn ? calcSizeToggleBtn.querySelector('i') : null;
     const userNameDisp = document.getElementById('user-name-display');
-    
-    // +++ ADDED MISSING VARIABLE DEFINITIONS +++
-    const toggleBtn = document.getElementById('question-nav-btn');
-    const closeModalBtn = document.getElementById('close-modal-btn');
+    const toggleBtn = document.getElementById('question-nav-btn'); // Ensure this is defined
+    const closeModalBtn = document.getElementById('close-modal-btn'); // Ensure this is defined
 
 
     // --- Core Test Functions ---
@@ -284,7 +283,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // Restore non-maximized size/position before showing
             if (isCalculatorMaximized) {
                 // Force restore state *before* making it visible if it was closed maximized
-                // This prevents it flashing maximized then shrinking
                 toggleMaximizeCalculator(false); // This applies styles and resets state
             } else {
                 // Apply last known dimensions/position from state variables
@@ -335,24 +333,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /** Updates the left margin of the main content based on calculator state. */
     function updateContentMargin() {
-         // Only apply margin if calculator is visible AND *not* maximized
-         // Use the container's *current actual* offsetWidth for accuracy during resize
-         const marginSize = (isCalculatorVisible && !isCalculatorMaximized && calculatorContainer)
-                            ? (calculatorContainer.offsetWidth + 20) : 0; // 20px gap
-         document.documentElement.style.setProperty('--content-margin-left', `${marginSize}px`);
-         console.log(`Set --content-margin-left to ${marginSize}px`);
+         // +++ UPDATED LOGIC +++
+         let marginSize = 0; // Default to 0
+         if (isCalculatorVisible) {
+             if (isCalculatorMaximized) {
+                 // When maximized, margin is 50% of the viewport width
+                 marginSize = '50%'; // CSS handles the 50/50 split
+             } else if (calculatorContainer) {
+                 // When visible and not maximized, margin is its current width + gap
+                 // Use currentCalcWidth state variable for consistency
+                 marginSize = `${currentCalcWidth + 20}px`;
+             }
+         }
+         // Set the CSS variable. The CSS in test.css will use this.
+         document.documentElement.style.setProperty('--content-margin-left', `${marginSize}`);
+         console.log(`Set --content-margin-left to ${marginSize}`);
     }
 
 
      /** Handles calculator dragging start. */
      function startDrag(e) {
          if (!e.target.closest('.calculator-header') || e.target.closest('.close-calculator-btn, .calc-size-toggle-btn') || isCalculatorMaximized || isResizingCalc) return;
-         if (!calculatorContainer) return;
+         if (!calculatorContainer || !testMain) return; // Need testMain for bounds
          isDraggingCalc = true;
-         calculatorContainer.classList.add('dragging'); // Add class to disable iframe events
+         // +++ ADD CLASS TO FIX IFRAME EVENT STEALING +++
+         calculatorContainer.classList.add('dragging');
          const rect = calculatorContainer.getBoundingClientRect();
+         
+         // +++ FIX FOR DRAG OFFSET +++
+         // Calculate offset relative to the element's top-left corner
          calcOffsetX = e.clientX - rect.left;
          calcOffsetY = e.clientY - rect.top;
+
          calculatorContainer.style.cursor = 'grabbing';
          calculatorContainer.style.transition = 'none'; // Prevent animation lag during drag
          document.body.style.userSelect = 'none'; // Prevent text selection
@@ -365,36 +377,50 @@ document.addEventListener('DOMContentLoaded', () => {
      /** Handles calculator dragging movement. */
      function dragMove(e) {
          if (!isDraggingCalc || !calculatorContainer) return; e.preventDefault();
-         let newX = e.clientX - calcOffsetX; let newY = e.clientY - calcOffsetY;
+         
+         // +++ FIX FOR DRAG COORDINATES +++
          const mainBounds = testMain.getBoundingClientRect();
+         // Calculate new viewport-relative top-left
+         let newViewportX = e.clientX - calcOffsetX;
+         let newViewportY = e.clientY - calcOffsetY;
+
+         // Convert to parent-relative coordinates (relative to testMain)
+         let newParentX = newViewportX - mainBounds.left;
+         let newParentY = newViewportY - mainBounds.top;
+
          const calcWidth = calculatorContainer.offsetWidth; const calcHeight = calculatorContainer.offsetHeight;
-         // Constrain within the bounds of .test-main
-         newX = Math.max(0, Math.min(newX, mainBounds.width - calcWidth));
-         newY = Math.max(0, Math.min(newY, mainBounds.height - calcHeight));
-         calculatorContainer.style.left = newX + 'px'; calculatorContainer.style.top = newY + 'px';
+         // Constrain parent-relative coordinates
+         newParentX = Math.max(0, Math.min(newParentX, mainBounds.width - calcWidth));
+         newParentY = Math.max(0, Math.min(newParentY, mainBounds.height - calcHeight));
+         
+         calculatorContainer.style.left = newParentX + 'px';
+         calculatorContainer.style.top = newParentY + 'px';
          // Store current position while dragging
-          currentCalcLeft = newX;
-          currentCalcTop = newY;
+          currentCalcLeft = newParentX;
+          currentCalcTop = newParentY;
      }
 
      /** Handles calculator dragging end. */
      function stopDrag() {
           console.log("Stopping drag."); isDraggingCalc = false;
          if(calculatorContainer) {
-             calculatorContainer.classList.remove('dragging'); // Re-enable iframe events
+             // +++ REMOVE CLASS +++
+             calculatorContainer.classList.remove('dragging');
              calculatorContainer.style.cursor = 'move';
-             calculatorContainer.style.transition = 'opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0.2s'; // Restore only show/hide transition
+             // Restore transitions *only* for show/hide, not position
+             calculatorContainer.style.transition = 'opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0.2s, width 0.3s ease-in-out';
          }
          document.body.style.userSelect = ''; // Re-allow text selection
          window.removeEventListener('mousemove', dragMove);
-         // Final position is stored in currentCalcLeft, currentCalcTop
+         // Final position is now stored in currentCalcLeft, currentCalcTop
      }
 
     /** Handles calculator resizing start. */
     function startResize(e) {
          if (isCalculatorMaximized || isDraggingCalc) return;
         isResizingCalc = true;
-        calculatorContainer.classList.add('resizing'); // Add class to disable iframe events
+        // +++ ADD CLASS TO FIX IFRAME EVENT STEALING +++
+        calculatorContainer.classList.add('resizing');
         calcResizeStartX = e.clientX; calcResizeStartY = e.clientY;
         calcResizeStartWidth = calculatorContainer.offsetWidth;
         calcResizeStartHeight = calculatorContainer.offsetHeight;
@@ -435,8 +461,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function stopResize() {
          console.log("Stopping resize."); isResizingCalc = false;
          if(calculatorContainer) {
-             calculatorContainer.classList.remove('resizing'); // Re-enable iframe events
-             calculatorContainer.style.transition = 'opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0.2s';
+             // +++ REMOVE CLASS +++
+             calculatorContainer.classList.remove('resizing');
+             calculatorContainer.style.transition = 'opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0.2s, width 0.3s ease-in-out';
          }
         document.body.style.userSelect = '';
         window.removeEventListener('mousemove', resizeMove);
@@ -488,9 +515,15 @@ document.addEventListener('DOMContentLoaded', () => {
          // Use requestAnimationFrame to ensure the class/style changes are applied
          // before re-enabling transitions and updating state/UI
          requestAnimationFrame(() => {
-             // Re-enable transitions *after* initial style changes for restore, or after adding class for maximize
-             // For maximize, the CSS handles the transition. For restore, we allow show/hide transition.
-              calculatorContainer.style.transition = originalTransition || 'opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0.2s'; // Restore or set default
+             // Re-enable transitions *after* initial style changes
+             // For maximize, the CSS handles the width transition. For restore, allow all transitions.
+             if (newState) {
+                 calculatorContainer.style.transition = 'width 0.3s ease-in-out';
+             } else {
+                 // On restore, we want transitions for show/hide, but not pos/size
+                 // since we set them instantly. Let's just restore the default.
+                 calculatorContainer.style.transition = originalTransition || 'opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0.2s, width 0.3s ease-in-out';
+             }
 
              // Update internal state
              isCalculatorMaximized = newState;
@@ -500,7 +533,7 @@ document.addEventListener('DOMContentLoaded', () => {
              calcSizeToggleIcon.classList.toggle('fa-compress', isCalculatorMaximized);
              if(calcSizeToggleBtn) calcSizeToggleBtn.title = isCalculatorMaximized ? "Restore Calculator Size" : "Maximize Calculator";
 
-             // Update content margin (will be 0 if maximized, restored if not)
+             // Update content margin (will be 0 if maximized, 50% if maximized, or [width]px if floating)
              updateContentMargin();
          });
     }

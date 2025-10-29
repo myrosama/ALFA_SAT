@@ -7,13 +7,18 @@
 
 /* CSS Variables for Dynamic Sizing/Spacing */
 :root {
-    --calculator-width: 360px; /* Default calculator width */
-    --calculator-height: 500px; /* Default calculator height */
-    --content-margin-left: 0px; /* Margin applied to content when calc is open */
+    /* Default/Current Calculator Dimensions (updated by JS) */
+    --calculator-width: 360px;
+    --calculator-height: 500px;
+    /* Margin applied to content when calc is open & NOT maximized */
+    --content-margin-left: 0px;
+    /* Minimum dimensions */
     --calculator-min-width: 280px;
     --calculator-min-height: 300px;
-    --math-content-max-width: 800px; /* Max width for centered math content */
-    --calc-header-height: 35px; /* Height of the calculator drag/control bar */
+    /* Max width for centered math content */
+    --math-content-max-width: 800px;
+    /* Height of the calculator drag/control bar */
+    --calc-header-height: 35px;
 }
 
 
@@ -87,16 +92,18 @@ body.test-body {
     position: relative; /* Positioning context for calculator */
 }
 
+/* +++ ADJUSTED CONTENT SHIFT RULE +++ */
 .main-content-body {
     height: 100%;
-    overflow: hidden;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    overflow: hidden; /* Still needed for R&W scroll panes */
     /* Apply margin and width using CSS variables */
     margin-left: var(--content-margin-left);
     width: calc(100% - var(--content-margin-left));
     /* Add transition for smooth shifting */
     transition: margin-left 0.3s ease-in-out, width 0.3s ease-in-out;
+    /* Default display (for R&W) */
+    display: grid;
+    grid-template-columns: 1fr 1fr;
 }
 
 .stimulus-pane {
@@ -117,25 +124,36 @@ body.test-body {
 
 /* --- Math Layout Overrides --- */
 .test-main.math-layout-active .main-content-body {
+    /* Change display for centering */
     display: flex;
     flex-direction: column;
     align-items: center; /* Center children horizontally */
-    overflow-y: auto;
-    padding: 25px;
+    overflow-y: auto; /* Allow scrolling for long math questions */
+    padding: 25px; /* Padding around the centered content */
     gap: 25px;
+    /* Grid columns not needed here */
+    grid-template-columns: none;
 }
 
-.test-main.math-layout-active .stimulus-pane,
+/* Math content elements - ensure they respect max-width and center */
+.test-main.math-layout-active #math-question-header,
+.test-main.math-layout-active .stimulus-pane:not(.is-empty), /* Don't style empty stimulus */
 .test-main.math-layout-active .question-pane {
-    width: 100%;
+    width: 100%; /* Take full width *within the parent* */
     max-width: var(--math-content-max-width); /* Apply max-width */
-    height: auto;
+    height: auto; /* Height based on content */
     border: none;
-    overflow: visible;
-    padding: 0;
+    overflow: visible; /* Prevent internal scrollbars unless needed */
+    padding: 0; /* Padding is on parent */
     margin-left: auto; /* Center */
     margin-right: auto; /* Center */
+    box-sizing: border-box; /* Include padding/border if any were added */
 }
+/* Ensure question pane grows correctly in math flex layout */
+.test-main.math-layout-active .question-pane {
+    flex-grow: 1; /* Allow it to take up space if needed */
+}
+
 
 .stimulus-pane.is-empty {
     display: none !important;
@@ -153,13 +171,12 @@ body.test-body {
     margin-bottom: 20px;
     flex-shrink: 0;
 }
+/* Style math header specifically (already centered by parent rule) */
 #math-question-header {
-    width: 100%;
-    max-width: var(--math-content-max-width);
+    width: 100%; /* It will respect the max-width set above */
     margin-bottom: 0;
-    margin-left: auto; /* Center */
-    margin-right: auto; /* Center */
 }
+/* Hide the inactive header */
 .test-main:not(.math-layout-active) #math-question-header,
 .test-main.math-layout-active #rw-question-header {
     display: none;
@@ -208,22 +225,14 @@ body.test-body {
 
 /* --- 5. Tools & Rendering Helpers --- */
 body.highlighter-active .stimulus-pane .pane-content,
-body.highlighter-active .question-pane .pane-content {
-     cursor: text;
-}
+body.highlighter-active .question-pane .pane-content { cursor: text; }
 body.highlighter-active ::selection { background-color: transparent; }
 .highlight { background-color: #FFD700; }
-
 .stimulus-pane img { display: block; margin-left: auto; margin-right: auto; max-width: 100%; height: auto; }
-
 .stimulus-pane .ql-align-center, .question-pane .ql-align-center { text-align: center; }
 .stimulus-pane .ql-align-right, .question-pane .ql-align-right { text-align: right; }
 .stimulus-pane .ql-align-justify, .question-pane .ql-align-justify { text-align: justify; }
-
-.mq-math-mode .mq-root-block,
-.mq-math-mode .mq-root-block * {
-    vertical-align: middle !important;
-}
+.mq-math-mode .mq-root-block, .mq-math-mode .mq-root-block * { vertical-align: middle !important; }
 
 /* --- 6. Question Navigator Modal --- */
 .question-navigator-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.95); width: 90%; max-width: 500px; background-color: var(--white); border-radius: 12px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2); z-index: 2000; color: var(--text-color); visibility: hidden; opacity: 0; transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s; }
@@ -245,17 +254,18 @@ body.highlighter-active ::selection { background-color: transparent; }
 .q-number.reviewed { border-color: var(--primary-purple); background-color: #f0e4f8; font-weight: 600; color: var(--primary-purple); }
 .q-number.answered.reviewed { background-color: #e3d3f8; border-color: var(--primary-purple); }
 .modal-footer { padding: 15px 20px; border-top: 1px solid var(--border-color); text-align: center; }
-#modal-proceed-btn { margin-top: 0; }
+#modal-proceed-btn { margin-top: 0; display: none; } /* Initially hidden */
 
 
 /* --- 7. Calculator Styles --- */
-/* :root variables defined at the top */
-
 .calculator-container {
     position: absolute;
-    top: 10px; left: 10px;
-    width: var(--calculator-width); height: var(--calculator-height);
-    min-width: var(--calculator-min-width); min-height: var(--calculator-min-height);
+    /* JS will set top/left, width/height directly */
+    /* Use CSS variables for defaults and JS state */
+    width: var(--calculator-width);
+    height: var(--calculator-height);
+    min-width: var(--calculator-min-width);
+    min-height: var(--calculator-min-height);
     background-color: var(--white);
     border: 1px solid var(--border-color); border-radius: 8px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.2);
@@ -264,7 +274,7 @@ body.highlighter-active ::selection { background-color: transparent; }
     transform: scale(0.95);
     /* Transition for show/hide */
     transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0.2s;
-    overflow: hidden;
+    overflow: hidden; /* Important for border-radius */
     display: flex; flex-direction: column;
 }
 
@@ -275,7 +285,7 @@ body.highlighter-active ::selection { background-color: transparent; }
     user-select: none; height: var(--calc-header-height);
     box-sizing: border-box;
 }
-.calculator-header span { font-weight: 600; color: var(--dark-gray); }
+.calculator-header span { font-weight: 600; color: var(--dark-gray); padding-right: 10px; } /* Added padding */
 .calc-header-buttons { display: flex; align-items: center; gap: 5px; }
 
 .close-calculator-btn,
@@ -289,18 +299,20 @@ body.highlighter-active ::selection { background-color: transparent; }
 .calc-size-toggle-btn:hover { background-color: var(--medium-gray); color: var(--primary-blue); }
 .calc-size-toggle-btn i { font-size: 0.8em; }
 
-.calculator-container iframe { width: 100%; flex-grow: 1; border: none; }
+.calculator-container iframe { width: 100%; flex-grow: 1; border: none; background-color: var(--white); /* Ensure iframe bg */ }
 
 .calculator-resize-handle {
     position: absolute; bottom: 0; right: 0; width: 18px; height: 18px;
-    cursor: nwse-resize; z-index: 1501;
+    cursor: nwse-resize; z-index: 1501; /* Above iframe */
+    /* Visual handle */
     border-bottom: 3px solid #aaa; border-right: 3px solid #aaa;
     box-sizing: border-box;
+    /* Ensure it's clickable */
     pointer-events: auto;
 }
 
 /* +++ FIX FOR WEIRD DRAG/RESIZE +++ */
-/* Disable pointer events on the iframe when dragging or resizing */
+/* Disable pointer events on the iframe ONLY when dragging or resizing */
 .calculator-container.dragging iframe,
 .calculator-container.resizing iframe {
     pointer-events: none;
@@ -309,42 +321,26 @@ body.highlighter-active ::selection { background-color: transparent; }
 
 /* --- Calculator Maximized State --- */
 .calculator-container.maximized {
-    top: 0 !important; left: 0 !important;
-    width: 50% !important; height: 100% !important;
+    top: 0 !important; left: 0 !important; /* Force position */
+    width: 50% !important; height: 100% !important; /* Force size to 50/50 split */
+    min-width: 50% !important; min-height: 100% !important; /* Override mins */
     border-radius: 0; border-right: 1px solid var(--border-color);
     border-left: none; border-top: none; border-bottom: none;
-    /* Add transition for maximize/restore */
-    transition: width 0.3s ease-in-out, height 0.3s ease-in-out, opacity 0.2s, transform 0.2s;
+    transform: scale(1) !important; /* Override show/hide transform */
+    /* Add transition for maximize/restore effect */
+    transition: width 0.3s ease-in-out; /* Only transition width */
 }
+/* Hide resize handle and change cursor when maximized */
 .calculator-container.maximized .calculator-resize-handle { display: none; }
 .calculator-container.maximized .calculator-header { cursor: default; }
 
 
 /* --- Layout Shift when Calculator is Active --- */
+/* Make visible when active */
 .test-main.calculator-active .calculator-container {
     opacity: 1; visibility: visible; transform: scale(1);
 }
 
-/* +++ FIX FOR CONTENT SHIFT +++ */
-/* This rule applies the margin shift to the main content body */
-/* It is controlled by the --content-margin-left CSS variable */
-.main-content-body {
-    margin-left: var(--content-margin-left);
-    width: calc(100% - var(--content-margin-left));
-    /* Add transition for smooth shifting */
-    transition: margin-left 0.3s ease-in-out, width 0.3s ease-in-out;
-}
-
-/* This rule ensures the math content (header, stimulus, question pane)
-   ALWAYS respects the max-width and centers itself.
-   When the .main-content-body parent shrinks, the auto margins
-   will correctly re-center these blocks within that narrower space. */
-.test-main.math-layout-active #math-question-header,
-.test-main.math-layout-active .stimulus-pane:not(.is-empty),
-.test-main.math-layout-active .question-pane {
-    max-width: var(--math-content-max-width);
-    margin-left: auto;
-    margin-right: auto;
-    width: 100%;
-}
+/* Apply margin to content body */
+/* .main-content-body rule already handles this using --content-margin-left */
 
