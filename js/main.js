@@ -1,17 +1,33 @@
+// js/main.js - More robust checks
+
+// --- Global Firebase Refs (if needed by multiple functions) ---
+// It's generally better to pass db/auth or initialize them where needed,
+// but for simplicity in this structure:
+let auth;
+let db;
+
 document.addEventListener('DOMContentLoaded', () => {
 
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+    // Initialize Firebase services within DOMContentLoaded
+    // This assumes firebase.js (compat) is loaded before this script
+    try {
+        auth = firebase.auth();
+        db = firebase.firestore();
+    } catch (error) {
+        console.error("Firebase failed to initialize:", error);
+        // Display a user-friendly message on the page if critical
+        document.body.innerHTML = "Error initializing application. Please check console.";
+        return; // Stop further execution if Firebase isn't available
+    }
 
-        // --- LOGIN PAGE LOGIC ---
+    // --- LOGIN PAGE LOGIC ---
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
         const errorDiv = document.getElementById('login-error');
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            // Hide the error on a new attempt
-            errorDiv.classList.remove('visible'); 
-            
+            if (errorDiv) errorDiv.classList.remove('visible'); // Hide error on new attempt
+
             const email = loginForm['login-email'].value;
             const password = loginForm['login-password'].value;
 
@@ -20,79 +36,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.location.href = 'dashboard.html';
                 })
                 .catch(err => {
-                    console.error(err.code);
+                    console.error("Login Error:", err.code, err.message);
                     let message = 'An error occurred. Please try again.';
                     if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
                         message = 'Incorrect email or password.';
                     }
-                    errorDiv.textContent = message;
-                    // Make the error visible
-                    errorDiv.classList.add('visible'); 
+                    if (errorDiv) {
+                        errorDiv.textContent = message;
+                        errorDiv.classList.add('visible'); // Make error visible
+                    }
                 });
         });
     }
-    // Add this entire function to js/main.js
 
-/**
- * NINJA STRIKE: This is the core function for the dynamic dashboard.
- * It fetches all documents from the 'tests' collection in Firestore
- * and dynamically creates the test cards on the student dashboard.
- */
-async function populateDashboard() {
-    const testGrid = document.getElementById('test-grid-container');
-    // Guard clause: If we're not on the dashboard page, do nothing.
-    if (!testGrid) {
-        return;
-    }
-
-    const db = firebase.firestore();
-    try {
-        const testsSnapshot = await db.collection('tests').get();
-        
-        if (testsSnapshot.empty) {
-            testGrid.innerHTML = '<p>No practice tests are available at the moment. Please check back later.</p>';
-            return;
-        }
-
-        // Clear the initial "Loading..." message
-        testGrid.innerHTML = '';
-
-        testsSnapshot.forEach(doc => {
-            const test = doc.data();
-            const testId = doc.id; // This is the unique ID like "pt3_2024"
-
-            // Create the card element from scratch
-            const card = document.createElement('div');
-            card.classList.add('test-card');
-
-            // Use the data from Firestore to populate the card's content.
-            // Note the link (`href`) now includes the unique testId.
-            card.innerHTML = `
-                <div class="card-content">
-                    <h4>${test.name || 'Unnamed Test'}</h4>
-                    <p>A full-length adaptive test covering Reading, Writing, and Math.</p>
-                    <span class="test-status not-started">Not Started</span>
-                </div>
-                <a href="test.html?id=${testId}" class="btn btn-primary card-btn">Start Test</a>
-            `;
-            
-            testGrid.appendChild(card);
-        });
-
-    } catch (error) {
-        console.error("Error fetching tests for dashboard:", error);
-        testGrid.innerHTML = '<p>Could not load tests due to an error. Please try refreshing the page.</p>';
-    }
-}
-
-        // --- SIGN UP PAGE LOGIC ---
+    // --- SIGN UP PAGE LOGIC ---
     const signupForm = document.getElementById('signup-form');
     if (signupForm) {
         const errorDiv = document.getElementById('signup-error');
         signupForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            // Hide the error on a new attempt
-            errorDiv.classList.remove('visible');
+            if (errorDiv) errorDiv.classList.remove('visible'); // Hide error
 
             const name = signupForm['signup-name'].value;
             const email = signupForm['signup-email'].value;
@@ -100,158 +63,112 @@ async function populateDashboard() {
 
             auth.createUserWithEmailAndPassword(email, password)
                 .then(cred => {
+                    // Create user document in Firestore
                     return db.collection('users').doc(cred.user.uid).set({
                         fullName: name,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     }).then(() => {
+                        // Update Firebase Auth profile (optional but good practice)
                         return cred.user.updateProfile({ displayName: name });
                     });
                 })
                 .then(() => {
                     alert('Account created! Please log in.');
-                    window.location.href = 'index.html';
+                    window.location.href = 'index.html'; // Redirect to login
                 })
                 .catch(err => {
-                    console.error(err.code);
+                    console.error("Signup Error:", err.code, err.message);
                     let message = 'An error occurred. Please try again.';
                     if (err.code === 'auth/email-already-in-use') {
                         message = 'This email is already registered.';
                     } else if (err.code === 'auth/weak-password') {
                         message = 'Password should be at least 6 characters.';
                     }
-                    errorDiv.textContent = message;
-                    // Make the error visible
-                    errorDiv.classList.add('visible');
+                     if (errorDiv) {
+                        errorDiv.textContent = message;
+                        errorDiv.classList.add('visible'); // Make error visible
+                    }
                 });
         });
     }
 
-   // +++ ADD THIS NEW BLOCK IN ITS PLACE +++
-// --- ADMIN LOGIN PAGE LOGIC (NEW & SIMPLE) ---
-const adminLoginForm = document.getElementById('admin-login-form');
-if (adminLoginForm) {
-    const errorDiv = document.getElementById('admin-login-error');
-    adminLoginForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        errorDiv.classList.remove('visible');
-        
-        const email = adminLoginForm['admin-email'].value;
-        const password = adminLoginForm['admin-password'].value;
+    // --- ADMIN LOGIN PAGE LOGIC ---
+    const adminLoginForm = document.getElementById('admin-login-form');
+    if (adminLoginForm) {
+        const errorDiv = document.getElementById('admin-login-error');
+        adminLoginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (errorDiv) errorDiv.classList.remove('visible');
 
-        auth.signInWithEmailAndPassword(email, password)
-            .then(userCredential => {
-                // Step 1: Login successful. Now check the database.
-                const user = userCredential.user;
-                return db.collection('admins').doc(user.uid).get();
-            })
-            .then(doc => {
-                // Step 2: Check if the document exists in the 'admins' collection.
-                if (doc.exists) {
-                    // SUCCESS: User is an admin.
-                    window.location.href = 'admin.html';
-                } else {
-                    // FAIL: User is not in the admins collection.
-                    auth.signOut();
-                    errorDiv.textContent = 'Access Denied. Not an admin account.';
-                    errorDiv.classList.add('visible');
-                }
-            })
-            .catch(err => {
-                // This catches login errors like wrong password.
-                errorDiv.textContent = 'Invalid admin credentials.';
-                errorDiv.classList.add('visible');
-            });
-    });
-}
-    // --- TEST EDITOR PAGE LOGIC ---
-    const editorPage = document.querySelector('.editor-main');
-    if (editorPage) {
-        // Get the test ID from the URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const testId = urlParams.get('id');
+            const email = adminLoginForm['admin-email'].value;
+            const password = adminLoginForm['admin-password'].value;
 
-        if (!testId) {
-            // If no ID is provided, send them back to the admin page
-            window.location.href = 'admin.html';
-        }
-
-        // --- Fetch and display the test name ---
-        const testEditorTitle = document.getElementById('test-editor-title');
-        db.collection('tests').doc(testId).get().then(doc => {
-            if (doc.exists) {
-                testEditorTitle.textContent = doc.data().name;
-            } else {
-                alert('Test not found!');
-                window.location.href = 'admin.html';
-            }
+            auth.signInWithEmailAndPassword(email, password)
+                .then(userCredential => {
+                    const user = userCredential.user;
+                    // Check if user exists in the 'admins' collection
+                    return db.collection('admins').doc(user.uid).get();
+                })
+                .then(doc => {
+                    if (doc.exists) {
+                        // User is an admin
+                        window.location.href = 'admin.html';
+                    } else {
+                        // User logged in but is not in the admins collection
+                        auth.signOut(); // Log them out
+                         if (errorDiv) {
+                            errorDiv.textContent = 'Access Denied. Not an admin account.';
+                            errorDiv.classList.add('visible');
+                        }
+                    }
+                })
+                .catch(err => {
+                    // Handle login errors (wrong password, user not found for admin)
+                    console.error("Admin Login Error:", err.code, err.message);
+                     if (errorDiv) {
+                        errorDiv.textContent = 'Invalid admin credentials.';
+                        errorDiv.classList.add('visible');
+                    }
+                });
         });
-
-        // +++ ADD THIS NEW CODE BELOW THE EXISTING EDITOR LOGIC +++
-
-        const addQuestionBtn = document.getElementById('add-question-btn');
-        const editorContainer = document.getElementById('question-editor-container');
-        const editorTemplate = document.getElementById('question-editor-template');
-        const questionEditorTitle = document.getElementById('question-editor-title');
-
-        addQuestionBtn.addEventListener('click', () => {
-            // Clone the template content
-            const formClone = editorTemplate.content.cloneNode(true);
-            
-            // Clear the editor and append the new form
-            editorContainer.innerHTML = '';
-            editorContainer.appendChild(formClone);
-            questionEditorTitle.textContent = "Create New Question";
-
-            // Add logic for the new cancel button inside the form
-            const cancelQuestionBtn = editorContainer.querySelector('#cancel-question-btn');
-            cancelQuestionBtn.addEventListener('click', () => {
-                editorContainer.innerHTML = ''; // Clear the form
-                // Restore the placeholder
-                editorContainer.innerHTML = `
-                    <div id="editor-placeholder">
-                        <i class="fa-solid fa-file-circle-plus"></i>
-                        <p>Add a new question to get started</p>
-                    </div>`;
-                questionEditorTitle.textContent = "Select a question or add a new one";
-            });
-        });
-
-        // (Code to SAVE the question will go here next)
     }
-// +++ ADD THIS ONE NEW BLOCK TO YOUR WORKING main.js FILE +++
 
-    // --- ADMIN PANEL "CREATE TEST" LOGIC ---
+
+    // --- ADMIN PANEL "CREATE TEST" MODAL LOGIC ---
     const createTestBtn = document.getElementById('create-new-test-btn');
-    if (createTestBtn) { // This line ensures this code ONLY runs on admin.html
-        
-        const modal = document.getElementById('create-test-modal');
-        const backdrop = document.getElementById('modal-backdrop');
-        const cancelBtn = document.getElementById('cancel-create-test');
-        const createTestForm = document.getElementById('create-test-form');
+    const createTestModal = document.getElementById('create-test-modal');
+    const adminModalBackdrop = document.getElementById('modal-backdrop'); // Assuming same backdrop ID
+    const cancelCreateTestBtn = document.getElementById('cancel-create-test');
+    const createTestForm = document.getElementById('create-test-form');
 
+    // Only add listeners if all relevant elements are found (i.e., we are on admin.html)
+    if (createTestBtn && createTestModal && adminModalBackdrop && cancelCreateTestBtn && createTestForm) {
         const openModal = () => {
-            modal.classList.add('visible');
-            backdrop.classList.add('visible');
+            createTestModal.classList.add('visible');
+            adminModalBackdrop.classList.add('visible');
         };
 
         const closeModal = () => {
-            modal.classList.remove('visible');
-            backdrop.classList.remove('visible');
-            createTestForm.reset();
+            createTestModal.classList.remove('visible');
+            adminModalBackdrop.classList.remove('visible');
+            createTestForm.reset(); // Reset form on close
         };
 
-        // --- Event Listeners ---
         createTestBtn.addEventListener('click', openModal);
-        cancelBtn.addEventListener('click', closeModal);
-        backdrop.addEventListener('click', closeModal);
+        cancelCreateTestBtn.addEventListener('click', closeModal);
+        adminModalBackdrop.addEventListener('click', closeModal);
 
-        // --- Handle Form Submission ---
         createTestForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const testName = createTestForm['test-name'].value;
             const testId = createTestForm['test-id'].value;
 
-            // Save the new test to the 'tests' collection in Firestore
+            // Basic validation (more could be added)
+            if (!testName || !testId || !/^[a-z0-9_]+$/.test(testId)) {
+                alert("Please provide a valid name and ID (lowercase letters, numbers, underscores only).");
+                return;
+            }
+
             db.collection('tests').doc(testId).set({
                 name: testName,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -259,23 +176,21 @@ if (adminLoginForm) {
                 console.log('Test created successfully!');
                 closeModal();
                 alert('Test created successfully!');
-                window.location.reload(); // Reload the page to see the new test (we'll improve this later)
+                window.location.reload(); // Reload admin page to show new test
             }).catch(err => {
                 console.error("Error creating test:", err);
-                alert("Error: " + err.message);
+                alert("Error creating test: " + err.message);
             });
         });
-    }
-    // ... (The working createTestForm submit logic is here) ...
+    } // End of Create Test Modal Logic check
 
-// +++ PASTE THIS CORRECTED BLOCK +++
 
-        // --- DISPLAY TESTS FROM DATABASE --- //
-        const testListContainer = document.getElementById('admin-test-list');
-
+    // --- DISPLAY TESTS FROM DATABASE (Admin Panel) --- //
+    const testListContainerAdmin = document.getElementById('admin-test-list');
+    if (testListContainerAdmin) { // Check specifically for the admin container
         db.collection('tests').orderBy('createdAt', 'desc').get().then(snapshot => {
             if (snapshot.empty) {
-                testListContainer.innerHTML = "<p>No tests found. Create one to get started!</p>";
+                testListContainerAdmin.innerHTML = "<p>No tests found. Create one to get started!</p>";
                 return;
             }
 
@@ -283,102 +198,149 @@ if (adminLoginForm) {
             snapshot.forEach(doc => {
                 const test = doc.data();
                 const testId = doc.id;
-
                 html += `
                     <div class="test-item-admin" data-id="${testId}">
                         <div class="test-info">
-                            <h4>${test.name}</h4>
+                            <h4>${test.name || 'Unnamed Test'}</h4>
                             <span>ID: ${testId}</span>
                         </div>
                         <div class="test-actions">
                             <a href="edit-test.html?id=${testId}" class="btn-icon" title="Edit Questions"><i class="fa-solid fa-pen-to-square"></i></a>
-                            <button class="btn-icon" title="Generate Proctored Code"><i class="fa-solid fa-barcode"></i></button>
-                            <button class="btn-icon danger" title="Delete Test"><i class="fa-solid fa-trash-can"></i></button>
+                            <button class="btn-icon generate-code-btn" data-testid="${testId}" title="Generate Proctored Code"><i class="fa-solid fa-barcode"></i></button>
+                            <button class="btn-icon danger delete-test-btn" data-testid="${testId}" data-testname="${test.name || 'this test'}" title="Delete Test"><i class="fa-solid fa-trash-can"></i></button>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             });
-            testListContainer.innerHTML = html;
-        }).catch(err => {
-            console.error("Error fetching tests:", err);
-            testListContainer.innerHTML = "<p>Error loading tests. Please try again.</p>";
-        });
+            testListContainerAdmin.innerHTML = html;
 
-       // --- LOGOUT & PAGE PROTECTION ---
-    const logoutButton = document.getElementById('logout-btn');
-    if (logoutButton) {
-        logoutButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            auth.signOut().then(() => {
-                // After logout, always go back to the main login page
-                window.location.href = 'index.html';
-            });
-        });
-    }
-
-    // +++ ADD THIS NEW BLOCK IN ITS PLACE +++
-// In js/main.js, find and modify this block
-
-firebase.auth().onAuthStateChanged(user => {
-    const protectedPages = ['dashboard.html', 'admin.html', 'edit-test.html', 'test.html'];
-    const currentPage = window.location.pathname.split('/').pop();
-
-    if (user) {
-        // User is logged in
-        
-        // NINJA MODIFICATION: Call our new dashboard function!
-        // We check if the current page is the dashboard before running it.
-        if (currentPage === 'dashboard.html') {
-            populateDashboard();
-        }
-
-        // Existing Logout Button Logic
-        const logoutBtn = document.getElementById('logout-btn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                firebase.auth().signOut();
-            });
-        }
-    } else {
-        // User is not logged in
-        if (protectedPages.includes(currentPage)) {
-            window.location.href = 'index.html';
-        }
-    }
-});
-    // --- TEST PAGE UI LOGIC ---
-    const testBody = document.querySelector('.test-body');
-    if (testBody) {
-        const navBtn = document.getElementById('question-nav-btn');
-        const modal = document.getElementById('question-navigator-modal');
-        const closeBtn = document.getElementById('close-modal-btn');
-        const backdrop = document.getElementById('modal-backdrop');
-
-        if (navBtn && modal && closeBtn && backdrop) {
-            const toggleModal = () => {
-                modal.classList.toggle('visible');
-                backdrop.classList.toggle('visible');
-                navBtn.classList.toggle('open');
-            };
-            navBtn.addEventListener('click', toggleModal);
-            closeBtn.addEventListener('click', toggleModal);
-            backdrop.addEventListener('click', toggleModal);
-        }
-
-        const strikethroughButtons = document.querySelectorAll('.strikethrough-btn');
-        strikethroughButtons.forEach(button => {
-            button.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const wrapper = button.closest('.option-wrapper');
-                const radio = wrapper.querySelector('input[type="radio"]');
-                if (wrapper) {
-                    wrapper.classList.toggle('stricken-through');
-                    radio.disabled = wrapper.classList.contains('stricken-through');
-                    if (radio.disabled) radio.checked = false;
+            // Add event listeners for delete buttons (using event delegation)
+            testListContainerAdmin.addEventListener('click', (e) => {
+                const deleteButton = e.target.closest('.delete-test-btn');
+                if (deleteButton) {
+                    const testIdToDelete = deleteButton.dataset.testid;
+                    const testNameToDelete = deleteButton.dataset.testname;
+                    // Replace confirm with a custom modal in a real app
+                    if (confirm(`Are you sure you want to delete the test "${testNameToDelete}" (${testIdToDelete})? This cannot be undone.`)) {
+                        // Add deletion logic here (deleting test doc and potentially questions subcollection)
+                        console.warn(`Deletion requested for ${testIdToDelete}, but not implemented yet.`);
+                        // Example: db.collection('tests').doc(testIdToDelete).delete().then(...).catch(...);
+                         alert('Deletion functionality not yet implemented.');
+                    }
                 }
+                 const generateCodeButton = e.target.closest('.generate-code-btn');
+                 if (generateCodeButton) {
+                     const testIdForCode = generateCodeButton.dataset.testid;
+                     console.warn(`Code generation requested for ${testIdForCode}, but not implemented yet.`);
+                     alert('Proctored code generation not yet implemented.');
+                 }
+
             });
+
+        }).catch(err => {
+            console.error("Error fetching admin tests:", err);
+            testListContainerAdmin.innerHTML = "<p>Error loading tests. Please try again.</p>";
         });
+    } // End of Admin Test List Logic check
+
+
+    // --- LOGOUT & PAGE PROTECTION ---
+    auth.onAuthStateChanged(user => {
+        const protectedPages = ['dashboard.html', 'admin.html', 'edit-test.html', 'test.html', 'review.html'];
+        const currentPage = window.location.pathname.split('/').pop();
+
+        const logoutBtn = document.getElementById('logout-btn'); // Get logout button reference
+
+        if (user) {
+            // User is logged in
+
+            // Only attempt to populate dashboard if on dashboard.html
+            if (currentPage === 'dashboard.html') {
+                 populateDashboard(); // This function now has its own internal check
+            }
+
+            // Setup Logout Button if it exists on the page
+            if (logoutBtn) {
+                 // Check if listener already added to prevent duplicates (optional but good practice)
+                if (!logoutBtn.dataset.listenerAdded) {
+                     logoutBtn.addEventListener('click', (e) => {
+                         e.preventDefault();
+                         auth.signOut().then(() => {
+                             window.location.href = 'index.html'; // Redirect after sign out
+                         }).catch(error => {
+                             console.error("Sign out error", error);
+                         });
+                     });
+                     logoutBtn.dataset.listenerAdded = 'true'; // Mark as added
+                }
+            }
+        } else {
+            // User is NOT logged in
+            // If user tries to access a protected page, redirect to login
+            if (protectedPages.includes(currentPage)) {
+                console.log(`User not logged in, redirecting from protected page: ${currentPage}`);
+                window.location.href = 'index.html';
+            }
+        }
+    });
+
+    // --- Ensure test-specific UI logic is NOT in main.js ---
+    // Make sure no code here tries to manipulate elements specific to test.html
+    // like modals, strikethrough buttons, etc. That belongs in test-engine.js.
+
+
+}); // --- END OF DOMContentLoaded for main.js ---
+
+
+// --- populateDashboard Function (defined outside DOMContentLoaded) ---
+// This function fetches tests and populates the STUDENT dashboard grid.
+async function populateDashboard() {
+    const testGrid = document.getElementById('test-grid-container');
+    // Guard clause: If the grid container doesn't exist on this page, exit.
+    if (!testGrid) {
+        // console.log("Not on student dashboard, skipping populateDashboard.");
+        return;
     }
-});
+     // Ensure db is initialized before trying to use it
+     if (!db) {
+         console.error("Firestore DB not initialized in populateDashboard.");
+         testGrid.innerHTML = '<p>Error: Could not connect to the database.</p>';
+         return;
+     }
+
+
+    testGrid.innerHTML = '<p>Loading available tests...</p>'; // Show loading message initially
+
+    try {
+        const testsSnapshot = await db.collection('tests').orderBy('createdAt', 'desc').get();
+
+        if (testsSnapshot.empty) {
+            testGrid.innerHTML = '<p>No practice tests are available at the moment. Please check back later.</p>';
+            return;
+        }
+
+        testGrid.innerHTML = ''; // Clear loading message
+
+        testsSnapshot.forEach(doc => {
+            const test = doc.data();
+            const testId = doc.id;
+
+            const card = document.createElement('div');
+            card.classList.add('test-card'); // Use class for styling
+            card.innerHTML = `
+                <div class="card-content">
+                    <h4>${test.name || 'Unnamed Test'}</h4>
+                    <p>${test.description || 'A full-length adaptive test covering Reading, Writing, and Math.'}</p>
+                    <span class="test-status not-started">Not Started</span>
+                    </div>
+                    <a href="test.html?id=${testId}" class="btn btn-primary card-btn">Start Test</a>
+            `;
+            testGrid.appendChild(card);
+            // TODO: Add logic here later to check user's progress for this testId
+            // and update the 'test-status' span and button text accordingly.
+        });
+
+    } catch (error) {
+        console.error("Error fetching tests for student dashboard:", error);
+        testGrid.innerHTML = '<p>Could not load tests due to an error. Please try refreshing the page.</p>';
+    }
+}

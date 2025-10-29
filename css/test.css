@@ -63,6 +63,7 @@ body.test-body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    position: relative;
 }
 .main-content-body {
     height: 100%;
@@ -189,3 +190,75 @@ body.highlighter-active ::selection { background-color: transparent; }
 .q-number.answered { background-color: #e0e0e0; border-color: #e0e0e0; color: #333; }
 .q-number.reviewed { border-color: var(--primary-purple); background-color: #f0e4f8; font-weight: 700; }
 .modal-footer { padding: 15px 20px; border-top: 1px solid var(--border-color); text-align: center; }
+
+/* In test.css, add these styles (e.g., at the end or in a new section) */
+
+/* --- 7. Calculator Styles --- */
+.calculator-container {
+    position: absolute; /* Changed from fixed for better context */
+    top: 0;             /* Aligns to the top of test-main */
+    left: 0;            /* Starts hidden off-screen to the left */
+    width: 350px;       /* Adjust width as needed */
+    height: 100%;       /* Takes full height of test-main */
+    background-color: var(--white);
+    border-right: 1px solid var(--border-color);
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    z-index: 1500;
+    transform: translateX(-100%); /* Start hidden */
+    transition: transform 0.3s ease-in-out;
+    padding-top: 40px; /* Space for the close button */
+    box-sizing: border-box; /* Include padding in height/width */
+}
+
+.calculator-container iframe {
+    width: 100%;
+    height: calc(100% - 40px); /* Adjust height considering padding */
+    border: none;
+}
+
+.close-calculator-btn {
+    position: absolute;
+    top: 5px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 2rem;
+    line-height: 1;
+    color: var(--dark-gray);
+    cursor: pointer;
+    padding: 0 5px;
+}
+.close-calculator-btn:hover {
+    color: var(--primary-blue);
+}
+
+/* --- Layout Shift when Calculator is Active --- */
+.test-main.calculator-active .calculator-container {
+    transform: translateX(0); /* Slide in */
+}
+
+/* Adjust main content when calculator is active ONLY IN MATH LAYOUT */
+.test-main.math-layout-active.calculator-active .main-content-body {
+     /* Add padding to the left equal to calculator width + some margin */
+    padding-left: calc(350px + 25px);
+    transition: padding-left 0.3s ease-in-out;
+    /* Center content within the remaining space if needed, or adjust alignment */
+    align-items: flex-start; /* Example: align to the start of the shifted area */
+
+    /* Ensure the content itself doesn't exceed the new available width */
+    max-width: calc(100% - 350px - 25px); /* Adjust max-width if needed */
+}
+
+/* Ensure math layout components respect the new padding */
+.test-main.math-layout-active.calculator-active #math-question-header,
+.test-main.math-layout-active.calculator-active .stimulus-pane,
+.test-main.math-layout-active.calculator-active .question-pane {
+     max-width: 100%; /* Allow them to fill the shifted space */
+     margin-left: 0; /* Reset any centering margins if applied previously */
+     margin-right: 0;
+}
+
+/* Optional: Transition for the main content body padding */
+.test-main.math-layout-active .main-content-body {
+    transition: padding-left 0.3s ease-in-out;
+}
