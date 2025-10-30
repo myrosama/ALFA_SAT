@@ -632,7 +632,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
              hideSelectionToolbar(); // No selection, hide
         }
-    });
+        
+    }, { capture: true }); // <-- ADD THIS CAPTURE FLAG
 
     // 2. Hide toolbar on mousedown (clears old selection)
     document.body.addEventListener('mousedown', (e) => {
@@ -642,7 +643,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         hideSelectionToolbar();
-    });
+    }, { capture: true }); // <-- ADD THIS CAPTURE FLAG
 
     // 3. Disable default context menu (right-click) in content panes
     document.body.addEventListener('contextmenu', (e) => {
@@ -668,6 +669,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const button = e.target.closest('button');
             if (button) {
                  e.preventDefault(); // Prevent button click from hiding toolbar
+                 e.stopPropagation(); // <-- ADD THIS LINE
                 const command = button.dataset.command;
                 const value = button.dataset.value || null;
                 
