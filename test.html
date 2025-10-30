@@ -18,6 +18,16 @@
     <!-- The backdrop for the modal -->
     <div class="modal-backdrop" id="modal-backdrop"></div>
 
+    <!-- +++ ADD THIS CUSTOM SELECTION TOOLBAR +++ -->
+    <div class="selection-toolbar" id="selection-toolbar">
+        <button data-command="highlight" data-value="#FFD700" title="Highlight Yellow"><i class="fa-solid fa-highlighter" style="color: #FFD700;"></i></button>
+        <button data-command="highlight" data-value="#a0e7fd" title="Highlight Blue"><i class="fa-solid fa-highlighter" style="color: #a0e7fd;"></i></button>
+        <button data-command="highlight" data-value="#90ee90" title="Highlight Green"><i class="fa-solid fa-highlighter" style="color: #90ee90;"></i></button>
+        <button data-command="underline" title="Underline"><i class="fa-solid fa-underline"></i></button>
+        <button data-command="clearformat" title="Clear Formatting"><i class="fa-solid fa-eraser"></i></button>
+    </div>
+    <!-- +++ END OF TOOLBAR +++ -->
+
     <div class="test-wrapper">
         <!-- TOP HEADER -->
         <header class="test-header">
@@ -143,9 +153,9 @@
     <script src="js/firebase-init.js"></script>
     <script src="js/main.js"></script> <!-- General site logic -->
     <script src="js/test-engine.js"></script> <!-- Test page specific logic -->
-
     <!-- Inline script removed as modal logic is now in test-engine.js -->
 
 </body>
 </html>
+
 

@@ -1,4 +1,4 @@
-// js/test-engine.js - Fix "Teleport" Animation Glitch (New Attempt)
+// js/test-engine.js - Added Custom Selection Toolbar
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Initialize Firebase and MathQuill ---
@@ -38,6 +38,9 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) { console.warn("Could not read initial calc size from CSS vars."); }
     let currentCalcLeft = 10; // Initial position
     let currentCalcTop = 10; // Initial position
+    
+    // +++ State for Custom Selection Toolbar +++
+    let selectionRange = null; // Stores the last selected text Range object
 
 
     // --- Page Element References ---
@@ -50,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const questionNavBtnText = document.querySelector('#question-nav-btn span');
     const modalGrid = document.getElementById('modal-question-grid');
     const calculatorBtn = document.querySelector('.tool-btn[title="Calculator"]');
-    const highlighterBtn = document.querySelector('.tool-btn[title="Highlighter"]');
+    const highlighterBtn = document.querySelector('.tool-btn[title="Highlighter"]'); // This button is now overridden by the new toolbar
     const timerDisplay = document.getElementById('timer-display');
     const modal = document.getElementById('question-navigator-modal');
     const backdrop = document.getElementById('modal-backdrop');
@@ -63,8 +66,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const calcSizeToggleBtn = document.getElementById('calc-size-toggle-btn');
     const calcSizeToggleIcon = calcSizeToggleBtn ? calcSizeToggleBtn.querySelector('i') : null;
     const userNameDisp = document.getElementById('user-name-display');
-    const toggleBtn = document.getElementById('question-nav-btn'); // Ensure this is defined
-    const closeModalBtn = document.getElementById('close-modal-btn'); // Ensure this is defined
+    const toggleBtn = document.getElementById('question-nav-btn');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    
+    // +++ Reference for Custom Selection Toolbar +++
+    const selectionToolbar = document.getElementById('selection-toolbar');
 
 
     // --- Core Test Functions ---
@@ -182,6 +188,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (backBtn) backBtn.disabled = currentQuestionIndex === 0;
         if (nextBtn) { nextBtn.disabled = totalQs === 0; nextBtn.textContent = (currentQuestionIndex === totalQs - 1) ? 'Finish Module' : 'Next'; }
         if (calculatorBtn) { calculatorBtn.style.display = isMath ? 'inline-block' : 'none'; if (!isMath) calculatorBtn.classList.remove('active'); }
+        // The old highlighter button is hidden by default now, so this line is safe
+        if (highlighterBtn) { highlighterBtn.style.display = 'none'; } // We hide the old button
         if (testMain) testMain.classList.toggle('math-layout-active', isMath);
         updateModalGridHighlights();
     }
@@ -254,12 +262,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const header = modal.querySelector('.modal-header h4');
             if (header) {
                 const type = currentModuleIndex < 2 ? "Reading & Writing" : "Math";
-                // --- MODIFIED SECTION/MODULE NUMBER LOGIC ---
-                // Section is 1 for R&W (index 0, 1), Section 2 for Math (index 2, 3)
+                const numDisp = currentModuleIndex < 2 ? currentModuleIndex + 1 : currentModuleIndex - 1;
+                // +++ FIX FOR SECTION NUMBER +++
                 const sectionNumberDisplay = currentModuleIndex < 2 ? 1 : 2;
-                // Module number within the section (1 or 2)
                 const moduleNumberDisplay = (currentModuleIndex % 2) + 1;
-                // --- END MODIFICATION ---
                 header.textContent = `Section ${sectionNumberDisplay}, Module ${moduleNumberDisplay}: ${type} Questions`;
             }
             updateModalGridHighlights();
@@ -273,33 +279,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Calculator Specific Functions ---
-
-    /** Toggles calculator visibility, loads iframe, updates content margin. */
+    // (toggleCalculator, updateContentMargin, startDrag, dragMove, stopDrag,
+    // startResize, resizeMove, stopResize, toggleMaximizeCalculator)
+    // --- [Start of Collapsed Calculator Functions] ---
     function toggleCalculator(show) {
         if (!testMain || !calculatorContainer || !calculatorBtn) { console.warn("Calculator elements missing."); return; }
-        
-        // +++ FIX: Refactor logic to prevent race condition +++
         const newState = typeof show === 'boolean' ? show : !isCalculatorVisible;
-        if (newState === isCalculatorVisible) return; // No change
-
+        if (newState === isCalculatorVisible) return;
         isCalculatorVisible = newState;
         console.log(isCalculatorVisible ? "Showing calculator." : "Hiding calculator.");
 
         if (isCalculatorVisible) {
-            // --- Logic for SHOWING ---
-
-            // 1. Restore non-maximized size/position before showing
-            if (isCalculatorMaximized) {
-                toggleMaximizeCalculator(false); // Restore state first
-            } else {
-                // Apply last known dimensions/position
+            if (isCalculatorMaximized) { toggleMaximizeCalculator(false); }
+            else {
                 calculatorContainer.style.width = `${currentCalcWidth}px`;
                 calculatorContainer.style.height = `${currentCalcHeight}px`;
                 calculatorContainer.style.left = `${currentCalcLeft}px`;
                 calculatorContainer.style.top = `${currentCalcTop}px`;
             }
-
-            // 2. Load iframe if needed
+            // REMOVED: calculatorContainer.style.transition = '...';
             if (!calculatorInitialized) {
                  console.log("Initializing Desmos iframe.");
                  const iframe = document.createElement('iframe');
@@ -310,110 +308,67 @@ document.addEventListener('DOMContentLoaded', () => {
                  calculatorHeader?.insertAdjacentElement('afterend', iframe);
                  calculatorInitialized = true;
             }
-            
-            // 3. Set the *target* margin variable first (synchronously)
-            updateContentMargin(); 
-            
-            // 4. In the next frame, add the 'active' classes to trigger animations
-            requestAnimationFrame(() => {
+            // +++ FIX FOR TELEPORT GLITCH +++
+            updateContentMargin(); // Set target margin
+            requestAnimationFrame(() => { // Add active classes in next frame
                 testMain.classList.add('calculator-active');
                 calculatorBtn.classList.add('active');
             });
-
         } else {
-            // --- Logic for HIDING ---
-
-            // 1. Store current position/size *before* hiding (if not maximized)
             if (!isCalculatorMaximized) {
                  currentCalcLeft = calculatorContainer.offsetLeft;
                  currentCalcTop = calculatorContainer.offsetTop;
                  currentCalcWidth = calculatorContainer.offsetWidth;
                  currentCalcHeight = calculatorContainer.offsetHeight;
             }
-            
-            // 2. Reset margin to 0 (synchronously)
-            updateContentMargin(); 
-            
-            // 3. Remove 'active' classes to trigger hiding animations
+            updateContentMargin(); // Reset margin to 0
             testMain.classList.remove('calculator-active');
             calculatorBtn.classList.remove('active');
-            
-            // 4. If closed while maximized, reset the maximized state
             if (isCalculatorMaximized) {
                  toggleMaximizeCalculator(false); 
             }
         }
     }
-
-    /** Updates the left margin of the main content based on calculator state. */
     function updateContentMargin() {
-         let marginSize = 0; // Default to 0
+         let marginSize = 0;
          if (isCalculatorVisible) {
-             if (isCalculatorMaximized) {
-                 marginSize = '50%'; // For 50/50 split
-             } else if (calculatorContainer) {
-                 // +++ Use offsetWidth to get the *actual* current width +++
-                 marginSize = `${calculatorContainer.offsetWidth + 20}px`; 
-             }
+             if (isCalculatorMaximized) { marginSize = '50%'; }
+             else if (calculatorContainer) { marginSize = `${calculatorContainer.offsetWidth + 20}px`; }
          }
          document.documentElement.style.setProperty('--content-margin-left', `${marginSize}`);
          console.log(`Set --content-margin-left to ${marginSize}`);
     }
-
-
-     /** Handles calculator dragging start. */
      function startDrag(e) {
          if (!e.target.closest('.calculator-header') || e.target.closest('.close-calculator-btn, .calc-size-toggle-btn') || isCalculatorMaximized || isResizingCalc) return;
          if (!calculatorContainer || !testMain) return;
          isDraggingCalc = true;
          calculatorContainer.classList.add('dragging'); // Disables iframe pointer-events via CSS
          const rect = calculatorContainer.getBoundingClientRect();
-         const mainBounds = testMain.getBoundingClientRect(); // Get parent bounds
-         
-         // Calculate offset relative to the element's top-left corner
+         const mainBounds = testMain.getBoundingClientRect();
          calcOffsetX = e.clientX - rect.left;
          calcOffsetY = e.clientY - rect.top;
-
-         // Store initial parent-relative position
          currentCalcLeft = rect.left - mainBounds.left;
          currentCalcTop = rect.top - mainBounds.top;
-
          calculatorContainer.style.cursor = 'grabbing';
-         calculatorContainer.style.transition = 'none'; // Prevent animation lag during drag
+         calculatorContainer.style.transition = 'none';
          document.body.style.userSelect = 'none';
          window.addEventListener('mousemove', dragMove);
          window.addEventListener('mouseup', stopDrag, { once: true });
          e.preventDefault();
-          console.log("Started dragging calculator.");
      }
-
-     /** Handles calculator dragging movement. */
      function dragMove(e) {
          if (!isDraggingCalc || !calculatorContainer) return; e.preventDefault();
          const mainBounds = testMain.getBoundingClientRect();
-         
-         // Calculate new viewport-relative top-left
-         let newViewportX = e.clientX - calcOffsetX;
-         let newViewportY = e.clientY - calcOffsetY;
-
-         // Convert to parent-relative coordinates (relative to testMain)
-         let newParentX = newViewportX - mainBounds.left;
-         let newParentY = newViewportY - mainBounds.top;
-
+         let newViewportX = e.clientX - calcOffsetX; let newViewportY = e.clientY - calcOffsetY;
+         let newParentX = newViewportX - mainBounds.left; let newParentY = newViewportY - mainBounds.top;
          const calcWidth = calculatorContainer.offsetWidth; const calcHeight = calculatorContainer.offsetHeight;
-         // Constrain parent-relative coordinates
          newParentX = Math.max(0, Math.min(newParentX, mainBounds.width - calcWidth));
          newParentY = Math.max(0, Math.min(newParentY, mainBounds.height - calcHeight));
-         
          calculatorContainer.style.left = newParentX + 'px'; calculatorContainer.style.top = newParentY + 'px';
-          // Store current position while dragging
-          currentCalcLeft = newParentX;
-          currentCalcTop = newParentY;
+          currentCalcLeft = newParentX; currentCalcTop = newParentY;
      }
-
-     /** Handles calculator dragging end. */
      function stopDrag() {
-          console.log("Stopping drag."); isDraggingCalc = false;
+         isDraggingCalc = false;
          if(calculatorContainer) {
              calculatorContainer.classList.remove('dragging'); // Re-enable iframe events
              calculatorContainer.style.cursor = 'move';
@@ -422,8 +377,6 @@ document.addEventListener('DOMContentLoaded', () => {
          document.body.style.userSelect = '';
          window.removeEventListener('mousemove', dragMove);
      }
-
-    /** Handles calculator resizing start. */
     function startResize(e) {
          if (isCalculatorMaximized || isDraggingCalc) return;
         isResizingCalc = true;
@@ -436,32 +389,25 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('mousemove', resizeMove);
         window.addEventListener('mouseup', stopResize, { once: true });
         e.preventDefault();
-         console.log("Started resizing calculator.");
     }
-
-    /** Handles calculator resizing movement. */
     function resizeMove(e) {
         if (!isResizingCalc) return; e.preventDefault();
         const minWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--calculator-min-width'));
         const minHeight = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--calculator-min-height'));
         let newWidth = calcResizeStartWidth + (e.clientX - calcResizeStartX);
         let newHeight = calcResizeStartHeight + (e.clientY - calcResizeStartY);
-        newWidth = Math.max(minWidth, newWidth);
-        newHeight = Math.max(minHeight, newHeight);
+        newWidth = Math.max(minWidth, newWidth); newHeight = Math.max(minHeight, newHeight);
         const mainBounds = testMain.getBoundingClientRect();
         const currentLeft = calculatorContainer.offsetLeft; const currentTop = calculatorContainer.offsetTop;
         newWidth = Math.min(newWidth, mainBounds.width - currentLeft);
         newHeight = Math.min(newHeight, mainBounds.height - currentTop);
         calculatorContainer.style.width = `${newWidth}px`;
         calculatorContainer.style.height = `${newHeight}px`;
-        currentCalcWidth = newWidth; // Update state variable
-        currentCalcHeight = newHeight; // Update state variable
-        updateContentMargin(); // Update margin dynamically
+        currentCalcWidth = newWidth; currentCalcHeight = newHeight;
+        updateContentMargin();
     }
-
-    /** Handles calculator resizing end. */
     function stopResize() {
-         console.log("Stopping resize."); isResizingCalc = false;
+         isResizingCalc = false;
          if(calculatorContainer) {
              calculatorContainer.classList.remove('resizing'); // Re-enable iframe events
              calculatorContainer.style.transition = ''; // Restore transitions from CSS
@@ -471,49 +417,134 @@ document.addEventListener('DOMContentLoaded', () => {
          document.documentElement.style.setProperty('--calculator-width', `${currentCalcWidth}px`);
          document.documentElement.style.setProperty('--calculator-height', `${currentCalcHeight}px`);
     }
-
-    /** Toggles the calculator between maximized and normal state. */
     function toggleMaximizeCalculator(forceState) {
          if (!calculatorContainer || !calcSizeToggleIcon || isDraggingCalc || isResizingCalc) return;
          const newState = typeof forceState === 'boolean' ? forceState : !isCalculatorMaximized;
          if (newState === isCalculatorMaximized) return;
          console.log(`Toggling maximize. New state: ${newState}`);
-         calculatorContainer.style.transition = 'none'; // Disable transitions during style manipulation
-
+         calculatorContainer.style.transition = 'none'; // Disable transitions
          if (newState) {
-             // --- Maximizing ---
-             // Store current size/pos *before* maximizing
              currentCalcWidth = calculatorContainer.offsetWidth;
              currentCalcHeight = calculatorContainer.offsetHeight;
              currentCalcLeft = calculatorContainer.offsetLeft;
              currentCalcTop = calculatorContainer.offsetTop;
              calculatorContainer.classList.add('maximized');
          } else {
-             // --- Restoring ---
              calculatorContainer.classList.remove('maximized');
-             // Restore *last known* non-maximized size/position immediately
              calculatorContainer.style.width = `${currentCalcWidth}px`;
              calculatorContainer.style.height = `${currentCalcHeight}px`;
              calculatorContainer.style.left = `${currentCalcLeft}px`;
              calculatorContainer.style.top = `${currentCalcTop}px`;
-             // Update CSS vars to match
              document.documentElement.style.setProperty('--calculator-width', `${currentCalcWidth}px`);
              document.documentElement.style.setProperty('--calculator-height', `${currentCalcHeight}px`);
          }
-         
-         isCalculatorMaximized = newState; // Set state immediately
-         updateContentMargin(); // Update margin immediately based on new state
-
+         isCalculatorMaximized = newState;
+         updateContentMargin();
          requestAnimationFrame(() => {
-             // Re-enable transitions *after* initial style changes
              calculatorContainer.style.transition = ''; // Let CSS handle all transitions
-
-             // Update icon and title
              calcSizeToggleIcon.classList.toggle('fa-expand', !isCalculatorMaximized);
              calcSizeToggleIcon.classList.toggle('fa-compress', isCalculatorMaximized);
              if(calcSizeToggleBtn) calcSizeToggleBtn.title = isCalculatorMaximized ? "Restore Calculator Size" : "Maximize Calculator";
          });
     }
+    // --- [End of Collapsed Calculator Functions] ---
+
+
+    // +++ NEW: Custom Selection Toolbar Functions +++
+    
+    /**
+     * Shows the custom selection toolbar above the user's selection.
+     */
+    function showSelectionToolbar() {
+        if (!selectionToolbar || !selectionRange) return;
+
+        const rect = selectionRange.getBoundingClientRect();
+        const mainRect = testMain.getBoundingClientRect(); // Get bounds of the main test area
+
+        // Position toolbar 10px above the selection
+        let top = rect.top - mainRect.top - selectionToolbar.offsetHeight - 10;
+        let left = rect.left - mainRect.left + (rect.width / 2) - (selectionToolbar.offsetWidth / 2);
+
+        // Keep toolbar inside the main test area bounds
+        top = Math.max(0, top); // Don't go above the top
+        left = Math.max(0, Math.min(left, mainRect.width - selectionToolbar.offsetWidth)); // Don't go off-sides
+
+        selectionToolbar.style.top = `${top}px`;
+        selectionToolbar.style.left = `${left}px`;
+        selectionToolbar.classList.add('visible');
+    }
+
+    /**
+     * Hides the custom selection toolbar.
+     */
+    function hideSelectionToolbar() {
+        if (selectionToolbar) selectionToolbar.classList.remove('visible');
+        selectionRange = null; // Clear saved range
+    }
+
+    /**
+     * Wraps the current selectionRange with a new element (span)
+     * and applies the specified command (highlight, underline, etc.).
+     * @param {string} command - The command to apply (e.g., 'highlight', 'underline').
+     * @param {string} [value] - The value for the command (e.g., a color hex).
+     */
+    function applyFormat(command, value = null) {
+        if (!selectionRange) return;
+
+        try {
+            // Create a wrapper element
+            const wrapper = document.createElement('span');
+            wrapper.classList.add('custom-format-wrapper'); // Base class
+
+            if (command === 'highlight') {
+                // Apply background color directly for highlighting
+                wrapper.style.backgroundColor = value;
+            } else if (command === 'underline') {
+                wrapper.classList.add('custom-underline');
+            } else if (command === 'clearformat') {
+                // This is more complex: we need to unwrap
+                const content = selectionRange.extractContents(); // Pull content out of document
+                
+                // Find and remove our wrappers *inside* the pulled content
+                const wrappersToRemove = content.querySelectorAll('.custom-format-wrapper, .custom-underline');
+                wrappersToRemove.forEach(wrap => {
+                    // Replace the wrapper (e.g., <span style="..."><node></span>)
+                    // with just its contents (<node>)
+                    wrap.replaceWith(...wrap.childNodes); 
+                });
+                
+                // Put the "clean" content back
+                selectionRange.insertNode(content);
+                document.getSelection().removeAllRanges(); // Clear selection
+                hideSelectionToolbar();
+                return; // Stop here for clearformat
+            }
+
+            // For highlight/underline, wrap the selected content
+            wrapper.appendChild(selectionRange.extractContents());
+            selectionRange.insertNode(wrapper);
+            
+            // Clean up: un-nest identical wrappers (e.g., highlight inside highlight)
+            // This is basic and can be expanded
+            const parent = wrapper.parentNode;
+            if (parent.classList.contains('custom-format-wrapper') && command === 'highlight') {
+                parent.style.backgroundColor = value; // Apply new color to parent
+                parent.replaceChild(wrapper.firstChild, wrapper); // Remove inner wrapper
+            }
+            if (parent.classList.contains('custom-underline') && command === 'underline') {
+                 parent.replaceChild(wrapper.firstChild, wrapper); // Just remove inner
+            }
+
+
+        } catch (e) {
+            console.warn("Could not apply format (selection might span complex elements):", e);
+        }
+
+        // Clear selection and hide toolbar after applying
+        document.getSelection().removeAllRanges();
+        hideSelectionToolbar();
+    }
+    // +++ [End of Custom Selection Toolbar Functions] +++
 
 
     /** Main initialization function. */
@@ -562,16 +593,91 @@ document.addEventListener('DOMContentLoaded', () => {
     if (modalProceedBtn) {
         modalProceedBtn.addEventListener('click', () => { console.log("Modal Proceed clicked."); toggleModal(false); const nextIdx = findNextNonEmptyModule(currentModuleIndex + 1); if (nextIdx !== -1) startModule(nextIdx); else finishTest(); });
     } else { console.warn("Modal Proceed Button missing."); }
-    if (highlighterBtn) { highlighterBtn.addEventListener('click', () => { isHighlighterActive = !isHighlighterActive; document.body.classList.toggle('highlighter-active', isHighlighterActive); highlighterBtn.classList.toggle('active', isHighlighterActive); }); } else { console.warn("Highlighter Button missing."); }
-    document.body.addEventListener('contextmenu', (e) => { if (isHighlighterActive && e.target.closest('.main-content-body')) e.preventDefault(); });
-    document.body.addEventListener('mouseup', (e) => { // Highlight selection logic
-        const targetPane = e.target.closest('.stimulus-pane .pane-content') || e.target.closest('.question-pane .pane-content'); if (!isHighlighterActive || !targetPane) return; const sel = window.getSelection(); if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return; const range = sel.getRangeAt(0); if (!targetPane.contains(range.startContainer) || !targetPane.contains(range.endContainer)) { sel.removeAllRanges(); return; } const ancestor = range.commonAncestorContainer; if (ancestor.nodeType !== Node.TEXT_NODE && (ancestor.closest('.question-header-bar,.option-letter,.strikethrough-btn,input,button,label'))) { sel.removeAllRanges(); return; } const span = document.createElement('span'); span.className = 'highlight'; try { let startP = range.startContainer.parentNode; let endP = range.endContainer.parentNode; if (startP.classList?.contains('highlight') && startP === endP) { let text = startP.textContent; startP.parentNode.replaceChild(document.createTextNode(text), startP); } else if (startP.closest?.('.highlight') || endP.closest?.('.highlight')) { /* Avoid overlap */ } else { range.surroundContents(span); } } catch (err) { console.warn("Highlight wrap failed.", err); } sel.removeAllRanges();
-    });
+    
+    // OLD Highlighter button - now hidden by updateUI
+    if (highlighterBtn) { highlighterBtn.style.display = 'none'; } // Explicitly hide old button
+    
+    // --- Calculator Event Listeners ---
     if (calculatorBtn) { calculatorBtn.addEventListener('click', () => { if (currentModuleIndex >= 2) toggleCalculator(); }); } else { console.warn("Calculator Button missing."); }
     if (closeCalculatorBtn) { closeCalculatorBtn.addEventListener('click', () => toggleCalculator(false)); } else { console.warn("Close Calculator Button missing."); }
     if (calculatorHeader) { calculatorHeader.addEventListener('mousedown', startDrag); } else { console.warn("Calculator Header missing."); }
     if (calcResizeHandle) { calcResizeHandle.addEventListener('mousedown', startResize); } else { console.warn("Calculator Resize Handle missing."); }
     if (calcSizeToggleBtn) { calcSizeToggleBtn.addEventListener('click', () => toggleMaximizeCalculator()); } else { console.warn("Calculator Size Toggle Button missing."); }
+
+
+    // +++ NEW: Event Listeners for Custom Toolbar +++
+
+    // 1. Show toolbar on text selection
+    document.body.addEventListener('mouseup', (e) => {
+        // Hide toolbar if clicking anywhere (will be re-shown if it's a new selection)
+        // Check if click was *on* the toolbar itself first
+        if (e.target.closest('#selection-toolbar')) {
+            return; // Don't hide if clicking a toolbar button
+        }
+        
+        const selection = window.getSelection();
+        
+        // Check if selection is valid, not empty, and inside a content area
+        if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
+             const range = selection.getRangeAt(0);
+             const targetPane = range.commonAncestorContainer.parentNode.closest('.stimulus-pane .pane-content, .question-pane .pane-content');
+             
+             // Only show if selection is within a valid pane
+             if (targetPane) {
+                 selectionRange = range.cloneRange(); // Save the selection
+                 showSelectionToolbar(); // Position and show
+             } else {
+                 hideSelectionToolbar(); // Selection is outside valid area
+             }
+        } else {
+             hideSelectionToolbar(); // No selection, hide
+        }
+    });
+
+    // 2. Hide toolbar on mousedown (clears old selection)
+    document.body.addEventListener('mousedown', (e) => {
+         // Don't hide if clicking *on* the toolbar
+         if (e.target.closest('#selection-toolbar')) {
+            e.preventDefault(); // Prevent mousedown from blurring selection
+            return;
+        }
+        hideSelectionToolbar();
+    });
+
+    // 3. Disable default context menu (right-click) in content panes
+    document.body.addEventListener('contextmenu', (e) => {
+        const targetPane = e.target.closest('.stimulus-pane .pane-content, .question-pane .pane-content');
+        if (targetPane) {
+            e.preventDefault(); // Disable right-click menu
+        }
+    });
+
+    // 4. Disable default copy action
+    document.body.addEventListener('copy', (e) => {
+         const targetPane = e.target.closest('.stimulus-pane .pane-content, .question-pane .pane-content');
+         if (targetPane) {
+             e.preventDefault(); // Disable Ctrl+C / Cmd+C
+             console.log("Copying is disabled."); // Optional feedback
+         }
+    });
+    
+    // 5. Handle clicks on the toolbar buttons
+    if (selectionToolbar) {
+        selectionToolbar.addEventListener('mousedown', (e) => {
+             // Use mousedown so it fires before the mouseup that clears the selection
+            const button = e.target.closest('button');
+            if (button) {
+                 e.preventDefault(); // Prevent button click from hiding toolbar
+                const command = button.dataset.command;
+                const value = button.dataset.value || null;
+                
+                if (command && selectionRange) {
+                    applyFormat(command, value);
+                }
+            }
+        });
+    } else { console.warn("Selection Toolbar element not found."); }
+    
 
     // --- Initial Load ---
     initTest();
