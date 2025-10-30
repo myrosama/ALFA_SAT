@@ -681,7 +681,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else { console.warn("Selection Toolbar element not found."); }
     
 
-    // --- Initial Load ---
+    // --- Initial Loader ---
     initTest();
 
 }); // --- END OF DOMContentLoaded ---
