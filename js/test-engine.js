@@ -1,4 +1,4 @@
-// js/test-engine.js - Fix Drag/Resize/Maximize Logic & Content Shift
+// js/test-engine.js - Fix "Teleport" Animation Glitch (New Attempt)
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Initialize Firebase and MathQuill ---
@@ -33,7 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentCalcWidth = 360;
     let currentCalcHeight = 500;
     try {
-        // Try to read default size from CSS variables
         currentCalcWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--calculator-width')) || 360;
         currentCalcHeight = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--calculator-height')) || 500;
     } catch (e) { console.warn("Could not read initial calc size from CSS vars."); }
@@ -255,8 +254,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const header = modal.querySelector('.modal-header h4');
             if (header) {
                 const type = currentModuleIndex < 2 ? "Reading & Writing" : "Math";
-                const numDisp = currentModuleIndex < 2 ? currentModuleIndex + 1 : currentModuleIndex - 1;
-                header.textContent = `Section ${currentModuleIndex + 1}, Module ${numDisp}: ${type} Questions`;
+                // --- MODIFIED SECTION/MODULE NUMBER LOGIC ---
+                // Section is 1 for R&W (index 0, 1), Section 2 for Math (index 2, 3)
+                const sectionNumberDisplay = currentModuleIndex < 2 ? 1 : 2;
+                // Module number within the section (1 or 2)
+                const moduleNumberDisplay = (currentModuleIndex % 2) + 1;
+                // --- END MODIFICATION ---
+                header.textContent = `Section ${sectionNumberDisplay}, Module ${moduleNumberDisplay}: ${type} Questions`;
             }
             updateModalGridHighlights();
         } else { if (modalProceedBtn) modalProceedBtn.style.display = 'none'; }
@@ -273,28 +277,29 @@ document.addEventListener('DOMContentLoaded', () => {
     /** Toggles calculator visibility, loads iframe, updates content margin. */
     function toggleCalculator(show) {
         if (!testMain || !calculatorContainer || !calculatorBtn) { console.warn("Calculator elements missing."); return; }
-        isCalculatorVisible = typeof show === 'boolean' ? show : !isCalculatorVisible;
+        
+        // +++ FIX: Refactor logic to prevent race condition +++
+        const newState = typeof show === 'boolean' ? show : !isCalculatorVisible;
+        if (newState === isCalculatorVisible) return; // No change
+
+        isCalculatorVisible = newState;
         console.log(isCalculatorVisible ? "Showing calculator." : "Hiding calculator.");
 
-        testMain.classList.toggle('calculator-active', isCalculatorVisible);
-        calculatorBtn.classList.toggle('active', isCalculatorVisible);
-
         if (isCalculatorVisible) {
-            // Restore non-maximized size/position before showing
+            // --- Logic for SHOWING ---
+
+            // 1. Restore non-maximized size/position before showing
             if (isCalculatorMaximized) {
-                // Force restore state *before* making it visible if it was closed maximized
-                toggleMaximizeCalculator(false); // This applies styles and resets state
+                toggleMaximizeCalculator(false); // Restore state first
             } else {
-                // Apply last known dimensions/position from state variables
+                // Apply last known dimensions/position
                 calculatorContainer.style.width = `${currentCalcWidth}px`;
                 calculatorContainer.style.height = `${currentCalcHeight}px`;
                 calculatorContainer.style.left = `${currentCalcLeft}px`;
                 calculatorContainer.style.top = `${currentCalcTop}px`;
             }
-             // Ensure correct transitions are set for show/hide
-            calculatorContainer.style.transition = 'opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0.2s';
 
-            // Lazy load iframe
+            // 2. Load iframe if needed
             if (!calculatorInitialized) {
                  console.log("Initializing Desmos iframe.");
                  const iframe = document.createElement('iframe');
@@ -305,47 +310,52 @@ document.addEventListener('DOMContentLoaded', () => {
                  calculatorHeader?.insertAdjacentElement('afterend', iframe);
                  calculatorInitialized = true;
             }
-            // Update content margin based on its *current* (non-maximized) width
-            updateContentMargin();
+            
+            // 3. Set the *target* margin variable first (synchronously)
+            updateContentMargin(); 
+            
+            // 4. In the next frame, add the 'active' classes to trigger animations
+            requestAnimationFrame(() => {
+                testMain.classList.add('calculator-active');
+                calculatorBtn.classList.add('active');
+            });
+
         } else {
-            // Store current position/size *before* hiding (only if not maximized)
+            // --- Logic for HIDING ---
+
+            // 1. Store current position/size *before* hiding (if not maximized)
             if (!isCalculatorMaximized) {
                  currentCalcLeft = calculatorContainer.offsetLeft;
                  currentCalcTop = calculatorContainer.offsetTop;
-                 currentCalcWidth = calculatorContainer.offsetWidth; // Store size too
+                 currentCalcWidth = calculatorContainer.offsetWidth;
                  currentCalcHeight = calculatorContainer.offsetHeight;
             }
-            updateContentMargin(); // Reset margin to 0
-            // If closed while maximized, visually reset and update state
+            
+            // 2. Reset margin to 0 (synchronously)
+            updateContentMargin(); 
+            
+            // 3. Remove 'active' classes to trigger hiding animations
+            testMain.classList.remove('calculator-active');
+            calculatorBtn.classList.remove('active');
+            
+            // 4. If closed while maximized, reset the maximized state
             if (isCalculatorMaximized) {
-                 // Remove class immediately, let state update handle internal logic
-                 calculatorContainer.classList.remove('maximized');
-                 // Update icon/title
-                 if(calcSizeToggleIcon) {
-                    calcSizeToggleIcon.classList.remove('fa-compress');
-                    calcSizeToggleIcon.classList.add('fa-expand');
-                 }
-                  if(calcSizeToggleBtn) calcSizeToggleBtn.title = "Maximize Calculator";
-                 isCalculatorMaximized = false; // Reset state directly here when hiding
+                 toggleMaximizeCalculator(false); 
             }
         }
     }
 
     /** Updates the left margin of the main content based on calculator state. */
     function updateContentMargin() {
-         // +++ UPDATED LOGIC +++
          let marginSize = 0; // Default to 0
          if (isCalculatorVisible) {
              if (isCalculatorMaximized) {
-                 // When maximized, margin is 50% of the viewport width
-                 marginSize = '50%'; // CSS handles the 50/50 split
+                 marginSize = '50%'; // For 50/50 split
              } else if (calculatorContainer) {
-                 // When visible and not maximized, margin is its current width + gap
-                 // Use currentCalcWidth state variable for consistency
-                 marginSize = `${currentCalcWidth + 20}px`;
+                 // +++ Use offsetWidth to get the *actual* current width +++
+                 marginSize = `${calculatorContainer.offsetWidth + 20}px`; 
              }
          }
-         // Set the CSS variable. The CSS in test.css will use this.
          document.documentElement.style.setProperty('--content-margin-left', `${marginSize}`);
          console.log(`Set --content-margin-left to ${marginSize}`);
     }
@@ -354,20 +364,23 @@ document.addEventListener('DOMContentLoaded', () => {
      /** Handles calculator dragging start. */
      function startDrag(e) {
          if (!e.target.closest('.calculator-header') || e.target.closest('.close-calculator-btn, .calc-size-toggle-btn') || isCalculatorMaximized || isResizingCalc) return;
-         if (!calculatorContainer || !testMain) return; // Need testMain for bounds
+         if (!calculatorContainer || !testMain) return;
          isDraggingCalc = true;
-         // +++ ADD CLASS TO FIX IFRAME EVENT STEALING +++
-         calculatorContainer.classList.add('dragging');
+         calculatorContainer.classList.add('dragging'); // Disables iframe pointer-events via CSS
          const rect = calculatorContainer.getBoundingClientRect();
+         const mainBounds = testMain.getBoundingClientRect(); // Get parent bounds
          
-         // +++ FIX FOR DRAG OFFSET +++
          // Calculate offset relative to the element's top-left corner
          calcOffsetX = e.clientX - rect.left;
          calcOffsetY = e.clientY - rect.top;
 
+         // Store initial parent-relative position
+         currentCalcLeft = rect.left - mainBounds.left;
+         currentCalcTop = rect.top - mainBounds.top;
+
          calculatorContainer.style.cursor = 'grabbing';
          calculatorContainer.style.transition = 'none'; // Prevent animation lag during drag
-         document.body.style.userSelect = 'none'; // Prevent text selection
+         document.body.style.userSelect = 'none';
          window.addEventListener('mousemove', dragMove);
          window.addEventListener('mouseup', stopDrag, { once: true });
          e.preventDefault();
@@ -377,9 +390,8 @@ document.addEventListener('DOMContentLoaded', () => {
      /** Handles calculator dragging movement. */
      function dragMove(e) {
          if (!isDraggingCalc || !calculatorContainer) return; e.preventDefault();
-         
-         // +++ FIX FOR DRAG COORDINATES +++
          const mainBounds = testMain.getBoundingClientRect();
+         
          // Calculate new viewport-relative top-left
          let newViewportX = e.clientX - calcOffsetX;
          let newViewportY = e.clientY - calcOffsetY;
@@ -393,9 +405,8 @@ document.addEventListener('DOMContentLoaded', () => {
          newParentX = Math.max(0, Math.min(newParentX, mainBounds.width - calcWidth));
          newParentY = Math.max(0, Math.min(newParentY, mainBounds.height - calcHeight));
          
-         calculatorContainer.style.left = newParentX + 'px';
-         calculatorContainer.style.top = newParentY + 'px';
-         // Store current position while dragging
+         calculatorContainer.style.left = newParentX + 'px'; calculatorContainer.style.top = newParentY + 'px';
+          // Store current position while dragging
           currentCalcLeft = newParentX;
           currentCalcTop = newParentY;
      }
@@ -404,23 +415,19 @@ document.addEventListener('DOMContentLoaded', () => {
      function stopDrag() {
           console.log("Stopping drag."); isDraggingCalc = false;
          if(calculatorContainer) {
-             // +++ REMOVE CLASS +++
-             calculatorContainer.classList.remove('dragging');
+             calculatorContainer.classList.remove('dragging'); // Re-enable iframe events
              calculatorContainer.style.cursor = 'move';
-             // Restore transitions *only* for show/hide, not position
-             calculatorContainer.style.transition = 'opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0.2s, width 0.3s ease-in-out';
+             calculatorContainer.style.transition = ''; // Restore transitions from CSS
          }
-         document.body.style.userSelect = ''; // Re-allow text selection
+         document.body.style.userSelect = '';
          window.removeEventListener('mousemove', dragMove);
-         // Final position is now stored in currentCalcLeft, currentCalcTop
      }
 
     /** Handles calculator resizing start. */
     function startResize(e) {
          if (isCalculatorMaximized || isDraggingCalc) return;
         isResizingCalc = true;
-        // +++ ADD CLASS TO FIX IFRAME EVENT STEALING +++
-        calculatorContainer.classList.add('resizing');
+        calculatorContainer.classList.add('resizing'); // Disables iframe pointer-events via CSS
         calcResizeStartX = e.clientX; calcResizeStartY = e.clientY;
         calcResizeStartWidth = calculatorContainer.offsetWidth;
         calcResizeStartHeight = calculatorContainer.offsetHeight;
@@ -445,29 +452,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentLeft = calculatorContainer.offsetLeft; const currentTop = calculatorContainer.offsetTop;
         newWidth = Math.min(newWidth, mainBounds.width - currentLeft);
         newHeight = Math.min(newHeight, mainBounds.height - currentTop);
-
-        // Update element style directly for immediate feedback during resize
         calculatorContainer.style.width = `${newWidth}px`;
         calculatorContainer.style.height = `${newHeight}px`;
-
-        // Update state variables (used on stopResize and restore)
-        currentCalcWidth = newWidth;
-        currentCalcHeight = newHeight;
-
-        updateContentMargin(); // Update margin dynamically during resize
+        currentCalcWidth = newWidth; // Update state variable
+        currentCalcHeight = newHeight; // Update state variable
+        updateContentMargin(); // Update margin dynamically
     }
 
     /** Handles calculator resizing end. */
     function stopResize() {
          console.log("Stopping resize."); isResizingCalc = false;
          if(calculatorContainer) {
-             // +++ REMOVE CLASS +++
-             calculatorContainer.classList.remove('resizing');
-             calculatorContainer.style.transition = 'opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0.2s, width 0.3s ease-in-out';
+             calculatorContainer.classList.remove('resizing'); // Re-enable iframe events
+             calculatorContainer.style.transition = ''; // Restore transitions from CSS
          }
         document.body.style.userSelect = '';
         window.removeEventListener('mousemove', resizeMove);
-        // Final dimensions are stored in currentCalcWidth/Height
          document.documentElement.style.setProperty('--calculator-width', `${currentCalcWidth}px`);
          document.documentElement.style.setProperty('--calculator-height', `${currentCalcHeight}px`);
     }
@@ -476,14 +476,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function toggleMaximizeCalculator(forceState) {
          if (!calculatorContainer || !calcSizeToggleIcon || isDraggingCalc || isResizingCalc) return;
          const newState = typeof forceState === 'boolean' ? forceState : !isCalculatorMaximized;
-
-         if (newState === isCalculatorMaximized) return; // No change needed
-
+         if (newState === isCalculatorMaximized) return;
          console.log(`Toggling maximize. New state: ${newState}`);
-
-         // Disable transitions temporarily during manual style changes if restoring
-         const originalTransition = calculatorContainer.style.transition;
-         calculatorContainer.style.transition = 'none'; // Disable transitions
+         calculatorContainer.style.transition = 'none'; // Disable transitions during style manipulation
 
          if (newState) {
              // --- Maximizing ---
@@ -492,49 +487,31 @@ document.addEventListener('DOMContentLoaded', () => {
              currentCalcHeight = calculatorContainer.offsetHeight;
              currentCalcLeft = calculatorContainer.offsetLeft;
              currentCalcTop = calculatorContainer.offsetTop;
-
-             // Add class. CSS handles the position/size change.
              calculatorContainer.classList.add('maximized');
-
          } else {
              // --- Restoring ---
-             // Remove class.
              calculatorContainer.classList.remove('maximized');
-
              // Restore *last known* non-maximized size/position immediately
              calculatorContainer.style.width = `${currentCalcWidth}px`;
              calculatorContainer.style.height = `${currentCalcHeight}px`;
              calculatorContainer.style.left = `${currentCalcLeft}px`;
              calculatorContainer.style.top = `${currentCalcTop}px`;
-
              // Update CSS vars to match
              document.documentElement.style.setProperty('--calculator-width', `${currentCalcWidth}px`);
              document.documentElement.style.setProperty('--calculator-height', `${currentCalcHeight}px`);
          }
+         
+         isCalculatorMaximized = newState; // Set state immediately
+         updateContentMargin(); // Update margin immediately based on new state
 
-         // Use requestAnimationFrame to ensure the class/style changes are applied
-         // before re-enabling transitions and updating state/UI
          requestAnimationFrame(() => {
              // Re-enable transitions *after* initial style changes
-             // For maximize, the CSS handles the width transition. For restore, allow all transitions.
-             if (newState) {
-                 calculatorContainer.style.transition = 'width 0.3s ease-in-out';
-             } else {
-                 // On restore, we want transitions for show/hide, but not pos/size
-                 // since we set them instantly. Let's just restore the default.
-                 calculatorContainer.style.transition = originalTransition || 'opacity 0.2s ease-in-out, transform 0.2s ease-in-out, visibility 0.2s, width 0.3s ease-in-out';
-             }
-
-             // Update internal state
-             isCalculatorMaximized = newState;
+             calculatorContainer.style.transition = ''; // Let CSS handle all transitions
 
              // Update icon and title
              calcSizeToggleIcon.classList.toggle('fa-expand', !isCalculatorMaximized);
              calcSizeToggleIcon.classList.toggle('fa-compress', isCalculatorMaximized);
              if(calcSizeToggleBtn) calcSizeToggleBtn.title = isCalculatorMaximized ? "Restore Calculator Size" : "Maximize Calculator";
-
-             // Update content margin (will be 0 if maximized, 50% if maximized, or [width]px if floating)
-             updateContentMargin();
          });
     }
 
@@ -551,10 +528,8 @@ document.addEventListener('DOMContentLoaded', () => {
         await fetchAndGroupQuestions(testId);
         if (allQuestionsByModule.flat().length > 0) { console.log("Starting module 0."); startModule(0); }
         else { console.error("No questions loaded."); if(questionPaneContent) questionPaneContent.innerHTML = "<p>Could not load questions.</p>"; }
-
-         // Set initial content margin
+         
          updateContentMargin();
-         // Set initial calculator size/pos via CSS vars *and* element style
           document.documentElement.style.setProperty('--calculator-width', `${currentCalcWidth}px`);
           document.documentElement.style.setProperty('--calculator-height', `${currentCalcHeight}px`);
           if(calculatorContainer) {
@@ -567,8 +542,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Event Listeners ---
-
-    // Modal Toggles, Next/Back, Answers, Mark Review, Modal Proceed Button
     if (toggleBtn) { toggleBtn.addEventListener('click', () => { if (modalProceedBtn) modalProceedBtn.style.display = 'none'; toggleModal(true); }); } else { console.warn("Nav Toggle Button missing."); }
     if (closeModalBtn) { closeModalBtn.addEventListener('click', () => toggleModal(false)); } else { console.warn("Modal Close Button missing."); }
     if (backdrop) { backdrop.addEventListener('click', () => toggleModal(false)); } else { console.warn("Modal Backdrop missing."); }
@@ -589,22 +562,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (modalProceedBtn) {
         modalProceedBtn.addEventListener('click', () => { console.log("Modal Proceed clicked."); toggleModal(false); const nextIdx = findNextNonEmptyModule(currentModuleIndex + 1); if (nextIdx !== -1) startModule(nextIdx); else finishTest(); });
     } else { console.warn("Modal Proceed Button missing."); }
-
-    // Highlighter
     if (highlighterBtn) { highlighterBtn.addEventListener('click', () => { isHighlighterActive = !isHighlighterActive; document.body.classList.toggle('highlighter-active', isHighlighterActive); highlighterBtn.classList.toggle('active', isHighlighterActive); }); } else { console.warn("Highlighter Button missing."); }
     document.body.addEventListener('contextmenu', (e) => { if (isHighlighterActive && e.target.closest('.main-content-body')) e.preventDefault(); });
     document.body.addEventListener('mouseup', (e) => { // Highlight selection logic
         const targetPane = e.target.closest('.stimulus-pane .pane-content') || e.target.closest('.question-pane .pane-content'); if (!isHighlighterActive || !targetPane) return; const sel = window.getSelection(); if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return; const range = sel.getRangeAt(0); if (!targetPane.contains(range.startContainer) || !targetPane.contains(range.endContainer)) { sel.removeAllRanges(); return; } const ancestor = range.commonAncestorContainer; if (ancestor.nodeType !== Node.TEXT_NODE && (ancestor.closest('.question-header-bar,.option-letter,.strikethrough-btn,input,button,label'))) { sel.removeAllRanges(); return; } const span = document.createElement('span'); span.className = 'highlight'; try { let startP = range.startContainer.parentNode; let endP = range.endContainer.parentNode; if (startP.classList?.contains('highlight') && startP === endP) { let text = startP.textContent; startP.parentNode.replaceChild(document.createTextNode(text), startP); } else if (startP.closest?.('.highlight') || endP.closest?.('.highlight')) { /* Avoid overlap */ } else { range.surroundContents(span); } } catch (err) { console.warn("Highlight wrap failed.", err); } sel.removeAllRanges();
     });
-
-
-    // --- Calculator Event Listeners ---
     if (calculatorBtn) { calculatorBtn.addEventListener('click', () => { if (currentModuleIndex >= 2) toggleCalculator(); }); } else { console.warn("Calculator Button missing."); }
     if (closeCalculatorBtn) { closeCalculatorBtn.addEventListener('click', () => toggleCalculator(false)); } else { console.warn("Close Calculator Button missing."); }
     if (calculatorHeader) { calculatorHeader.addEventListener('mousedown', startDrag); } else { console.warn("Calculator Header missing."); }
     if (calcResizeHandle) { calcResizeHandle.addEventListener('mousedown', startResize); } else { console.warn("Calculator Resize Handle missing."); }
     if (calcSizeToggleBtn) { calcSizeToggleBtn.addEventListener('click', () => toggleMaximizeCalculator()); } else { console.warn("Calculator Size Toggle Button missing."); }
-
 
     // --- Initial Load ---
     initTest();
