@@ -1,15 +1,10 @@
-// js/main.js - More robust checks
+// js/main.js - Update Dashboard for Completed Tests
 
-// --- Global Firebase Refs (if needed by multiple functions) ---
-// It's generally better to pass db/auth or initialize them where needed,
-// but for simplicity in this structure:
 let auth;
 let db;
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    // Initialize Firebase services within DOMContentLoaded
-    // This assumes firebase.js (compat) is loaded before this script
     try {
         auth = firebase.auth();
         db = firebase.firestore();
@@ -245,37 +240,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- LOGOUT & PAGE PROTECTION ---
     auth.onAuthStateChanged(user => {
-        const protectedPages = ['dashboard.html', 'admin.html', 'edit-test.html', 'test.html', 'review.html'];
+        // +++ Added results.html to protected pages +++
+        const protectedPages = ['dashboard.html', 'admin.html', 'edit-test.html', 'test.html', 'review.html', 'results.html'];
         const currentPage = window.location.pathname.split('/').pop();
-
-        const logoutBtn = document.getElementById('logout-btn'); // Get logout button reference
+        const logoutBtn = document.getElementById('logout-btn');
 
         if (user) {
             // User is logged in
-
-            // Only attempt to populate dashboard if on dashboard.html
             if (currentPage === 'dashboard.html') {
-                 populateDashboard(); // This function now has its own internal check
+                 // +++ Pass user.uid to the dashboard loader +++
+                 populateDashboard(user.uid);
             }
-
-            // Setup Logout Button if it exists on the page
             if (logoutBtn) {
-                 // Check if listener already added to prevent duplicates (optional but good practice)
                 if (!logoutBtn.dataset.listenerAdded) {
                      logoutBtn.addEventListener('click', (e) => {
                          e.preventDefault();
-                         auth.signOut().then(() => {
-                             window.location.href = 'index.html'; // Redirect after sign out
-                         }).catch(error => {
-                             console.error("Sign out error", error);
-                         });
+                         auth.signOut().then(() => { window.location.href = 'index.html'; })
+                         .catch(error => { console.error("Sign out error", error); });
                      });
-                     logoutBtn.dataset.listenerAdded = 'true'; // Mark as added
+                     logoutBtn.dataset.listenerAdded = 'true';
                 }
             }
         } else {
             // User is NOT logged in
-            // If user tries to access a protected page, redirect to login
             if (protectedPages.includes(currentPage)) {
                 console.log(`User not logged in, redirecting from protected page: ${currentPage}`);
                 window.location.href = 'index.html';
@@ -285,15 +272,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Ensure test-specific UI logic is NOT in main.js ---
     // Make sure no code here tries to manipulate elements specific to test.html
-    // like modals, strikethrough buttons, etc. That belongs in test-engine.js.
 
 
 }); // --- END OF DOMContentLoaded for main.js ---
 
 
-// --- populateDashboard Function (defined outside DOMContentLoaded) ---
-// This function fetches tests and populates the STUDENT dashboard grid.
-async function populateDashboard() {
+/**
+ * +++ MODIFIED popuplateDashboard +++
+ * Fetches and displays tests, checking against the user's completed tests.
+ * @param {string} userId - The UID of the currently logged-in user.
+ */
+async function populateDashboard(userId) {
     const testGrid = document.getElementById('test-grid-container');
     // Guard clause: If the grid container doesn't exist on this page, exit.
     if (!testGrid) {
@@ -311,32 +300,66 @@ async function populateDashboard() {
     testGrid.innerHTML = '<p>Loading available tests...</p>'; // Show loading message initially
 
     try {
-        const testsSnapshot = await db.collection('tests').orderBy('createdAt', 'desc').get();
+        // 1. Get a map of completed test IDs and their results
+        const completedTestsMap = new Map();
+        // +++ Fetch data from the user's 'completedTests' subcollection +++
+        const completedSnapshot = await db.collection('users').doc(userId).collection('completedTests').get();
+        completedSnapshot.forEach(doc => {
+            completedTestsMap.set(doc.id, doc.data()); // doc.id is testId, data is { score, resultId, completedAt }
+        });
+        console.log(`User has completed ${completedTestsMap.size} tests.`);
 
+        // 2. Get all available tests from the main 'tests' collection
+        const testsSnapshot = await db.collection('tests').orderBy('createdAt', 'desc').get();
         if (testsSnapshot.empty) {
-            testGrid.innerHTML = '<p>No practice tests are available at the moment. Please check back later.</p>';
+            testGrid.innerHTML = '<p>No practice tests are available at the moment.</p>';
             return;
         }
 
         testGrid.innerHTML = ''; // Clear loading message
 
+        // 3. Render cards, modifying if completed
         testsSnapshot.forEach(doc => {
             const test = doc.data();
             const testId = doc.id;
+            const completionData = completedTestsMap.get(testId); // Check if this testId is in our map
 
             const card = document.createElement('div');
-            card.classList.add('test-card'); // Use class for styling
-            card.innerHTML = `
-                <div class="card-content">
-                    <h4>${test.name || 'Unnamed Test'}</h4>
-                    <p>${test.description || 'A full-length adaptive test covering Reading, Writing, and Math.'}</p>
-                    <span class="test-status not-started">Not Started</span>
+            card.classList.add('test-card');
+            
+            let cardHTML = '';
+            
+            if (completionData) {
+                // --- Test is COMPLETED ---
+                card.classList.add('completed');
+                cardHTML = `
+                    <div class="card-content">
+                        <h4>${test.name || 'Unnamed Test'}</h4>
+                        <p>${test.description || 'A full-length adaptive test.'}</p>
+                        <!-- +++ Updated status display +++ -->
+                        <div class="test-status completed">
+                            <i class="fa-solid fa-check-circle"></i>
+                            Finished - Score: <strong>${completionData.score || 'N/A'}</strong>
+                        </div>
+                    </div>
+                    <!-- +++ Link to new results page with resultId +++ -->
+                    <a href="results.html?resultId=${completionData.resultId}" class="btn card-btn btn-view-results">View Results</a>
+                `;
+            } else {
+                // --- Test is NOT STARTED ---
+                card.classList.add('not-started');
+                cardHTML = `
+                    <div class="card-content">
+                        <h4>${test.name || 'Unnamed Test'}</h4>
+                        <p>${test.description || 'A full-length adaptive test.'}</p>
+                        <span class="test-status not-started">Not Started</span>
                     </div>
                     <a href="test.html?id=${testId}" class="btn btn-primary card-btn">Start Test</a>
-            `;
+                `;
+            }
+            
+            card.innerHTML = cardHTML;
             testGrid.appendChild(card);
-            // TODO: Add logic here later to check user's progress for this testId
-            // and update the 'test-status' span and button text accordingly.
         });
 
     } catch (error) {
@@ -344,3 +367,4 @@ async function populateDashboard() {
         testGrid.innerHTML = '<p>Could not load tests due to an error. Please try refreshing the page.</p>';
     }
 }
+

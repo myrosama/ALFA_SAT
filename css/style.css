@@ -315,3 +315,39 @@ body {
 .form-actions {
     display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;
 }
+
+
+.test-card p { color: var(--dark-gray); font-size: 0.95rem; line-height: 1.5; margin-bottom: 20px; }
+.test-status { font-weight: 600; font-size: 0.8rem; padding: 4px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px; }
+.not-started { background-color: #f0e4f8; color: var(--primary-purple); }
+.card-btn {
+    display: block; background-color: var(--primary-purple); color: var(--white);
+    text-align: center; padding: 15px; text-decoration: none; font-weight: 600;
+    border-radius: 0 0 10px 10px; margin-top: 0;
+}
+/* +++ ADD THIS HOVER STATE +++ */
+.card-btn:hover {
+    background-color: #56088f;
+}
+
+/* +++ ADD THESE NEW STYLES FOR COMPLETED CARDS +++ */
+.test-status.completed {
+    background-color: #e6f7eb; /* Light green */
+    color: #0d6832; /* Dark green */
+}
+.test-status.completed i {
+    font-size: 0.7rem;
+}
+.test-card.completed .card-btn.btn-view-results {
+    background-color: var(--primary-blue);
+    margin-top: 0;
+}
+.test-card.completed .card-btn.btn-view-results:hover {
+    background-color: #002244;
+}
+/* +++ END OF NEW STYLES +++ */
+
+
+/* --- 6. Admin Panel Page --- */
+
+
