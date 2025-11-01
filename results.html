@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-g">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Test Results - ALFA SAT</title>
+    <!-- Use existing core styles -->
+    <link rel="stylesheet" href="css/style.css">
+    <!-- New, specific styles for this page -->
+    <link rel="stylesheet" href="css/results.css">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather&display=swap" rel="stylesheet">
+    <!-- MathQuill CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.css"/>
+</head>
+<body class="dashboard-body">
+
+    <header class="main-header">
+        <div class="header-content">
+            <div class="brand">
+                <img src="assets/logo.png" alt="ALFA SAT Logo" class="logo-small">
+                <span>ALFA SAT</span>
+            </div>
+            <nav>
+                <a href="dashboard.html"><i class="fa-solid fa-arrow-left"></i> Back to Dashboard</a>
+                <a href="#" id="logout-btn">Log Out</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="results-main" id="results-container">
+        <!-- Loading State -->
+        <div id="loading-container">
+            <div class="loading-spinner"></div>
+            <p>Loading your results...</p>
+        </div>
+
+        <!-- Content will be dynamically inserted here -->
+        
+    </main>
+
+    <!--
+        TEMPLATES for dynamic content
+        These are hidden and will be cloned by results.js
+    -->
+    <template id="results-header-template">
+        <div class="results-header">
+            <h2 id="test-name-display">Test Results: </h2>
+            <div class="score-summary-grid">
+                <!-- Total Score -->
+                <div class="score-card total-score-card">
+                    <span class="score-label">Total Score</span>
+                    <h1 id="total-score-display">1600</h1>
+                </div>
+                <!-- R&W Score -->
+                <div class="score-card section-score-card">
+                    <span class="score-label">Reading & Writing</span>
+                    <h2 id="rw-score-display">800</h2>
+                    <p id="rw-raw-display">54/54 Correct</p>
+                </div>
+                <!-- Math Score -->
+                <div class="score-card section-score-card">
+                    <span class="score-label">Math</span>
+                    <h2 id="math-score-display">800</h2>
+                    <p id="math-raw-display">44/44 Correct</p>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="results-review-section-template">
+        <div class="review-section">
+            <h3 class="section-title">
+                <i class="icon"></i>
+                <span class="title-text">Section Title</span>
+                <span class="section-raw-score"></span>
+            </h3>
+            <div class="review-grid">
+                <!-- Question numbers will be added here -->
+            </div>
+        </div>
+    </template>
+
+    <template id="question-number-template">
+         <button class="q-number-btn">
+             <span class="q-number">1</span>
+             <i class="fa-solid fa-xmark incorrect-icon"></i>
+         </button>
+    </template>
+
+
+    <!-- JQuery (Required by MathQuill) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <!-- MathQuill Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.js"></script>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
+    
+    <!-- Our Scripts -->
+    <script src="js/firebase-init.js"></script>
+    <!-- New results page script -->
+    <script src="js/results.js"></script>
+    <!-- Main script for auth state / logout button -->
+    <script src="js/main.js"></script>
+
+</body>
+</html>
