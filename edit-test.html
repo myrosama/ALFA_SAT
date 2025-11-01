@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="css/editor.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Merriweather&display=swap" rel="stylesheet">
     
     <!-- Quill.js CSS -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
@@ -37,7 +36,10 @@
                     </div>
                 </div>
                 <div class="panel-content">
-                    <div id="stimulus-image-container" class="hidden"><img id="stimulus-image-preview" src=""><div class="resize-handle"></div></div>
+                    <div id="stimulus-image-container" class="hidden">
+                        <img id="stimulus-image-preview" src="" alt="Stimulus preview">
+                        <div class="resize-handle"></div>
+                    </div>
                     <div id="stimulus-editor"></div>
                 </div>
             </div>
@@ -57,51 +59,51 @@
                     <button class="module-btn" data-module="4">Math M2</button>
                 </div>
             </div>
-            <div class="question-navigator" id="question-navigator"></div>
+            <div class="question-navigator" id="question-navigator">
+                <!-- Buttons dynamically loaded here -->
+            </div>
         </footer>
     </div>
     
-    <!-- In edit-test.html, replace the entire <template> -->
-<template id="question-editor-template">
-    <form class="question-editor-form" id="question-form">
-        <div class="editor-toolbar">
-            <div class="tool-group"><label>Domain</label><select id="q-domain"></select></div>
-            <div class="tool-group"><label>Skill</label><select id="q-skill"></select></div>
-            <div class="tool-group"><label>Points</label><select id="q-points"></select></div>
-            <div class="tool-group"><label>Question Format</label><select id="q-format"><option value="mcq">Multiple Choice</option><option value="fill-in">Fill-in-the-Blank</option></select></div>
-            <!-- THIS IS THE NEW DROPDOWN -->
-            <div class="tool-group">
-                <label>Image Position</label>
-                <select id="q-image-position">
-                    <option value="above">Above Text</option>
-                    <option value="below">Below Text</option>
-                </select>
-            </div>
-        </div>
-        <div class="question-number-bar">Question <span id="q-number-display">1</span></div>
-        <div class="form-scroll-area">
-            <div class="input-group"><label>Question Prompt</label><div id="question-text-editor"></div></div>
-            <div id="answer-options-container">
-                <h4>Answer Choices</h4>
-                <div class="option-group">
-                    <label class="correct-answer-label"><input type="radio" name="correct-answer" value="A" checked> A</label>
-                    <div class="input-group"><div class="answer-input" id="option-a"></div></div>
+    <!-- +++ MODIFIED TEMPLATE: REMOVED "Points" Dropdown +++ -->
+    <template id="question-editor-template">
+        <form class="question-editor-form" id="question-form">
+            <div class="editor-toolbar">
+                <div class="tool-group"><label>Domain</label><select id="q-domain"></select></div>
+                <div class="tool-group"><label>Skill</label><select id="q-skill"></select></div>
+                <div class="tool-group"><label>Question Format</label><select id="q-format"><option value="mcq">Multiple Choice</option><option value="fill-in">Fill-in-the-Blank</option></select></div>
+                <div class="tool-group">
+                    <label>Image Position</label>
+                    <select id="q-image-position">
+                        <option value="above">Above Text</option>
+                        <option value="below">Below Text</option>
+                    </select>
                 </div>
-                <div class="option-group"><label class="correct-answer-label"><input type="radio" name="correct-answer" value="B"> B</label><div class="input-group"><div class="answer-input" id="option-b"></div></div></div>
-                <div class="option-group"><label class="correct-answer-label"><input type="radio" name="correct-answer" value="C"> C</label><div class="input-group"><div class="answer-input" id="option-c"></div></div></div>
-                <div class="option-group"><label class="correct-answer-label"><input type="radio" name="correct-answer" value="D"> D</label><div class="input-group"><div class="answer-input" id="option-d"></div></div></div>
             </div>
-            <div id="fill-in-answer-container" class="hidden">
-                <h4>Correct Answer</h4>
-                <div class="input-group"><div class="answer-input" id="fill-in-answer"></div></div>
+            <div class="question-number-bar">Question <span id="q-number-display">1</span></div>
+            <div class="form-scroll-area">
+                <div class="input-group"><label>Question Prompt</label><div id="question-text-editor"></div></div>
+                <div id="answer-options-container">
+                    <h4>Answer Choices</h4>
+                    <div class="option-group">
+                        <label class="correct-answer-label"><input type="radio" name="correct-answer" value="A" checked> A</label>
+                        <div class="input-group"><div class="answer-input" id="option-a"></div></div>
+                    </div>
+                    <div class="option-group"><label class="correct-answer-label"><input type="radio" name="correct-answer" value="B"> B</label><div class="input-group"><div class="answer-input" id="option-b"></div></div></div>
+                    <div class="option-group"><label class="correct-answer-label"><input type="radio" name="correct-answer" value="C"> C</label><div class="input-group"><div class="answer-input" id="option-c"></div></div></div>
+                    <div class="option-group"><label class="correct-answer-label"><input type="radio" name="correct-answer" value="D"> D</label><div class="input-group"><div class="answer-input" id="option-d"></div></div></div>
+                </div>
+                <div id="fill-in-answer-container" class="hidden">
+                    <h4>Correct Answer</h4>
+                    <div class="input-group"><div class="answer-input" id="fill-in-answer"></div></div>
+                </div>
             </div>
-        </div>
-        <div class="form-actions">
-             <button type="button" class="btn btn-secondary danger" id="delete-question-btn">Delete Question</button>
-             <button type="submit" class="btn btn-primary">Save Question</button>
-        </div>
-    </form>
-</template>
+            <div class="form-actions">
+                 <button type="button" class="btn btn-secondary danger" id="delete-question-btn">Delete Question</button>
+                 <button type="submit" class="btn btn-primary">Save Question</button>
+            </div>
+        </form>
+    </template>
     
     <!-- Firebase, Quill, and other JS Libraries -->
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
@@ -112,9 +114,10 @@
     
     <!-- Our Scripts -->
     <script src="js/firebase-init.js"></script>
+    <!-- config.js is required by editor.js for Telegram keys -->
     <script src="js/config.js"></script> 
     <script src="js/editor.js"></script>
-    <script src="js/main.js"></script>
+    <script src="js/main.js"></script> <!-- Keep main.js for auth state/logout -->
 
 </body>
 </html>

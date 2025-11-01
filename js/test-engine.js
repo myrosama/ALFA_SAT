@@ -1,47 +1,33 @@
-// js/test-engine.js - Added Custom Selection Toolbar
+// js/test-engine.js - Implement SAT Scoring and Result Saving
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Initialize Firebase and MathQuill ---
     const db = firebase.firestore();
+    const auth = firebase.auth(); // Get auth service
     const MQ = MathQuill.getInterface(2);
 
     // --- State Management ---
     let testId = null;
+    let testName = "Practice Test"; // Store test name
     let allQuestionsByModule = [[], [], [], []];
     let currentModuleIndex = 0;
     let currentQuestionIndex = 0;
     let markedQuestions = {};
     let userAnswers = {};
     let timerInterval = null;
-    const moduleTimers = [32 * 60, 32 * 60, 35 * 60, 35 * 60]; // Durations in seconds
+    const moduleTimers = [32 * 60, 32 * 60, 35 * 60, 35 * 60];
     let isHighlighterActive = false;
     let isCalculatorVisible = false;
     let calculatorInitialized = false;
-    // ++ Drag State ++
-    let isDraggingCalc = false;
-    let calcOffsetX = 0;
-    let calcOffsetY = 0;
-    // ++ Resize State ++
-    let isResizingCalc = false;
-    let calcResizeStartX = 0;
-    let calcResizeStartY = 0;
-    let calcResizeStartWidth = 0;
-    let calcResizeStartHeight = 0;
-    // ++ Maximize State ++
+    let isDraggingCalc = false, calcOffsetX = 0, calcOffsetY = 0;
+    let isResizingCalc = false, calcResizeStartX = 0, calcResizeStartY = 0, calcResizeStartWidth = 0, calcResizeStartHeight = 0;
     let isCalculatorMaximized = false;
-    // ++ Store current/last known non-maximized dimensions ++
-    let currentCalcWidth = 360;
-    let currentCalcHeight = 500;
+    let currentCalcWidth = 360, currentCalcHeight = 500, currentCalcLeft = 10, currentCalcTop = 10;
     try {
         currentCalcWidth = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--calculator-width')) || 360;
         currentCalcHeight = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--calculator-height')) || 500;
-    } catch (e) { console.warn("Could not read initial calc size from CSS vars."); }
-    let currentCalcLeft = 10; // Initial position
-    let currentCalcTop = 10; // Initial position
-    
-    // +++ State for Custom Selection Toolbar +++
-    let selectionRange = null; // Stores the last selected text Range object
-
+    } catch (e) { console.warn("Could not read initial calc size."); }
+    let selectionRange = null;
 
     // --- Page Element References ---
     const stimulusPaneContent = document.querySelector('.stimulus-pane .pane-content');
@@ -53,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const questionNavBtnText = document.querySelector('#question-nav-btn span');
     const modalGrid = document.getElementById('modal-question-grid');
     const calculatorBtn = document.querySelector('.tool-btn[title="Calculator"]');
-    const highlighterBtn = document.querySelector('.tool-btn[title="Highlighter"]'); // This button is now overridden by the new toolbar
+    const highlighterBtn = document.querySelector('.tool-btn[title="Highlighter"]');
     const timerDisplay = document.getElementById('timer-display');
     const modal = document.getElementById('question-navigator-modal');
     const backdrop = document.getElementById('modal-backdrop');
@@ -68,40 +54,53 @@ document.addEventListener('DOMContentLoaded', () => {
     const userNameDisp = document.getElementById('user-name-display');
     const toggleBtn = document.getElementById('question-nav-btn');
     const closeModalBtn = document.getElementById('close-modal-btn');
-    
-    // +++ Reference for Custom Selection Toolbar +++
     const selectionToolbar = document.getElementById('selection-toolbar');
 
+    // +++ NEW: SAT SCORING CONVERSION TABLES +++
+    // Based on the provided PDF (Digital SAT, non-adaptive)
+    // Table for Reading & Writing (54 total questions)
+    const rwScoreTable = {
+        0: 200, 1: 200, 2: 200, 3: 210, 4: 220, 5: 230, 6: 240, 7: 250, 8: 260, 9: 280,
+        10: 290, 11: 300, 12: 310, 13: 320, 14: 330, 15: 340, 16: 350, 17: 360, 18: 370,
+        19: 380, 20: 390, 21: 400, 22: 410, 23: 420, 24: 430, 25: 440, 26: 450, 27: 460,
+        28: 470, 29: 480, 30: 490, 31: 500, 32: 510, 33: 510, 34: 520, 35: 530, 36: 540,
+        37: 550, 38: 560, 39: 570, 40: 580, 41: 590, 42: 600, 43: 610, 44: 630, 45: 640,
+        46: 650, 47: 670, 48: 680, 49: 690, 50: 710, 51: 730, 52: 740, 53: 760, 54: 800
+    };
+    // Table for Math (44 total questions)
+    const mathScoreTable = {
+        0: 200, 1: 200, 2: 210, 3: 220, 4: 240, 5: 260, 6: 280, 7: 300, 8: 330, 9: 350,
+        10: 360, 11: 380, 12: 390, 13: 410, 14: 430, 15: 440, 16: 460, 17: 470, 18: 490,
+        19: 500, 20: 520, 21: 530, 22: 540, 23: 560, 24: 570, 25: 590, 26: 600, 27: 620,
+        28: 630, 29: 640, 30: 660, 31: 670, 32: 690, 33: 700, 34: 720, 35: 730, 36: 750,
+        37: 760, 38: 780, 39: 790, 40: 800, 41: 800, 42: 800, 43: 800, 44: 800
+    };
 
     // --- Core Test Functions ---
-    // (fetchAndGroupQuestions, startModule, renderAllMath, renderQuestion,
-    // renderOptions, updateUI, populateModalGrid, updateModalGridHighlights,
-    // startTimer, calculateScore, showReviewScreen, findNextNonEmptyModule,
-    // finishTest, toggleModal)
+    // [fetchAndGroupQuestions, startModule, renderAllMath, renderQuestion, renderOptions, updateUI, populateModalGrid, updateModalGridHighlights, startTimer]
+    // ... (These functions remain exactly the same as the previous version) ...
     // --- [Start of Collapsed Core Functions] ---
     async function fetchAndGroupQuestions(id) {
         try {
-            console.log(`Fetching questions for test ID: ${id}`);
+            // Fetch test name first
+            const testDoc = await db.collection('tests').doc(id).get();
+            if (testDoc.exists) {
+                testName = testDoc.data().name || "Practice Test";
+            }
+            
             const questionsSnapshot = await db.collection('tests').doc(id).collection('questions').get();
-            console.log(`Fetched ${questionsSnapshot.size} questions.`);
-            allQuestionsByModule = [[], [], [], []]; // Clear existing
-
+            allQuestionsByModule = [[], [], [], []];
             if (questionsSnapshot.empty) {
-                console.warn("No questions found for this test.");
+                console.warn("No questions found.");
                 if(questionPaneContent) questionPaneContent.innerHTML = "<p>No questions available for this test.</p>";
-                if(stimulusPaneContent) stimulusPaneContent.innerHTML = "";
                 if(nextBtn) nextBtn.disabled = true; if(backBtn) backBtn.disabled = true; return;
             }
             questionsSnapshot.forEach(doc => {
                 const question = { id: doc.id, ...doc.data() };
                 if (question.module >= 1 && question.module <= 4) allQuestionsByModule[question.module - 1].push(question);
-                else console.warn(`Question ${doc.id} has invalid module number: ${question.module}`);
             });
-            allQuestionsByModule.forEach((module, index) => {
-                module.sort((a, b) => (a.questionNumber || 0) - (b.questionNumber || 0));
-                console.log(`Module ${index + 1} sorted with ${module.length} questions.`);
-            });
-        } catch (error) { console.error("Error fetching/grouping questions: ", error); if(questionPaneContent) questionPaneContent.innerHTML = "<p>Error loading questions.</p>"; if(stimulusPaneContent) stimulusPaneContent.innerHTML = ""; }
+            allQuestionsByModule.forEach(module => module.sort((a, b) => (a.questionNumber || 0) - (b.questionNumber || 0)));
+        } catch (error) { console.error("Error fetching/grouping questions: ", error); if(questionPaneContent) questionPaneContent.innerHTML = "<p>Error loading questions.</p>"; }
     }
      function startModule(moduleIndex) {
          currentModuleIndex = moduleIndex; currentQuestionIndex = 0;
@@ -188,8 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (backBtn) backBtn.disabled = currentQuestionIndex === 0;
         if (nextBtn) { nextBtn.disabled = totalQs === 0; nextBtn.textContent = (currentQuestionIndex === totalQs - 1) ? 'Finish Module' : 'Next'; }
         if (calculatorBtn) { calculatorBtn.style.display = isMath ? 'inline-block' : 'none'; if (!isMath) calculatorBtn.classList.remove('active'); }
-        // The old highlighter button is hidden by default now, so this line is safe
-        if (highlighterBtn) { highlighterBtn.style.display = 'none'; } // We hide the old button
+        if (highlighterBtn) { highlighterBtn.style.display = 'none'; }
         if (testMain) testMain.classList.toggle('math-layout-active', isMath);
         updateModalGridHighlights();
     }
@@ -228,13 +226,56 @@ document.addEventListener('DOMContentLoaded', () => {
             if (--timer < 0) { clearInterval(timerInterval); alert("Time's up!"); showReviewScreen(true); }
         }, 1000);
     }
+    // --- [End of Collapsed Core Functions] ---
+
+    /**
+     * +++ NEW SCORING ALGORITHM +++
+     * Calculates the scaled SAT score based on raw scores from R&W and Math sections.
+     * @returns {object} An object with totalScore, rwScore, mathScore, rwRaw, and mathRaw.
+     */
     function calculateScore() {
-        let correct = 0; const flatQs = allQuestionsByModule.flat(); const total = flatQs.length;
-        if (total === 0) return { correct: 0, total: 0, score: 0 };
-        flatQs.forEach(q => { if (q?.id && userAnswers[q.id] === q.correctAnswer) { correct++; } });
-        const scaled = Math.round((correct / total) * 800) * 2;
-        return { correct, total, score: scaled };
+        let rwRaw = 0;
+        let mathRaw = 0;
+
+        // Calculate R&W Raw Score (Modules 1 & 2)
+        const rwQuestions = [...allQuestionsByModule[0], ...allQuestionsByModule[1]];
+        rwQuestions.forEach(question => {
+            if (question && question.id && userAnswers[question.id] === question.correctAnswer) {
+                rwRaw++;
+            }
+        });
+
+        // Calculate Math Raw Score (Modules 3 & 4)
+        const mathQuestions = [...allQuestionsByModule[2], ...allQuestionsByModule[3]];
+        mathQuestions.forEach(question => {
+            if (question && question.id && userAnswers[question.id] === question.correctAnswer) {
+                mathRaw++;
+            }
+        });
+
+        // Convert Raw Scores to Scaled Scores using lookup tables
+        // Use ?? 200 to default to minimum score if raw score is not in table (e.g., -1)
+        const rwScore = rwScoreTable[rwRaw] ?? 200;
+        const mathScore = mathScoreTable[mathRaw] ?? 200;
+
+        // Total score is sum, minimum 400
+        const totalScore = rwScore + mathScore; // This will naturally be at least 400
+
+        console.log(`Scoring: R&W Raw: ${rwRaw}/${rwQuestions.length} -> ${rwScore}`);
+        console.log(`Scoring: Math Raw: ${mathRaw}/${mathQuestions.length} -> ${mathScore}`);
+        console.log(`Total Score: ${totalScore}`);
+
+        return {
+            totalScore: totalScore,
+            rwScore: rwScore,
+            mathScore: mathScore,
+            rwRaw: rwRaw,
+            mathRaw: mathRaw,
+            rwTotal: rwQuestions.length,
+            mathTotal: mathQuestions.length
+        };
     }
+
      function showReviewScreen(isEndOfModule = false) {
          clearInterval(timerInterval); if (timerDisplay) timerDisplay.textContent = "00:00";
          if (modalProceedBtn) {
@@ -248,13 +289,95 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = startIndex; i < allQuestionsByModule.length; i++) { if (allQuestionsByModule[i]?.length > 0) return i; }
         return -1;
     }
-    function finishTest() {
-        clearInterval(timerInterval); const result = calculateScore();
-        sessionStorage.setItem('lastTestResult', JSON.stringify(result));
-        sessionStorage.setItem('lastTestId', testId);
-        alert(`Test Complete! Correct: ${result.correct}/${result.total}, Score: ${result.score}`);
-        window.location.href = 'dashboard.html';
+
+    /**
+     * +++ MODIFIED FINISH TEST FUNCTION +++
+     * Saves the test result to Firestore and redirects to the results page.
+     */
+    async function finishTest() {
+        console.log("Finishing test...");
+        clearInterval(timerInterval);
+        
+        const user = auth.currentUser;
+        if (!user) {
+            alert("You are not logged in. Cannot save results.");
+            window.location.href = 'index.html';
+            return;
+        }
+
+        // 1. Show loading state on button
+        if (nextBtn) {
+            nextBtn.disabled = true;
+            nextBtn.textContent = "Saving...";
+        }
+        if (modalProceedBtn) {
+             modalProceedBtn.disabled = true;
+             modalProceedBtn.textContent = "Saving...";
+        }
+        
+        // Hide modal if it's open
+        toggleModal(false);
+
+        try {
+            // 2. Calculate score
+            const scoreResult = calculateScore();
+
+            // 3. Create result ID (user UID + test ID)
+            const resultId = `${user.uid}_${testId}`;
+            const resultRef = db.collection('testResults').doc(resultId);
+
+            // 4. Create result data object
+            const resultData = {
+                userId: user.uid,
+                testId: testId,
+                testName: testName, // We fetched this in initTest
+                completedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                
+                totalScore: scoreResult.totalScore,
+                rwScore: scoreResult.rwScore,
+                mathScore: scoreResult.mathScore,
+                
+                rwRaw: scoreResult.rwRaw,
+                mathRaw: scoreResult.mathRaw,
+                rwTotal: scoreResult.rwTotal,
+                mathTotal: scoreResult.mathTotal,
+                
+                userAnswers: userAnswers, // Save all user answers
+                // Save all questions for review page.
+                allQuestions: allQuestionsByModule.flat() // Flatten array for easier iteration
+            };
+
+            // 5. Save to testResults collection
+            await resultRef.set(resultData);
+            console.log("Test result saved successfully to testResults:", resultId);
+
+            // 6. Update the user's "completedTests" subcollection for the dashboard
+            const userTestRef = db.collection('users').doc(user.uid).collection('completedTests').doc(testId);
+            await userTestRef.set({
+                score: scoreResult.totalScore,
+                completedAt: resultData.completedAt, // Use the same timestamp
+                resultId: resultId // Link to the full result doc
+            });
+            console.log("User's completedTests subcollection updated.");
+
+            // 7. Redirect to the new results page
+            window.location.href = `results.html?resultId=${resultId}`;
+
+        } catch (error) {
+            console.error("Error finishing test and saving results:", error);
+            alert("An error occurred while saving your results. Please try again.");
+            // Re-enable buttons if save failed
+            if (nextBtn) {
+                nextBtn.disabled = false;
+                nextBtn.textContent = "Finish Module";
+            }
+             if (modalProceedBtn) {
+                 modalProceedBtn.disabled = false;
+                 modalProceedBtn.textContent = "Finish Test and See Results";
+            }
+        }
     }
+
     function toggleModal(show) {
         if (!modal || !backdrop) return;
         const shouldShow = typeof show === 'boolean' ? show : !modal.classList.contains('visible');
@@ -262,18 +385,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const header = modal.querySelector('.modal-header h4');
             if (header) {
                 const type = currentModuleIndex < 2 ? "Reading & Writing" : "Math";
-                const numDisp = currentModuleIndex < 2 ? currentModuleIndex + 1 : currentModuleIndex - 1;
-                // +++ FIX FOR SECTION NUMBER +++
-                const sectionNumberDisplay = currentModuleIndex < 2 ? 1 : 2;
-                const moduleNumberDisplay = (currentModuleIndex % 2) + 1;
-                header.textContent = `Section ${sectionNumberDisplay}, Module ${moduleNumberDisplay}: ${type} Questions`;
+                const numDisp = (currentModuleIndex % 2) + 1; // 0->1, 1->2, 2->1, 3->2
+                const sectionNumberDisplay = currentModuleIndex < 2 ? 1 : 2; // 0,1 -> 1; 2,3 -> 2
+                header.textContent = `Section ${sectionNumberDisplay}, Module ${numDisp}: ${type} Questions`;
             }
             updateModalGridHighlights();
         } else { if (modalProceedBtn) modalProceedBtn.style.display = 'none'; }
         modal.classList.toggle('visible', shouldShow);
         backdrop.classList.toggle('visible', shouldShow);
-        const navBtn = document.getElementById('question-nav-btn');
-        if(navBtn) navBtn.classList.toggle('open', shouldShow);
+        if(toggleBtn) toggleBtn.classList.toggle('open', shouldShow);
     }
     // --- [End of Collapsed Core Functions] ---
 
@@ -287,8 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const newState = typeof show === 'boolean' ? show : !isCalculatorVisible;
         if (newState === isCalculatorVisible) return;
         isCalculatorVisible = newState;
-        console.log(isCalculatorVisible ? "Showing calculator." : "Hiding calculator.");
-
+        
         if (isCalculatorVisible) {
             if (isCalculatorMaximized) { toggleMaximizeCalculator(false); }
             else {
@@ -308,7 +427,6 @@ document.addEventListener('DOMContentLoaded', () => {
                  calculatorHeader?.insertAdjacentElement('afterend', iframe);
                  calculatorInitialized = true;
             }
-            // +++ FIX FOR TELEPORT GLITCH +++
             updateContentMargin(); // Set target margin
             requestAnimationFrame(() => { // Add active classes in next frame
                 testMain.classList.add('calculator-active');
@@ -336,7 +454,6 @@ document.addEventListener('DOMContentLoaded', () => {
              else if (calculatorContainer) { marginSize = `${calculatorContainer.offsetWidth + 20}px`; }
          }
          document.documentElement.style.setProperty('--content-margin-left', `${marginSize}`);
-         console.log(`Set --content-margin-left to ${marginSize}`);
     }
      function startDrag(e) {
          if (!e.target.closest('.calculator-header') || e.target.closest('.close-calculator-btn, .calc-size-toggle-btn') || isCalculatorMaximized || isResizingCalc) return;
@@ -450,101 +567,55 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- [End of Collapsed Calculator Functions] ---
 
 
-    // +++ NEW: Custom Selection Toolbar Functions +++
-    
-    /**
-     * Shows the custom selection toolbar above the user's selection.
-     */
+    // --- Custom Selection Toolbar Functions ---
+    // (showSelectionToolbar, hideSelectionToolbar, applyFormat)
+    // --- [Start of Collapsed Toolbar Functions] ---
     function showSelectionToolbar() {
         if (!selectionToolbar || !selectionRange) return;
-
         const rect = selectionRange.getBoundingClientRect();
-        const mainRect = testMain.getBoundingClientRect(); // Get bounds of the main test area
-
-        // Position toolbar 10px above the selection
-        let top = rect.top - mainRect.top - selectionToolbar.offsetHeight - 10;
+        const mainRect = testMain.getBoundingClientRect();
+        let top = rect.top - mainRect.top - selectionToolbar.offsetHeight - 5;
         let left = rect.left - mainRect.left + (rect.width / 2) - (selectionToolbar.offsetWidth / 2);
-
-        // Keep toolbar inside the main test area bounds
-        top = Math.max(0, top); // Don't go above the top
-        left = Math.max(0, Math.min(left, mainRect.width - selectionToolbar.offsetWidth)); // Don't go off-sides
-
+        top = Math.max(0, top);
+        left = Math.max(0, Math.min(left, mainRect.width - selectionToolbar.offsetWidth));
         selectionToolbar.style.top = `${top}px`;
         selectionToolbar.style.left = `${left}px`;
         selectionToolbar.classList.add('visible');
     }
-
-    /**
-     * Hides the custom selection toolbar.
-     */
     function hideSelectionToolbar() {
         if (selectionToolbar) selectionToolbar.classList.remove('visible');
-        selectionRange = null; // Clear saved range
+        selectionRange = null;
     }
-
-    /**
-     * Wraps the current selectionRange with a new element (span)
-     * and applies the specified command (highlight, underline, etc.).
-     * @param {string} command - The command to apply (e.g., 'highlight', 'underline').
-     * @param {string} [value] - The value for the command (e.g., a color hex).
-     */
     function applyFormat(command, value = null) {
-        if (!selectionRange) return;
-
-        try {
-            // Create a wrapper element
-            const wrapper = document.createElement('span');
-            wrapper.classList.add('custom-format-wrapper'); // Base class
-
-            if (command === 'highlight') {
-                // Apply background color directly for highlighting
-                wrapper.style.backgroundColor = value;
-            } else if (command === 'underline') {
-                wrapper.classList.add('custom-underline');
-            } else if (command === 'clearformat') {
-                // This is more complex: we need to unwrap
-                const content = selectionRange.extractContents(); // Pull content out of document
-                
-                // Find and remove our wrappers *inside* the pulled content
-                const wrappersToRemove = content.querySelectorAll('.custom-format-wrapper, .custom-underline');
-                wrappersToRemove.forEach(wrap => {
-                    // Replace the wrapper (e.g., <span style="..."><node></span>)
-                    // with just its contents (<node>)
-                    wrap.replaceWith(...wrap.childNodes); 
-                });
-                
-                // Put the "clean" content back
-                selectionRange.insertNode(content);
-                document.getSelection().removeAllRanges(); // Clear selection
-                hideSelectionToolbar();
-                return; // Stop here for clearformat
-            }
-
-            // For highlight/underline, wrap the selected content
-            wrapper.appendChild(selectionRange.extractContents());
-            selectionRange.insertNode(wrapper);
-            
-            // Clean up: un-nest identical wrappers (e.g., highlight inside highlight)
-            // This is basic and can be expanded
-            const parent = wrapper.parentNode;
-            if (parent.classList.contains('custom-format-wrapper') && command === 'highlight') {
-                parent.style.backgroundColor = value; // Apply new color to parent
-                parent.replaceChild(wrapper.firstChild, wrapper); // Remove inner wrapper
-            }
-            if (parent.classList.contains('custom-underline') && command === 'underline') {
-                 parent.replaceChild(wrapper.firstChild, wrapper); // Just remove inner
-            }
-
-
-        } catch (e) {
-            console.warn("Could not apply format (selection might span complex elements):", e);
+        if (command === 'dismiss') {
+             hideSelectionToolbar();
+             window.getSelection().removeAllRanges();
+             return;
         }
-
-        // Clear selection and hide toolbar after applying
-        document.getSelection().removeAllRanges();
+        if (!selectionRange) return;
+        try {
+            if (command === 'clearformat') {
+                const content = selectionRange.extractContents();
+                const wrappersToRemove = content.querySelectorAll('.custom-format-wrapper, .custom-underline, .highlight-yellow, .highlight-blue, .highlight-green');
+                wrappersToRemove.forEach(wrap => wrap.replaceWith(...wrap.childNodes)); 
+                selectionRange.insertNode(content);
+            } else {
+                const wrapper = document.createElement('span');
+                if (command === 'highlight') wrapper.classList.add(value);
+                else if (command === 'underline') wrapper.classList.add('custom-underline');
+                wrapper.appendChild(selectionRange.extractContents());
+                selectionRange.insertNode(wrapper);
+                const parent = wrapper.parentNode;
+                if (parent && parent.nodeName === 'SPAN' && parent.className === wrapper.className) {
+                    parent.replaceChild(wrapper.firstChild, wrapper);
+                    parent.normalize();
+                }
+            }
+        } catch (e) { console.warn("Could not apply format:", e); }
+        window.getSelection().removeAllRanges();
         hideSelectionToolbar();
     }
-    // +++ [End of Custom Selection Toolbar Functions] +++
+    // --- [End of Collapsed Toolbar Functions] ---
 
 
     /** Main initialization function. */
@@ -553,9 +624,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
         testId = urlParams.get('id');
         if (!testId) { console.error("No Test ID in URL."); document.body.innerHTML = '<h1>Error: No Test ID.</h1>'; return; }
-        if (userNameDisp) { try {const user = firebase.auth().currentUser; userNameDisp.textContent = user?.displayName || 'Student';} catch(e){} }
-        else { console.warn("User name display element not found."); }
-
+        if (userNameDisp) { try {const user = auth.currentUser; userNameDisp.textContent = user?.displayName || 'Student';} catch(e){} }
+        
         await fetchAndGroupQuestions(testId);
         if (allQuestionsByModule.flat().length > 0) { console.log("Starting module 0."); startModule(0); }
         else { console.error("No questions loaded."); if(questionPaneContent) questionPaneContent.innerHTML = "<p>Could not load questions.</p>"; }
@@ -573,115 +643,74 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Event Listeners ---
-    if (toggleBtn) { toggleBtn.addEventListener('click', () => { if (modalProceedBtn) modalProceedBtn.style.display = 'none'; toggleModal(true); }); } else { console.warn("Nav Toggle Button missing."); }
-    if (closeModalBtn) { closeModalBtn.addEventListener('click', () => toggleModal(false)); } else { console.warn("Modal Close Button missing."); }
-    if (backdrop) { backdrop.addEventListener('click', () => toggleModal(false)); } else { console.warn("Modal Backdrop missing."); }
-    if (nextBtn) { nextBtn.addEventListener('click', () => { const currentQs = allQuestionsByModule[currentModuleIndex] || []; if (currentQuestionIndex < currentQs.length - 1) { currentQuestionIndex++; renderQuestion(currentQuestionIndex); } else { showReviewScreen(true); } }); } else { console.warn("Next Button missing."); }
-    if (backBtn) { backBtn.addEventListener('click', () => { if (currentQuestionIndex > 0) { currentQuestionIndex--; renderQuestion(currentQuestionIndex); } }); } else { console.warn("Back Button missing."); }
+    if (toggleBtn) { toggleBtn.addEventListener('click', () => { if (modalProceedBtn) modalProceedBtn.style.display = 'none'; toggleModal(true); }); }
+    if (closeModalBtn) { closeModalBtn.addEventListener('click', () => toggleModal(false)); }
+    if (backdrop) { backdrop.addEventListener('click', () => toggleModal(false)); }
+    if (nextBtn) { nextBtn.addEventListener('click', () => { const currentQs = allQuestionsByModule[currentModuleIndex] || []; if (currentQuestionIndex < currentQs.length - 1) { currentQuestionIndex++; renderQuestion(currentQuestionIndex); } else { showReviewScreen(true); } }); }
+    if (backBtn) { backBtn.addEventListener('click', () => { if (currentQuestionIndex > 0) { currentQuestionIndex--; renderQuestion(currentQuestionIndex); } }); }
     if (questionPaneContent) {
-        questionPaneContent.addEventListener('change', (e) => { // Answers
+        questionPaneContent.addEventListener('change', (e) => {
             if (e.target.type === 'radio' && e.target.name) { userAnswers[e.target.name] = e.target.value; const wrapper = e.target.closest('.option-wrapper'); if (wrapper) { wrapper.classList.remove('stricken-through'); e.target.disabled = false; } updateModalGridHighlights(); }
             if (e.target.classList.contains('fill-in-input')) { const qId = e.target.dataset.questionId; if (qId) { userAnswers[qId] = e.target.value.trim(); updateModalGridHighlights(); } }
         });
-        questionPaneContent.addEventListener('click', (e) => { // Strikethrough
+        questionPaneContent.addEventListener('click', (e) => {
             const strikeBtn = e.target.closest('.strikethrough-btn'); if (!strikeBtn) return; e.preventDefault(); e.stopPropagation(); const wrapper = strikeBtn.closest('.option-wrapper'); const radio = wrapper?.querySelector('input[type="radio"]'); if (!wrapper || !radio) return; const isStriking = !wrapper.classList.contains('stricken-through'); wrapper.classList.toggle('stricken-through', isStriking); radio.disabled = isStriking; if (isStriking && radio.checked) { radio.checked = false; const qId = radio.name; if (userAnswers[qId] === radio.value) { delete userAnswers[qId]; updateModalGridHighlights(); } }
         });
-    } else { console.error("Question Pane Content missing!"); }
-    document.body.addEventListener('change', (e) => { // Mark Review
-        if (!e.target.classList.contains('mark-review-checkbox')) return; const qId = e.target.dataset.questionId; if (!qId) { console.warn("Mark review checkbox missing question ID."); return; } if (e.target.checked) markedQuestions[qId] = true; else delete markedQuestions[qId]; updateModalGridHighlights();
+    }
+    document.body.addEventListener('change', (e) => {
+        if (!e.target.classList.contains('mark-review-checkbox')) return; const qId = e.target.dataset.questionId; if (!qId) return; if (e.target.checked) markedQuestions[qId] = true; else delete markedQuestions[qId]; updateModalGridHighlights();
     });
     if (modalProceedBtn) {
-        modalProceedBtn.addEventListener('click', () => { console.log("Modal Proceed clicked."); toggleModal(false); const nextIdx = findNextNonEmptyModule(currentModuleIndex + 1); if (nextIdx !== -1) startModule(nextIdx); else finishTest(); });
-    } else { console.warn("Modal Proceed Button missing."); }
+        modalProceedBtn.addEventListener('click', () => { toggleModal(false); const nextIdx = findNextNonEmptyModule(currentModuleIndex + 1); if (nextIdx !== -1) startModule(nextIdx); else finishTest(); });
+    }
+    if (highlighterBtn) { highlighterBtn.style.display = 'none'; }
+    if (calculatorBtn) { calculatorBtn.addEventListener('click', () => { if (currentModuleIndex >= 2) toggleCalculator(); }); }
+    if (closeCalculatorBtn) { closeCalculatorBtn.addEventListener('click', () => toggleCalculator(false)); }
+    if (calculatorHeader) { calculatorHeader.addEventListener('mousedown', startDrag); }
+    if (calcResizeHandle) { calcResizeHandle.addEventListener('mousedown', startResize); }
+    if (calcSizeToggleBtn) { calcSizeToggleBtn.addEventListener('click', () => toggleMaximizeCalculator()); }
     
-    // OLD Highlighter button - now hidden by updateUI
-    if (highlighterBtn) { highlighterBtn.style.display = 'none'; } // Explicitly hide old button
-    
-    // --- Calculator Event Listeners ---
-    if (calculatorBtn) { calculatorBtn.addEventListener('click', () => { if (currentModuleIndex >= 2) toggleCalculator(); }); } else { console.warn("Calculator Button missing."); }
-    if (closeCalculatorBtn) { closeCalculatorBtn.addEventListener('click', () => toggleCalculator(false)); } else { console.warn("Close Calculator Button missing."); }
-    if (calculatorHeader) { calculatorHeader.addEventListener('mousedown', startDrag); } else { console.warn("Calculator Header missing."); }
-    if (calcResizeHandle) { calcResizeHandle.addEventListener('mousedown', startResize); } else { console.warn("Calculator Resize Handle missing."); }
-    if (calcSizeToggleBtn) { calcSizeToggleBtn.addEventListener('click', () => toggleMaximizeCalculator()); } else { console.warn("Calculator Size Toggle Button missing."); }
-
-
-    // +++ NEW: Event Listeners for Custom Toolbar +++
-
-    // 1. Show toolbar on text selection
+    // Custom Toolbar Listeners
     document.body.addEventListener('mouseup', (e) => {
-        // Hide toolbar if clicking anywhere (will be re-shown if it's a new selection)
-        // Check if click was *on* the toolbar itself first
-        if (e.target.closest('#selection-toolbar')) {
-            return; // Don't hide if clicking a toolbar button
-        }
-        
-        const selection = window.getSelection();
-        
-        // Check if selection is valid, not empty, and inside a content area
-        if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
-             const range = selection.getRangeAt(0);
-             const targetPane = range.commonAncestorContainer.parentNode.closest('.stimulus-pane .pane-content, .question-pane .pane-content');
-             
-             // Only show if selection is within a valid pane
-             if (targetPane) {
-                 selectionRange = range.cloneRange(); // Save the selection
-                 showSelectionToolbar(); // Position and show
-             } else {
-                 hideSelectionToolbar(); // Selection is outside valid area
-             }
-        } else {
-             hideSelectionToolbar(); // No selection, hide
-        }
-        
-    }, { capture: true }); // <-- ADD THIS CAPTURE FLAG
-
-    // 2. Hide toolbar on mousedown (clears old selection)
+        if (e.target.closest('#selection-toolbar')) return;
+        setTimeout(() => {
+            const selection = window.getSelection();
+            if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
+                 const range = selection.getRangeAt(0);
+                 const targetPane = range.commonAncestorContainer.parentNode.closest('.stimulus-pane .pane-content, .question-pane .pane-content');
+                 if (targetPane) {
+                     selectionRange = range.cloneRange();
+                     window.getSelection().removeAllRanges();
+                     showSelectionToolbar();
+                 } else { hideSelectionToolbar(); }
+            } else { hideSelectionToolbar(); }
+        }, 1);
+    }, { capture: true });
     document.body.addEventListener('mousedown', (e) => {
-         // Don't hide if clicking *on* the toolbar
-         if (e.target.closest('#selection-toolbar')) {
-            e.preventDefault(); // Prevent mousedown from blurring selection
-            return;
-        }
+         if (e.target.closest('#selection-toolbar')) { e.preventDefault(); e.stopPropagation(); return; }
         hideSelectionToolbar();
-    }, { capture: true }); // <-- ADD THIS CAPTURE FLAG
-
-    // 3. Disable default context menu (right-click) in content panes
+    }, { capture: true });
     document.body.addEventListener('contextmenu', (e) => {
         const targetPane = e.target.closest('.stimulus-pane .pane-content, .question-pane .pane-content');
-        if (targetPane) {
-            e.preventDefault(); // Disable right-click menu
-        }
+        if (targetPane) e.preventDefault();
     });
-
-    // 4. Disable default copy action
     document.body.addEventListener('copy', (e) => {
          const targetPane = e.target.closest('.stimulus-pane .pane-content, .question-pane .pane-content');
-         if (targetPane) {
-             e.preventDefault(); // Disable Ctrl+C / Cmd+C
-             console.log("Copying is disabled."); // Optional feedback
-         }
+         if (targetPane) e.preventDefault();
     });
-    
-    // 5. Handle clicks on the toolbar buttons
     if (selectionToolbar) {
         selectionToolbar.addEventListener('mousedown', (e) => {
-             // Use mousedown so it fires before the mouseup that clears the selection
             const button = e.target.closest('button');
             if (button) {
-                 e.preventDefault(); // Prevent button click from hiding toolbar
-                 e.stopPropagation(); // <-- ADD THIS LINE
+                 e.preventDefault(); e.stopPropagation();
                 const command = button.dataset.command;
                 const value = button.dataset.value || null;
-                
-                if (command && selectionRange) {
-                    applyFormat(command, value);
-                }
+                if (command && selectionRange) applyFormat(command, value);
             }
         });
-    } else { console.warn("Selection Toolbar element not found."); }
-    
+    }
 
-    // --- Initial Loader ---
+    // --- Initial Load ---
     initTest();
 
 }); // --- END OF DOMContentLoaded ---
