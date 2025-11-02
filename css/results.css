@@ -114,7 +114,6 @@
     border-radius: 16px;
     margin-bottom: 25px;
     overflow: hidden; /* To contain the grid */
-    /* UPDATED: Add padding to the main section block */
     padding: 0 25px 25px 25px;
 }
 
@@ -122,13 +121,11 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    /* UPDATED: Adjust padding to align with new parent padding */
-    padding: 20px 0; /* Remove horizontal padding */
-    background-color: transparent; /* Remove bg color */
+    padding: 20px 0; 
+    background-color: transparent; 
     border-bottom: 1px solid var(--border-color);
     color: var(--primary-blue);
     font-size: 1.3rem;
-    /* UPDATED: Add margin */
     margin: 0 0 20px 0;
 }
 .section-title .icon {
@@ -152,7 +149,7 @@
     border-radius: 20px;
 }
 
-/* --- NEW: Module Container Styles --- */
+/* --- Module Container Styles --- */
 .module-review-container {
     margin-bottom: 15px;
 }
@@ -170,20 +167,17 @@
     border-radius: 8px 8px 0 0;
     margin: 0;
 }
-/* --- END NEW --- */
-
 
 .review-grid {
     display: grid;
-    /* Flexible grid that creates columns around 75px wide */
-    grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
-    gap: 15px;
-    /* UPDATED: Add padding to the grid wrapper */
+    /* UPDATED: Make columns smaller for just numbers */
+    grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
+    gap: 10px; /* Reduced gap slightly */
     padding: 20px;
     border: 1px solid var(--border-color);
     border-radius: 0 0 8px 8px;
 }
-/* Style grid differently if it follows a title */
+
 .module-title + .review-grid {
     border-top-left-radius: 0;
     border-top-right-radius: 0;
@@ -195,29 +189,31 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 10px 5px;
-    border: 2px solid var(--border-color); /* Increased border width */
+    padding: 8px 5px; /* Adjusted padding */
+    border: 2px solid var(--border-color);
     border-radius: 8px;
     background-color: var(--white);
     cursor: pointer;
     transition: all 0.2s ease;
     font-family: inherit;
-    min-height: 60px;
+    min-height: 55px; /* Adjusted min-height */
+    aspect-ratio: 1 / 1; /* Make them square */
 }
 
 .q-number-btn .q-number {
-    font-size: 1.1rem; /* Slightly smaller to fit M1: Q1 */
+    font-size: 1.2rem; /* Made number larger */
     font-weight: 600;
     color: var(--primary-blue);
     text-align: center;
+    line-height: 1; /* Add this for better centering */
 }
 
-/* --- NEW STYLES for correct/incorrect --- */
 .q-number-btn .correct-icon,
 .q-number-btn .incorrect-icon {
-    display: none; /* Hide both icons by default */
+    display: none; 
     font-size: 0.9rem;
     margin-top: 5px;
+    line-height: 1; /* Add this */
 }
 
 .q-number-btn.correct {
@@ -237,8 +233,6 @@
     display: block;
     color: #e74c3c;
 }
-/* --- END NEW STYLES --- */
-
 
 .q-number-btn:hover {
     transform: translateY(-3px);
@@ -246,9 +240,8 @@
     border-color: var(--primary-purple);
 }
 
-/* --- NEW: Misc fixes --- */
 .no-questions-in-module {
-    grid-column: 1 / -1; /* Span full grid */
+    grid-column: 1 / -1; 
     text-align: center;
     color: var(--dark-gray);
     font-style: italic;
@@ -275,16 +268,20 @@
         padding: 25px;
     }
     .review-section {
-        /* UPDATED: Adjust padding for mobile */
         padding: 0 15px 15px 15px;
     }
     .review-grid {
-        grid-template-columns: repeat(auto-fill, minmax(65px, 1fr));
-        gap: 10px;
+        /* UPDATED: Adjust for mobile */
+        grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+        gap: 8px;
         padding: 15px;
     }
+    .q-number-btn {
+        min-height: 50px;
+        padding: 6px 4px;
+    }
     .q-number-btn .q-number {
-        font-size: 1rem;
+        font-size: 1.1rem;
     }
 }
 

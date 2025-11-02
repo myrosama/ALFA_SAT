@@ -1,6 +1,7 @@
 // js/results.js - Logic for the new Test Results page
 // UPDATED: To show all questions (correct & incorrect) and link to a new review page.
 // UPDATED AGAIN: To separate question grids by Module.
+// UPDATED AGAIN: To show only the question number (e.g., "1") instead of "M1: Q1".
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Initialize Firebase ---
@@ -148,7 +149,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Get the display module/section number
             const moduleNum = (q.module % 2) === 0 ? 2 : 1; // 1->1, 2->2, 3->1, 4->2
             
-            qBtnClone.querySelector('.q-number').textContent = `M${moduleNum} : Q${q.questionNumber}`;
+            // UPDATED: Show only the question number
+            qBtnClone.querySelector('.q-number').textContent = q.questionNumber;
             
             // Store data on the button to find it later
             qBtnEl.dataset.questionId = q.id; 
@@ -241,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {string} message - The error message to show.
      */
     function showError(message) {
-        if (loadingContainer) loadingContainer.style.display = 'none';
+        loadingContainer.style.display = 'none';
         if (resultsContainer) {
             resultsContainer.innerHTML = `<div class="results-header"><p>${message}</p></div>`;
             resultsContainer.classList.add('loaded');
