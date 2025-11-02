@@ -136,8 +136,7 @@
     content: "\f02d"; /* fa-book */
 }
 .section-title.math-section .icon::before {
-    content: "\f698"; /* fa-calculator-simple - using a placeholder, update as needed */
-    /* Or use "\f1ec" for fa-calculator */
+    content: "\f1ec"; /* fa-calculator */
 }
 .section-title .section-raw-score {
     margin-left: auto;
@@ -151,8 +150,8 @@
 
 .review-grid {
     display: grid;
-    /* Flexible grid that creates columns around 65px wide */
-    grid-template-columns: repeat(auto-fill, minmax(65px, 1fr));
+    /* Flexible grid that creates columns around 75px wide */
+    grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
     gap: 15px;
     padding: 25px;
 }
@@ -163,7 +162,7 @@
     align-items: center;
     justify-content: center;
     padding: 10px 5px;
-    border: 1px solid var(--border-color);
+    border: 2px solid var(--border-color); /* Increased border width */
     border-radius: 8px;
     background-color: var(--white);
     cursor: pointer;
@@ -171,23 +170,48 @@
     font-family: inherit;
     min-height: 60px;
 }
+
+.q-number-btn .q-number {
+    font-size: 1.1rem; /* Slightly smaller to fit M1: Q1 */
+    font-weight: 600;
+    color: var(--primary-blue);
+    text-align: center;
+}
+
+/* --- NEW STYLES for correct/incorrect --- */
+.q-number-btn .correct-icon,
+.q-number-btn .incorrect-icon {
+    display: none; /* Hide both icons by default */
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+
+.q-number-btn.correct {
+    border-color: #2ecc71;
+    background-color: #f0fdf4;
+}
+.q-number-btn.correct .correct-icon {
+    display: block;
+    color: #2ecc71;
+}
+
+.q-number-btn.incorrect {
+    border-color: #e74c3c;
+    background-color: #fef2f2;
+}
+.q-number-btn.incorrect .incorrect-icon {
+    display: block;
+    color: #e74c3c;
+}
+/* --- END NEW STYLES --- */
+
+
 .q-number-btn:hover {
     transform: translateY(-3px);
     box-shadow: 0 4px 10px rgba(0,0,0,0.07);
     border-color: var(--primary-purple);
 }
 
-.q-number-btn .q-number {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: var(--primary-blue);
-}
-
-.q-number-btn .incorrect-icon {
-    font-size: 0.9rem;
-    color: var(--error-red);
-    margin-top: 5px;
-}
 
 /* --- Responsive Adjustments --- */
 @media (max-width: 768px) {
@@ -207,8 +231,11 @@
         padding: 25px;
     }
     .review-grid {
-        grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(65px, 1fr));
         gap: 10px;
         padding: 20px;
+    }
+    .q-number-btn .q-number {
+        font-size: 1rem;
     }
 }

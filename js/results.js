@@ -1,4 +1,5 @@
 // js/results.js - Logic for the new Test Results page
+// UPDATED: To show all questions (correct & incorrect) and link to a new review page.
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Initialize Firebase ---
@@ -17,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- State ---
     let resultData = null; // Will hold the doc from Firestore
+    let currentResultId = null; // Store the resultId for linking
 
     /**
      * Renders all MathQuill static math blocks on the page.
@@ -40,9 +42,9 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     async function loadResults() {
         const urlParams = new URLSearchParams(window.location.search);
-        const resultId = urlParams.get('resultId');
+        currentResultId = urlParams.get('resultId'); // Store for later use
 
-        if (!resultId) {
+        if (!currentResultId) {
             showError("No Result ID found in URL. Please go back to the dashboard.");
             return;
         }
@@ -56,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // --- 1. Fetch Result Data ---
-            const resultDoc = await db.collection('testResults').doc(resultId).get();
+            const resultDoc = await db.collection('testResults').doc(currentResultId).get();
             
             if (!resultDoc.exists) {
                 showError("Test result not found. It may have been deleted or the link is incorrect.");
@@ -74,23 +76,22 @@ document.addEventListener('DOMContentLoaded', () => {
             // --- 2. Render Header ---
             renderHeader(resultData);
 
-            // --- 3. Filter and Render Incorrect Questions ---
+            // --- 3. Filter and Render ALL Questions ---
             const allQuestions = resultData.allQuestions || [];
-            const userAnswers = resultData.userAnswers || {};
+            
+            // Get all R&W questions, not just incorrect ones
+            const allRW = allQuestions
+                .filter(q => (q.module === 1 || q.module === 2))
+                .sort((a, b) => (a.module - b.module) || (a.questionNumber - b.questionNumber)); // Sort
 
-            const incorrectRW = allQuestions.filter(q => 
-                (q.module === 1 || q.module === 2) && 
-                userAnswers[q.id] !== q.correctAnswer
-            );
-
-            const incorrectMath = allQuestions.filter(q => 
-                (q.module === 3 || q.module === 4) && 
-                userAnswers[q.id] !== q.correctAnswer
-            );
+            // Get all Math questions, not just incorrect ones
+            const allMath = allQuestions
+                .filter(q => (q.module === 3 || q.module === 4))
+                .sort((a, b) => (a.module - b.module) || (a.questionNumber - b.questionNumber)); // Sort
 
             // Render the sections
-            renderReviewSection("Reading & Writing", "rw-section", incorrectRW, resultData);
-            renderReviewSection("Math", "math-section", incorrectMath, resultData);
+            renderReviewSection("Reading & Writing", "rw-section", allRW, resultData);
+            renderReviewSection("Math", "math-section", allMath, resultData);
             
             // --- 4. Finalize ---
             loadingContainer.style.display = 'none'; // Hide loading spinner
@@ -123,15 +124,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Renders a review section (R&W or Math) with its grid of incorrect questions.
+     * Renders a review section (R&W or Math) with its grid of ALL questions.
      * @param {string} title - The section title (e.g., "Reading & Writing").
      * @param {string} cssClass - The CSS class to add (e.g., "rw-section").
-     * @param {Array} incorrectQuestions - An array of incorrect question objects.
+     * @param {Array} allSectionQuestions - An array of ALL question objects for this section.
      * @param {object} data - The main result data object.
      */
-    function renderReviewSection(title, cssClass, incorrectQuestions, data) {
+    function renderReviewSection(title, cssClass, allSectionQuestions, data) {
         const sectionClone = sectionTemplate.content.cloneNode(true);
-        const sectionEl = sectionClone.querySelector('.review-section');
         const titleEl = sectionClone.querySelector('.section-title');
         const gridEl = sectionClone.querySelector('.review-grid');
         const rawScoreEl = sectionClone.querySelector('.section-raw-score');
@@ -146,21 +146,21 @@ document.addEventListener('DOMContentLoaded', () => {
             rawScoreEl.textContent = `${data.mathRaw} / ${data.mathTotal} Correct`;
         }
 
-        if (incorrectQuestions.length === 0) {
-            gridEl.innerHTML = `<p class="no-incorrect">No incorrect questions in this section. Great job!</p>`;
+        if (allSectionQuestions.length === 0) {
+            gridEl.innerHTML = `<p class="no-incorrect">No questions found for this section.</p>`;
         } else {
-            // Sort by module then question number
-            incorrectQuestions.sort((a, b) => {
-                if (a.module !== b.module) return a.module - b.module;
-                return a.questionNumber - b.questionNumber;
-            });
+            const userAnswers = data.userAnswers || {};
             
-            incorrectQuestions.forEach(q => {
+            allSectionQuestions.forEach(q => {
+                const isCorrect = userAnswers[q.id] === q.correctAnswer;
+                
                 const qBtnClone = qNumTemplate.content.cloneNode(true);
                 const qBtnEl = qBtnClone.querySelector('.q-number-btn');
                 
+                // Add correct/incorrect class for styling
+                qBtnEl.classList.add(isCorrect ? 'correct' : 'incorrect');
+                
                 // Get the display module/section number
-                const sectionNum = q.module < 3 ? 1 : 2;
                 const moduleNum = (q.module % 2) === 0 ? 2 : 1; // 1->1, 2->2, 3->1, 4->2
                 
                 qBtnClone.querySelector('.q-number').textContent = `M${moduleNum} : Q${q.questionNumber}`;
@@ -168,11 +168,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Store data on the button to find it later
                 qBtnEl.dataset.questionId = q.id; 
                 
+                // UPDATED: Add event listener to link to the new review page
                 qBtnEl.addEventListener('click', () => {
-                    // TODO: Implement the click-to-review logic
-                    console.log("Clicked question:", q.id);
-                    alert(`Review for question ${q.id} coming soon!`);
-                    // We will make this open a new page or modal in the next batch
+                    window.location.href = `question-review.html?resultId=${currentResultId}&questionId=${q.id}`;
                 });
                 
                 gridEl.appendChild(qBtnClone);
@@ -188,9 +186,11 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {string} message - The error message to show.
      */
     function showError(message) {
-        loadingContainer.style.display = 'none';
-        resultsContainer.innerHTML = `<div class="results-header"><p>${message}</p></div>`;
-        resultsContainer.classList.add('loaded');
+        if (loadingContainer) loadingContainer.style.display = 'none';
+        if (resultsContainer) {
+            resultsContainer.innerHTML = `<div class="results-header"><p>${message}</p></div>`;
+            resultsContainer.classList.add('loaded');
+        }
     }
 
 
