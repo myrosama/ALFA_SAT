@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Question - ALFA SAT</title>
+    <!-- Core styles -->
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Test styles (for layout) -->
+    <link rel="stylesheet" href="css/test.css">
+    <!-- This page's specific styles -->
+    <link rel="stylesheet" href="css/question-review.css">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.css"/>
+</head>
+<body class="test-body">
+
+    <div class="test-wrapper">
+        <!-- TOP HEADER -->
+        <header class="test-header">
+            <div class="header-left">
+                <img src="assets/logo.png" alt="Logo" class="logo-small">
+                <div class="test-title">
+                    <h4 id="review-header-title">Reviewing Question</h4>
+                    <span id="review-header-subtitle">Loading...</span>
+                </div>
+            </div>
+            <div class="header-center">
+                <!-- No Timer -->
+            </div>
+            <div class="header-right">
+                <a href="#" id="back-to-results-btn" class="btn btn-secondary" style="margin-top: 0; background-color: white; color: var(--primary-purple);">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Results
+                </a>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="test-main" id="review-main-content">
+            <!-- Loading Spinner -->
+            <div id="review-loading-container">
+                <div class="loading-spinner"></div>
+                <p>Loading question review...</p>
+            </div>
+
+            <!-- Content will be injected here -->
+            <div class="main-content-body" id="review-content-body" style="visibility: hidden;">
+                <!-- STIMULUS PANE -->
+                <div class="stimulus-pane" id="review-stimulus-pane">
+                    <div class="pane-content">
+                        <!-- Stimulus content loaded here -->
+                    </div>
+                </div>
+
+                <!-- QUESTION PANE -->
+                <div class="question-pane" id="review-question-pane">
+                    
+                    <div class="question-header-bar" id="review-question-header">
+                         <div class="q-number-display" id="q-number-display">?</div>
+                         <div id="question-result-display">
+                            <!-- e.g., <span class="correct"><i class="fa-solid fa-check"></i> Correct</span> -->
+                         </div>
+                    </div>
+
+                    <div class="pane-content" id="review-question-content">
+                        <!-- Question prompt loaded here -->
+                    </div>
+
+                    <div class="pane-content" id="review-options-content">
+                        <!-- Question options loaded here -->
+                    </div>
+
+                    <div class="pane-content explanation-container" id="review-explanation-container">
+                        <h3>Explanation</h3>
+                        <div class="explanation-content" id="explanation-content">
+                            <p>Loading explanation...</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="test-footer">
+            <div class="footer-user-name" id="user-name-display">
+                Student
+            </div>
+            <div class="footer-center">
+                <!-- No Question Nav -->
+            </div>
+            <div class="footer-right">
+                <!-- No Next/Back Buttons -->
+            </div>
+        </footer>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-init.js"></script>
+    <script src="js/main.js"></script> <!-- For auth state/logout button -->
+    <script src="js/question-review.js"></script> <!-- This page's specific logic -->
+
+</body>
+</html>
