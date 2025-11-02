@@ -1,4 +1,4 @@
-// js/editor.js - REMOVED Points Dropdown
+// js/editor.js - UPDATED: Added Explanation Field
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Firebase Setup ---
@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentModule = 1;
     let currentQuestion = null; // Stores the *number* (e.g., 1, 2, 3)
     let savedQuestions = {}; // { "m1_q1": true, "m1_q2": true, ... }
-    let editors = {}; // { passage, prompt, options: {A, B, C, D}, fillIn }
+    let editors = {}; // { passage, prompt, options: {A, B, C, D}, fillIn, explanation }
     let testName = "Loading..."; // Store test name
 
     // --- Data Definitions ---
@@ -40,7 +40,6 @@ document.addEventListener('DOMContentLoaded', () => {
             "Geometry and Trigonometry": ["Area and volume", "Lines, angles, and triangles", "Right triangles and trigonometry", "Circles"]
         }
     };
-    // const POINT_VALUES = [10, 20, 30, 40]; // No longer needed
 
     // --- Main Initialization ---
     if (!testId) {
@@ -101,7 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
             passage: null,
             prompt: null,
             options: { A: null, B: null, C: null, D: null },
-            fillIn: null
+            fillIn: null,
+            explanation: null // Clear explanation editor too
         };
     }
     
@@ -244,6 +244,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 editors.options[opt] = new Quill(`#option-${opt.toLowerCase()}`, questionConfig);
             });
             editors.fillIn = new Quill('#fill-in-answer', questionConfig);
+            
+            // +++ Initialize Explanation Editor +++
+            editors.explanation = new Quill('#explanation-editor', { ...questionConfig, placeholder: 'Explain why the correct answer is right...' });
+
         } catch(e) {
             console.error("Quill initialization failed. Are the containers in the DOM?", e);
             alert("Error: Could not load text editors. Please refresh.");
@@ -332,7 +336,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const questionForm = editorContainer.querySelector('#question-form');
         const domainSelect = questionForm.querySelector('#q-domain');
         const skillSelect = questionForm.querySelector('#q-skill');
-        // const pointsSelect = questionForm.querySelector('#q-points'); // REMOVED
         const formatSelect = questionForm.querySelector('#q-format');
         const imagePosSelect = questionForm.querySelector('#q-image-position');
         
@@ -350,8 +353,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         domainSelect.addEventListener('change', populateSkills);
         
-        // pointsSelect.innerHTML = POINT_VALUES.map(v => `<option value="${v}">${v} points</option>`).join(''); // REMOVED
-
         formatSelect.addEventListener('change', () => {
             questionForm.querySelector('#answer-options-container').classList.toggle('hidden', formatSelect.value !== 'mcq');
             questionForm.querySelector('#fill-in-answer-container').classList.toggle('hidden', formatSelect.value !== 'fill-in');
@@ -394,6 +395,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if(editors.fillIn) editors.fillIn.root.innerHTML = data.fillInAnswer || '';
         
+        // +++ Load Explanation +++
+        if(editors.explanation) editors.explanation.root.innerHTML = data.explanation || '';
+        
         // Populate form controls with saved values
         formatSelect.value = data.format || 'mcq';
         const radio = questionForm.querySelector(`input[name="correct-answer"][value="${data.correctAnswer}"]`);
@@ -402,7 +406,6 @@ document.addEventListener('DOMContentLoaded', () => {
         domainSelect.value = data.domain || Object.keys(domainSource)[0];
         populateSkills(); // Must call this after setting domainSelect.value
         skillSelect.value = data.skill || '';
-        // pointsSelect.value = data.points || POINT_VALUES[0]; // REMOVED
 
         // Load and apply the saved image position
         imagePosSelect.value = data.imagePosition || 'above';
@@ -431,7 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const imageContainer = document.getElementById('stimulus-image-container');
 
         // Check if all editors are initialized
-        if (!editors.passage || !editors.prompt || !editors.options.A || !editors.fillIn) {
+        if (!editors.passage || !editors.prompt || !editors.options.A || !editors.fillIn || !editors.explanation) {
             alert("Error: Editors are not fully loaded. Please wait a moment and try again.");
             return;
         }
@@ -446,7 +449,6 @@ document.addEventListener('DOMContentLoaded', () => {
             questionNumber: currentQuestion,
             domain: questionForm.querySelector('#q-domain').value,
             skill: questionForm.querySelector('#q-skill').value,
-            // points: parseInt(questionForm.querySelector('#q-points').value), // REMOVED
             format: questionForm.querySelector('#q-format').value,
             options: {
                 A: editors.options.A.root.innerHTML,
@@ -456,6 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             fillInAnswer: editors.fillIn.root.innerHTML,
             correctAnswer: questionForm.querySelector('input[name="correct-answer"]:checked')?.value || null,
+            explanation: editors.explanation.root.innerHTML, // +++ Save Explanation
             lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
         };
 

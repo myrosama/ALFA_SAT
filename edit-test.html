@@ -65,7 +65,7 @@
         </footer>
     </div>
     
-    <!-- +++ MODIFIED TEMPLATE: REMOVED "Points" Dropdown +++ -->
+    <!-- UPDATED TEMPLATE: Added Explanation editor -->
     <template id="question-editor-template">
         <form class="question-editor-form" id="question-form">
             <div class="editor-toolbar">
@@ -83,6 +83,7 @@
             <div class="question-number-bar">Question <span id="q-number-display">1</span></div>
             <div class="form-scroll-area">
                 <div class="input-group"><label>Question Prompt</label><div id="question-text-editor"></div></div>
+                
                 <div id="answer-options-container">
                     <h4>Answer Choices</h4>
                     <div class="option-group">
@@ -93,10 +94,20 @@
                     <div class="option-group"><label class="correct-answer-label"><input type="radio" name="correct-answer" value="C"> C</label><div class="input-group"><div class="answer-input" id="option-c"></div></div></div>
                     <div class="option-group"><label class="correct-answer-label"><input type="radio" name="correct-answer" value="D"> D</label><div class="input-group"><div class="answer-input" id="option-d"></div></div></div>
                 </div>
+                
                 <div id="fill-in-answer-container" class="hidden">
                     <h4>Correct Answer</h4>
                     <div class="input-group"><div class="answer-input" id="fill-in-answer"></div></div>
                 </div>
+                
+                <!-- +++ NEW EXPLANATION SECTION +++ -->
+                <div id="explanation-container" class="input-group">
+                    <h4>Explanation</h4>
+                    <label>Provide a detailed explanation for the correct answer.</label>
+                    <div id="explanation-editor"></div>
+                </div>
+                <!-- +++ END NEW SECTION +++ -->
+
             </div>
             <div class="form-actions">
                  <button type="button" class="btn btn-secondary danger" id="delete-question-btn">Delete Question</button>
