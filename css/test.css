@@ -21,6 +21,70 @@
     --calc-header-height: 35px; 
 }
 
+/* +++ ADDED: Fullscreen Prompt Styles +++ */
+.fullscreen-prompt-container {
+    position: fixed;
+    inset: 0;
+    background-color: var(--light-gray);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000; /* Highest z-index */
+    padding: 20px;
+}
+.fullscreen-prompt-card {
+    background: var(--white);
+    padding: 40px;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+    text-align: center;
+    max-width: 450px;
+    width: 100%;
+}
+.fullscreen-prompt-card h3 {
+    font-size: 1.5rem;
+    color: var(--text-color);
+    margin: 0 0 10px 0;
+}
+.fullscreen-prompt-card p {
+    color: var(--dark-gray);
+    margin-bottom: 25px;
+}
+.fullscreen-prompt-card #enter-fullscreen-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    background-color: #333;
+    color: var(--white);
+    padding: 15px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.fullscreen-prompt-card #enter-fullscreen-btn:hover {
+    background-color: #000;
+}
+.fullscreen-prompt-card #enter-fullscreen-btn i {
+    font-size: 0.9em;
+}
+.fullscreen-prompt-card #proceed-without-fullscreen {
+    display: block;
+    margin-top: 20px;
+    color: var(--dark-gray);
+    font-size: 0.9rem;
+    text-decoration: none;
+}
+.fullscreen-prompt-card #proceed-without-fullscreen:hover {
+    text-decoration: underline;
+}
+/* --- End Fullscreen Prompt Styles --- */
+
+
 
 body.test-body {
     background-color: var(--white);

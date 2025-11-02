@@ -17,7 +17,19 @@
 
     <!-- The backdrop for the modal -->
     <div class="modal-backdrop" id="modal-backdrop"></div>
-
+    
+    <!-- +++ ADDED: FULLSCREEN PROMPT MODAL +++ -->
+    <div class="fullscreen-prompt-container" id="fullscreen-prompt">
+        <div class="fullscreen-prompt-card">
+            <h3 id="fullscreen-prompt-title">Please Enter Fullscreen Mode</h3>
+            <p>To continue, please return to the fullscreen experience.</p>
+            <button classs="btn" id="enter-fullscreen-btn">
+                <i class="fa-solid fa-expand"></i> Enter Fullscreen
+            </button>
+            <a href="#" id="proceed-without-fullscreen">Proceed without fullscreen mode</a>
+        </div>
+    </div>
+    <!-- +++ END OF FULLSCREEN MODAL +++ -->
     <!-- +++ ADD THIS CUSTOM SELECTION TOOLBAR +++ -->
     <div class="selection-toolbar" id="selection-toolbar">
         <button data-command="highlight" data-value="#FFD700" title="Highlight Yellow"><i class="fa-solid fa-highlighter" style="color: #FFD700;"></i></button>

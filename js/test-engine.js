@@ -70,6 +70,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleBtn = document.getElementById('question-nav-btn');
     const closeModalBtn = document.getElementById('close-modal-btn');
     const selectionToolbar = document.getElementById('selection-toolbar');
+    // +++ ADDED: Fullscreen Modal Elements +++
+    const fullscreenPrompt = document.getElementById('fullscreen-prompt');
+    const fullscreenBtn = document.getElementById('enter-fullscreen-btn');
+    const proceedBtn = document.getElementById('proceed-without-fullscreen');
+    const testWrapper = document.getElementById('test-wrapper');
+    const fullscreenPromptTitle = document.getElementById('fullscreen-prompt-title');
+    // +++ END of Fullscreen Elements +++
 
     // +++ NEW: SAT SCORING CONVERSION TABLES +++
     // Based on the provided PDF (Digital SAT, non-adaptive)
@@ -680,8 +687,76 @@ document.addEventListener('DOMContentLoaded', () => {
         hideSelectionToolbar();
     }
     // --- [End of Collapsed Toolbar Functions] ---
+    // +++ NEW: Fullscreen Logic +++
+    function requestFullScreen() {
+        const elem = document.documentElement;
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen().catch(err => {
+                console.warn(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+            });
+        } else if (elem.mozRequestFullScreen) { /* Firefox */
+            elem.mozRequestFullScreen();
+        } else if (elem.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
+            elem.webkitRequestFullscreen();
+        } else if (elem.msRequestFullscreen) { /* IE/Edge */
+            elem.msRequestFullscreen();
+        }
+    }
+    function exitFullScreen() {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.mozCancelFullScreen) { /* Firefox */
+            document.mozCancelFullScreen();
+        } else if (document.webkitExitFullscreen) { /* Chrome, Safari and Opera */
+            document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) { /* IE/Edge */
+            document.msExitFullscreen();
+        }
+    }
 
+    function isFullscreen() {
+        return document.fullscreenElement ||
+               document.webkitFullscreenElement ||
+               document.mozFullScreenElement ||
+               document.msFullscreenElement;
+    }
 
+    function startTest() {
+        // This function now just shows the test, assuming fullscreen is handled.
+        if(fullscreenPrompt) fullscreenPrompt.style.display = 'none';
+        if(testWrapper) testWrapper.classList.remove('hidden');
+        if(backdrop) backdrop.classList.remove('visible'); // Hide backdrop if it was visible
+        
+        // Start the actual test logic
+        if (allQuestionsByModule.flat().length > 0) {
+            console.log("Starting module 0.");
+            startModule(0);
+        } else {
+            console.error("No questions loaded.");
+            if(questionPaneContent) questionPaneContent.innerHTML = "<p>Could not load questions.</p>";
+        }
+    }
+
+    function handleFullscreenChange() {
+        if (!isFullscreen()) {
+            // User exited fullscreen, show the prompt again
+            if(fullscreenPrompt) fullscreenPrompt.style.display = 'flex';
+            if(testWrapper) testWrapper.classList.add('hidden');
+            if(backdrop) backdrop.classList.add('visible'); // Show backdrop
+            if(fullscreenPromptTitle) fullscreenPromptTitle.textContent = 'Please Re-enter Fullscreen Mode';
+            
+            // Pause the timer
+            if(timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null; // Clear interval
+            }
+        } else {
+            // User entered fullscreen, start the test (or resume it)
+            // Note: startTest() also hides the prompt and shows the test
+            startTest(); 
+        }
+    }
+    // +++ End of Fullscreen Logic +++
     /** Main initialization function. */
     async function initTest() {
         console.log("Init test...");
@@ -806,6 +881,25 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     } else { console.warn("Selection Toolbar element not found."); }
+    // +++ ADDED: Fullscreen Event Listeners +++
+    if(fullscreenBtn) {
+        fullscreenBtn.addEventListener('click', requestFullScreen);
+    }
+    if(proceedBtn) {
+        proceedBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            // Just start the test without fullscreen
+            startTest();
+        });
+    }
+
+
+    // Listen for changes in fullscreen state
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+    // +++ END: Fullscreen Event Listeners +++
 
     // --- Initial Load ---
     initTest();
