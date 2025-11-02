@@ -1,5 +1,6 @@
 // js/results.js - Logic for the new Test Results page
 // UPDATED: To show all questions (correct & incorrect) and link to a new review page.
+// UPDATED AGAIN: To separate question grids by Module.
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Initialize Firebase ---
@@ -81,17 +82,17 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Get all R&W questions, not just incorrect ones
             const allRW = allQuestions
-                .filter(q => (q.module === 1 || q.module === 2))
-                .sort((a, b) => (a.module - b.module) || (a.questionNumber - b.questionNumber)); // Sort
+                .filter(q => (q.module === 1 || q.module === 2));
+                // Sorting will be handled inside renderReviewSection
 
             // Get all Math questions, not just incorrect ones
             const allMath = allQuestions
-                .filter(q => (q.module === 3 || q.module === 4))
-                .sort((a, b) => (a.module - b.module) || (a.questionNumber - b.questionNumber)); // Sort
+                .filter(q => (q.module === 3 || q.module === 4));
+                // Sorting will be handled inside renderReviewSection
 
             // Render the sections
-            renderReviewSection("Reading & Writing", "rw-section", allRW, resultData);
-            renderReviewSection("Math", "math-section", allMath, resultData);
+            renderReviewSection("Reading & Writing", "rw-section", 1, 2, allRW, resultData);
+            renderReviewSection("Math", "math-section", 3, 4, allMath, resultData);
             
             // --- 4. Finalize ---
             loadingContainer.style.display = 'none'; // Hide loading spinner
@@ -124,16 +125,56 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Renders a review section (R&W or Math) with its grid of ALL questions.
+     * Populates a given grid element with question buttons.
+     * @param {HTMLElement} gridEl - The .review-grid element to populate.
+     * @param {Array} questions - An array of question objects for this grid.
+     * @param {object} userAnswers - The user's answers map.
+     */
+    function populateGrid(gridEl, questions, userAnswers) {
+        if (questions.length === 0) {
+            gridEl.innerHTML = `<p class="no-questions-in-module">No questions found for this module.</p>`;
+            return;
+        }
+
+        questions.forEach(q => {
+            const isCorrect = userAnswers[q.id] === q.correctAnswer;
+            
+            const qBtnClone = qNumTemplate.content.cloneNode(true);
+            const qBtnEl = qBtnClone.querySelector('.q-number-btn');
+            
+            // Add correct/incorrect class for styling
+            qBtnEl.classList.add(isCorrect ? 'correct' : 'incorrect');
+            
+            // Get the display module/section number
+            const moduleNum = (q.module % 2) === 0 ? 2 : 1; // 1->1, 2->2, 3->1, 4->2
+            
+            qBtnClone.querySelector('.q-number').textContent = `M${moduleNum} : Q${q.questionNumber}`;
+            
+            // Store data on the button to find it later
+            qBtnEl.dataset.questionId = q.id; 
+            
+            // UPDATED: Add event listener to link to the new review page
+            qBtnEl.addEventListener('click', () => {
+                window.location.href = `question-review.html?resultId=${currentResultId}&questionId=${q.id}`;
+            });
+            
+            gridEl.appendChild(qBtnClone);
+        });
+    }
+
+    /**
+     * Renders a review section (R&W or Math) and internally creates sub-grids for each module.
      * @param {string} title - The section title (e.g., "Reading & Writing").
      * @param {string} cssClass - The CSS class to add (e.g., "rw-section").
+     * @param {number} moduleNumA - The first module number (e.g., 1 for R&W, 3 for Math).
+     * @param {number} moduleNumB - The second module number (e.g., 2 for R&W, 4 for Math).
      * @param {Array} allSectionQuestions - An array of ALL question objects for this section.
      * @param {object} data - The main result data object.
      */
-    function renderReviewSection(title, cssClass, allSectionQuestions, data) {
+    function renderReviewSection(title, cssClass, moduleNumA, moduleNumB, allSectionQuestions, data) {
         const sectionClone = sectionTemplate.content.cloneNode(true);
+        const sectionEl = sectionClone.querySelector('.review-section');
         const titleEl = sectionClone.querySelector('.section-title');
-        const gridEl = sectionClone.querySelector('.review-grid');
         const rawScoreEl = sectionClone.querySelector('.section-raw-score');
 
         titleEl.classList.add(cssClass);
@@ -146,37 +187,51 @@ document.addEventListener('DOMContentLoaded', () => {
             rawScoreEl.textContent = `${data.mathRaw} / ${data.mathTotal} Correct`;
         }
 
-        if (allSectionQuestions.length === 0) {
-            gridEl.innerHTML = `<p class="no-incorrect">No questions found for this section.</p>`;
-        } else {
-            const userAnswers = data.userAnswers || {};
-            
-            allSectionQuestions.forEach(q => {
-                const isCorrect = userAnswers[q.id] === q.correctAnswer;
-                
-                const qBtnClone = qNumTemplate.content.cloneNode(true);
-                const qBtnEl = qBtnClone.querySelector('.q-number-btn');
-                
-                // Add correct/incorrect class for styling
-                qBtnEl.classList.add(isCorrect ? 'correct' : 'incorrect');
-                
-                // Get the display module/section number
-                const moduleNum = (q.module % 2) === 0 ? 2 : 1; // 1->1, 2->2, 3->1, 4->2
-                
-                qBtnClone.querySelector('.q-number').textContent = `M${moduleNum} : Q${q.questionNumber}`;
-                
-                // Store data on the button to find it later
-                qBtnEl.dataset.questionId = q.id; 
-                
-                // UPDATED: Add event listener to link to the new review page
-                qBtnEl.addEventListener('click', () => {
-                    window.location.href = `question-review.html?resultId=${currentResultId}&questionId=${q.id}`;
-                });
-                
-                gridEl.appendChild(qBtnClone);
-            });
-        }
+        const userAnswers = data.userAnswers || {};
+
+        // Filter and sort questions for Module A
+        const moduleA_Qs = allSectionQuestions
+            .filter(q => q.module === moduleNumA)
+            .sort((a, b) => a.questionNumber - b.questionNumber);
         
+        // Filter and sort questions for Module B
+        const moduleB_Qs = allSectionQuestions
+            .filter(q => q.module === moduleNumB)
+            .sort((a, b) => a.questionNumber - b.questionNumber);
+
+        // --- Create Module A Container ---
+        const moduleA_Container = document.createElement('div');
+        moduleA_Container.className = 'module-review-container';
+        
+        const moduleA_Title = document.createElement('h4');
+        moduleA_Title.className = 'module-title';
+        moduleA_Title.textContent = `Module ${moduleNumA <= 2 ? 1 : 1}`; // 1->1, 3->1
+        moduleA_Container.appendChild(moduleA_Title);
+        
+        const moduleA_Grid = document.createElement('div');
+        moduleA_Grid.className = 'review-grid';
+        populateGrid(moduleA_Grid, moduleA_Qs, userAnswers);
+        moduleA_Container.appendChild(moduleA_Grid);
+        
+        sectionEl.appendChild(moduleA_Container);
+
+        // --- Create Module B Container ---
+        const moduleB_Container = document.createElement('div');
+        moduleB_Container.className = 'module-review-container';
+        
+        const moduleB_Title = document.createElement('h4');
+        moduleB_Title.className = 'module-title';
+        moduleB_Title.textContent = `Module ${moduleNumB <= 2 ? 2 : 2}`; // 2->2, 4->2
+        moduleB_Container.appendChild(moduleB_Title);
+        
+        const moduleB_Grid = document.createElement('div');
+        moduleB_Grid.className = 'review-grid';
+        populateGrid(moduleB_Grid, moduleB_Qs, userAnswers);
+        moduleB_Container.appendChild(moduleB_Grid);
+
+        sectionEl.appendChild(moduleB_Container);
+        
+        // Append the whole section to the page
         resultsContainer.appendChild(sectionClone);
     }
 
@@ -207,3 +262,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 }); // --- END OF DOMContentLoaded ---
+

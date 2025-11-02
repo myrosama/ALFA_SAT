@@ -114,18 +114,22 @@
     border-radius: 16px;
     margin-bottom: 25px;
     overflow: hidden; /* To contain the grid */
+    /* UPDATED: Add padding to the main section block */
+    padding: 0 25px 25px 25px;
 }
 
 .section-title {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 20px 25px;
-    background-color: #f8f9fa;
+    /* UPDATED: Adjust padding to align with new parent padding */
+    padding: 20px 0; /* Remove horizontal padding */
+    background-color: transparent; /* Remove bg color */
     border-bottom: 1px solid var(--border-color);
     color: var(--primary-blue);
     font-size: 1.3rem;
-    margin: 0;
+    /* UPDATED: Add margin */
+    margin: 0 0 20px 0;
 }
 .section-title .icon {
     font-family: "Font Awesome 6 Free";
@@ -148,13 +152,43 @@
     border-radius: 20px;
 }
 
+/* --- NEW: Module Container Styles --- */
+.module-review-container {
+    margin-bottom: 15px;
+}
+.module-review-container:last-child {
+    margin-bottom: 0;
+}
+.module-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--dark-gray);
+    padding: 8px 12px;
+    background-color: #f8f9fa;
+    border: 1px solid var(--border-color);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    margin: 0;
+}
+/* --- END NEW --- */
+
+
 .review-grid {
     display: grid;
     /* Flexible grid that creates columns around 75px wide */
     grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
     gap: 15px;
-    padding: 25px;
+    /* UPDATED: Add padding to the grid wrapper */
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 0 0 8px 8px;
 }
+/* Style grid differently if it follows a title */
+.module-title + .review-grid {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
 
 .q-number-btn {
     display: flex;
@@ -212,6 +246,16 @@
     border-color: var(--primary-purple);
 }
 
+/* --- NEW: Misc fixes --- */
+.no-questions-in-module {
+    grid-column: 1 / -1; /* Span full grid */
+    text-align: center;
+    color: var(--dark-gray);
+    font-style: italic;
+    font-size: 0.9rem;
+    padding: 10px 0;
+}
+
 
 /* --- Responsive Adjustments --- */
 @media (max-width: 768px) {
@@ -230,12 +274,17 @@
     .results-header {
         padding: 25px;
     }
+    .review-section {
+        /* UPDATED: Adjust padding for mobile */
+        padding: 0 15px 15px 15px;
+    }
     .review-grid {
         grid-template-columns: repeat(auto-fill, minmax(65px, 1fr));
         gap: 10px;
-        padding: 20px;
+        padding: 15px;
     }
     .q-number-btn .q-number {
         font-size: 1rem;
     }
 }
+
