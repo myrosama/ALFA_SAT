@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let markedQuestions = {};
     let userAnswers = {};
     let timerInterval = null;
+    let currentTimerSeconds = 0; // +++ ADDED: To track remaining time
     const moduleTimers = [32 * 60, 32 * 60, 35 * 60, 35 * 60];
     let isHighlighterActive = false;
     let isCalculatorVisible = false;
@@ -245,10 +246,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function startTimer(duration) {
         if (typeof duration !== 'number' || duration <= 0) { if (timerDisplay) timerDisplay.textContent = "00:00"; return; }
         let timer = duration; clearInterval(timerInterval);
+        currentTimerSeconds = timer;
         if (!timerDisplay) return;
         timerInterval = setInterval(() => {
             let mins = Math.floor(timer / 60); let secs = timer % 60;
             timerDisplay.textContent = `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+            currentTimerSeconds = --timer;
             if (--timer < 0) { clearInterval(timerInterval); alert("Time's up!"); showReviewScreen(true); }
         }, 1000);
     }
@@ -727,14 +731,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if(testWrapper) testWrapper.classList.remove('hidden');
         if(backdrop) backdrop.classList.remove('visible'); // Hide backdrop if it was visible
         
-        // Start the actual test logic
-        if (allQuestionsByModule.flat().length > 0) {
-            console.log("Starting module 0.");
+        
+        // +++ UPDATED: Smarter test start/resume logic +++
+        if (timerInterval === null && currentTimerSeconds > 0) {
+            // This is a RESUME from a pause (like fullscreen exit)
+            // Re-start the timer with the time that was left
+            startTimer(currentTimerSeconds);
+        } else if (allQuestionsByModule.flat().length > 0 && currentModuleIndex === 0 && currentQuestionIndex === 0) {
+            // This is the VERY FIRST start of the test
             startModule(0);
-        } else {
-            console.error("No questions loaded.");
-            if(questionPaneContent) questionPaneContent.innerHTML = "<p>Could not load questions.</p>";
         }
+        // else: The timer is already running, or the test hasn't loaded. Do nothing.
     }
 
     function handleFullscreenChange() {
