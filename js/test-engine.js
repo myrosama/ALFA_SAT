@@ -349,6 +349,8 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleModal(false);
 
         try {
+            // +++ ADDED: Clear saved state on finish +++
+            localStorage.removeItem(`inProgressTest_${testId}`);
             // 2. Calculate score
             const scoreResult = calculateScore();
 
@@ -734,14 +736,16 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // +++ UPDATED: Smarter test start/resume logic +++
         if (timerInterval === null && currentTimerSeconds > 0) {
-            // This is a RESUME from a pause (like fullscreen exit)
-            // Re-start the timer with the time that was left
+            // This is a RESUME from a pause (fullscreen or reload with time remaining)
+            // We need to render the correct question first!
+            renderQuestion(currentQuestionIndex); // <--- Renders the saved question
+            populateModalGrid(); // <--- Populates modal for the saved module
             startTimer(currentTimerSeconds);
-        } else if (allQuestionsByModule.flat().length > 0 && currentModuleIndex === 0 && currentQuestionIndex === 0) {
-            // This is the VERY FIRST start of the test
-            startModule(0);
+        } else if (allQuestionsByModule.flat().length > 0) {
+            // This is a fresh start OR a reload where the timer was 0
+            // It will correctly start module 0, or module 1/2/3 if we loaded that from state.
+            startModule(currentModuleIndex); // <-- This will start the correct module
         }
-        // else: The timer is already running, or the test hasn't loaded. Do nothing.
     }
 
     function handleFullscreenChange() {
@@ -756,6 +760,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if(timerInterval) {
                 clearInterval(timerInterval);
                 timerInterval = null; // Clear interval
+                // currentTimerSeconds variable automatically holds the remaining time
+                saveTestState(); // +++ ADDED: Save state on fullscreen exit
             }
         } else {
             // User entered fullscreen, start the test (or resume it)
@@ -763,28 +769,95 @@ document.addEventListener('DOMContentLoaded', () => {
             startTest(); 
         }
     }
+
+    function saveTestState() {
+        if (!testId || !auth.currentUser) {
+            // Don't save if test isn't loaded or user is logged out
+            return;
+        }
+        const state = {
+            moduleIndex: currentModuleIndex,
+            questionIndex: currentQuestionIndex,
+            answers: userAnswers,
+            marked: markedQuestions,
+            remainingTime: currentTimerSeconds
+        };
+        
+        // Use a key specific to the test and user
+        const key = `inProgressTest_${auth.currentUser.uid}_${testId}`;
+        localStorage.setItem(key, JSON.stringify(state));
+    }
+
+    /**
+     * Loads a test state from localStorage, if one exists.
+     * @returns {boolean} True if state was loaded, false otherwise.
+     */
+    function loadTestState() {
+        if (!testId || !auth.currentUser) {
+            return false;
+        }
+        
+        const key = `inProgressTest_${auth.currentUser.uid}_${testId}`;
+        const savedState = localStorage.getItem(key);
+        
+        if (savedState) {
+            try {
+                const data = JSON.parse(savedState);
+                currentModuleIndex = data.moduleIndex || 0;
+                currentQuestionIndex = data.questionIndex || 0;
+                userAnswers = data.answers || {};
+                markedQuestions = data.marked || {};
+                currentTimerSeconds = data.remainingTime || 0;
+                
+                console.log(`Resuming test "${testId}" at Module ${currentModuleIndex + 1}, Question ${currentQuestionIndex + 1} with ${currentTimerSeconds}s left.`);
+                return true;
+            } catch (e) {
+                console.error("Error parsing saved test state:", e);
+                localStorage.removeItem(key); // Clear corrupted data
+                return false;
+            }
+        }
+        return false; // No state found
+    }
+    // +++ END: Save/Load State Functions +++
     // +++ End of Fullscreen Logic +++
     /** Main initialization function. */
     async function initTest() {
         console.log("Init test...");
         const urlParams = new URLSearchParams(window.location.search);
         testId = urlParams.get('id');
-        if (!testId) { console.error("No Test ID in URL."); document.body.innerHTML = '<h1>Error: No Test ID.</h1>'; return; }
-        if (userNameDisp) { try {const user = auth.currentUser; userNameDisp.textContent = user?.displayName || 'Student';} catch(e){} }
-        
-        await fetchAndGroupQuestions(testId);
-        if (allQuestionsByModule.flat().length > 0) { console.log("Starting module 0."); startModule(0); }
-        else { console.error("No questions loaded."); if(questionPaneContent) questionPaneContent.innerHTML = "<p>Could not load questions.</p>"; }
-         
-         updateContentMargin();
-          document.documentElement.style.setProperty('--calculator-width', `${currentCalcWidth}px`);
-          document.documentElement.style.setProperty('--calculator-height', `${currentCalcHeight}px`);
-          if(calculatorContainer) {
-              calculatorContainer.style.width = `${currentCalcWidth}px`;
-              calculatorContainer.style.height = `${currentCalcHeight}px`;
-              calculatorContainer.style.left = `${currentCalcLeft}px`;
-              calculatorContainer.style.top = `${currentCalcTop}px`;
-          }
+        // Wait for auth to be ready
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                if (userNameDisp) { userNameDisp.textContent = user.displayName || 'Student'; }
+                
+                // +++ UPDATED: Load state AFTER we have user and testId +++
+                loadTestState();
+
+                // Fetch questions but don't start the test yet
+                await fetchAndGroupQuestions(testId);
+                
+                // Show the fullscreen prompt instead of starting the test
+                if(fullscreenPrompt) fullscreenPrompt.style.display = 'flex';
+                if(backdrop) backdrop.classList.add('visible');
+                if(fullscreenPromptTitle) fullscreenPromptTitle.textContent = 'Please Enter Fullscreen Mode';
+                
+                // Set up calculator defaults
+                updateContentMargin();
+                document.documentElement.style.setProperty('--calculator-width', `${currentCalcWidth}px`);
+                document.documentElement.style.setProperty('--calculator-height', `${currentCalcHeight}px`);
+                if(calculatorContainer) {
+                    calculatorContainer.style.width = `${currentCalcWidth}px`;
+                    calculatorContainer.style.height = `${currentCalcHeight}px`;
+                    calculatorContainer.style.left = `${currentCalcLeft}px`;
+                    calculatorContainer.style.top = `${currentCalcTop}px`;
+                }
+            } else {
+                // Not logged in
+                console.error("User is not logged in.");
+                document.body.innerHTML = '<h1>Error: You must be logged in to take a test.</h1>';
+            }
+        });
     }
 
 
@@ -792,22 +865,70 @@ document.addEventListener('DOMContentLoaded', () => {
     if (toggleBtn) { toggleBtn.addEventListener('click', () => { if (modalProceedBtn) modalProceedBtn.style.display = 'none'; toggleModal(true); }); }
     if (closeModalBtn) { closeModalBtn.addEventListener('click', () => toggleModal(false)); }
     if (backdrop) { backdrop.addEventListener('click', () => toggleModal(false)); }
-    if (nextBtn) { nextBtn.addEventListener('click', () => { const currentQs = allQuestionsByModule[currentModuleIndex] || []; if (currentQuestionIndex < currentQs.length - 1) { currentQuestionIndex++; renderQuestion(currentQuestionIndex); } else { showReviewScreen(true); } }); }
-    if (backBtn) { backBtn.addEventListener('click', () => { if (currentQuestionIndex > 0) { currentQuestionIndex--; renderQuestion(currentQuestionIndex); } }); }
+    if (nextBtn) { 
+        nextBtn.addEventListener('click', () => { 
+            const currentQs = allQuestionsByModule[currentModuleIndex] || []; 
+            if (currentQuestionIndex < currentQs.length - 1) { 
+                currentQuestionIndex++; 
+                renderQuestion(currentQuestionIndex); 
+            } else { 
+                showReviewScreen(true); 
+            } 
+            saveTestState(); // +++ ADDED
+        }); 
+    }
+    if (backBtn) { 
+        backBtn.addEventListener('click', () => { 
+            if (currentQuestionIndex > 0) { 
+                currentQuestionIndex--; 
+                renderQuestion(currentQuestionIndex); 
+            } 
+            saveTestState(); // +++ ADDED
+        }); 
+    }
     if (questionPaneContent) {
         questionPaneContent.addEventListener('change', (e) => {
-            if (e.target.type === 'radio' && e.target.name) { userAnswers[e.target.name] = e.target.value; const wrapper = e.target.closest('.option-wrapper'); if (wrapper) { wrapper.classList.remove('stricken-through'); e.target.disabled = false; } updateModalGridHighlights(); }
-            if (e.target.classList.contains('fill-in-input')) { const qId = e.target.dataset.questionId; if (qId) { userAnswers[qId] = e.target.value.trim(); updateModalGridHighlights(); } }
+            if (e.target.type === 'radio' && e.target.name) { 
+                userAnswers[e.target.name] = e.target.value; 
+                const wrapper = e.target.closest('.option-wrapper'); 
+                if (wrapper) { wrapper.classList.remove('stricken-through'); e.target.disabled = false; } 
+                updateModalGridHighlights(); 
+                saveTestState(); // +++ ADDED
+            }
+            if (e.target.classList.contains('fill-in-input')) { 
+                const qId = e.target.dataset.questionId; 
+                if (qId) { 
+                    userAnswers[qId] = e.target.value.trim(); 
+                    updateModalGridHighlights(); 
+                    saveTestState(); // +++ ADDED
+                } 
+            }
         });
         questionPaneContent.addEventListener('click', (e) => {
             const strikeBtn = e.target.closest('.strikethrough-btn'); if (!strikeBtn) return; e.preventDefault(); e.stopPropagation(); const wrapper = strikeBtn.closest('.option-wrapper'); const radio = wrapper?.querySelector('input[type="radio"]'); if (!wrapper || !radio) return; const isStriking = !wrapper.classList.contains('stricken-through'); wrapper.classList.toggle('stricken-through', isStriking); radio.disabled = isStriking; if (isStriking && radio.checked) { radio.checked = false; const qId = radio.name; if (userAnswers[qId] === radio.value) { delete userAnswers[qId]; updateModalGridHighlights(); } }
         });
     }
     document.body.addEventListener('change', (e) => {
-        if (!e.target.classList.contains('mark-review-checkbox')) return; const qId = e.target.dataset.questionId; if (!qId) return; if (e.target.checked) markedQuestions[qId] = true; else delete markedQuestions[qId]; updateModalGridHighlights();
+        if (!e.target.classList.contains('mark-review-checkbox')) return; 
+        const qId = e.target.dataset.questionId; 
+        if (!qId) return; 
+        if (e.target.checked) markedQuestions[qId] = true; 
+        else delete markedQuestions[qId]; 
+        updateModalGridHighlights(); 
+        saveTestState(); // +++ ADDED
     });
     if (modalProceedBtn) {
-        modalProceedBtn.addEventListener('click', () => { console.log("Modal Proceed clicked."); toggleModal(false); const nextIdx = findNextNonEmptyModule(currentModuleIndex + 1); if (nextIdx !== -1) startModule(nextIdx); else finishTest(); });
+        modalProceedBtn.addEventListener('click', () => { 
+            console.log("Modal Proceed clicked."); 
+            toggleModal(false); 
+            const nextIdx = findNextNonEmptyModule(currentModuleIndex + 1); 
+            if (nextIdx !== -1) {
+                startModule(nextIdx); 
+            } else {
+                finishTest(); 
+            }
+            // Save is not needed here, as startModule/finishTest handle it
+        });
     } else { console.warn("Modal Proceed Button missing."); }
     
     // OLD Highlighter button - now hidden by updateUI
