@@ -257,14 +257,34 @@ body {
 .card-content { padding: 25px; flex-grow: 1; }
 .test-card h4 { margin: 0 0 10px 0; font-size: 1.2rem; color: var(--primary-blue); }
 .test-card p { color: var(--dark-gray); font-size: 0.95rem; line-height: 1.5; margin-bottom: 20px; }
-.test-status { font-weight: 600; font-size: 0.8rem; padding: 4px 8px; border-radius: 20px; }
-.not-started { background-color: #e3d3f8; color: var(--primary-purple); }
+.test-status { font-weight: 600; font-size: 0.8rem; padding: 4px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px; }
+.not-started { background-color: #f0e4f8; color: var(--primary-purple); }
 .card-btn {
     display: block; background-color: var(--primary-purple); color: var(--white);
     text-align: center; padding: 15px; text-decoration: none; font-weight: 600;
     border-radius: 0 0 10px 10px; margin-top: 0;
 }
-.test-card.completed .card-btn { background-color: var(--primary-blue); }
+.card-btn:hover {
+    background-color: #56088f;
+}
+
+/* +++ STYLES FOR COMPLETED CARDS +++ */
+.test-status.completed {
+    background-color: #e6f7eb; /* Light green */
+    color: #0d6832; /* Dark green */
+}
+.test-status.completed i {
+    font-size: 0.7rem;
+}
+.test-card.completed .card-btn.btn-view-results {
+    background-color: var(--primary-blue);
+    margin-top: 0;
+}
+.test-card.completed .card-btn.btn-view-results:hover {
+    background-color: #002244;
+}
+/* +++ END OF COMPLETED STYLES +++ */
+
 
 /* --- 6. Admin Panel Page --- */
 .admin-welcome {
@@ -291,6 +311,39 @@ body {
 .test-info span { font-size: 0.9rem; color: var(--dark-gray); font-family: monospace; }
 .test-actions { display: flex; gap: 10px; }
 
+/* +++ ADDED: Test Status Tag Styles +++ */
+.test-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+.test-info > div { /* This div wraps the h4 and span */
+    display: flex;
+    flex-direction: column;
+}
+.test-status-tag {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    flex-shrink: 0; /* Prevent tag from shrinking */
+}
+.test-status-tag.public {
+    background-color: #e6f7eb; /* Light green */
+    color: #0d6832; /* Dark green */
+}
+.test-status-tag.private {
+    background-color: #f0e4f8; /* Light purple */
+    color: var(--primary-purple);
+}
+.test-status-tag.hide {
+    background-color: #e8e8e8; /* Light gray */
+    color: var(--dark-gray);
+}
+/* +++ END: Test Status Tag Styles +++ */
+
+
 /* --- 7. Modal Styles (Shared by Admin & Test pages) --- */
 .modal-backdrop {
     position: fixed; inset: 0; background-color: rgba(0,0,0,0.5);
@@ -316,38 +369,45 @@ body {
     display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;
 }
 
-
-.test-card p { color: var(--dark-gray); font-size: 0.95rem; line-height: 1.5; margin-bottom: 20px; }
-.test-status { font-weight: 600; font-size: 0.8rem; padding: 4px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px; }
-.not-started { background-color: #f0e4f8; color: var(--primary-purple); }
-.card-btn {
-    display: block; background-color: var(--primary-purple); color: var(--white);
-    text-align: center; padding: 15px; text-decoration: none; font-weight: 600;
-    border-radius: 0 0 10px 10px; margin-top: 0;
+/* +++ ADDED: Access Modal Specific Styles +++ */
+.admin-modal select {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    background-color: var(--white);
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+    background-size: 1em;
 }
-/* +++ ADD THIS HOVER STATE +++ */
-.card-btn:hover {
-    background-color: #56088f;
+.admin-modal textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-family: monospace;
+    line-height: 1.5;
+    resize: vertical;
+    min-height: 120px;
 }
-
-/* +++ ADD THESE NEW STYLES FOR COMPLETED CARDS +++ */
-.test-status.completed {
-    background-color: #e6f7eb; /* Light green */
-    color: #0d6832; /* Dark green */
+.admin-modal textarea:focus,
+.admin-modal select:focus {
+    outline: none;
+    border-color: var(--primary-purple);
+    box-shadow: 0 0 0 3px rgba(106, 13, 173, 0.15);
 }
-.test-status.completed i {
-    font-size: 0.7rem;
+#whitelist-container {
+    display: none; /* Hidden by default */
 }
-.test-card.completed .card-btn.btn-view-results {
-    background-color: var(--primary-blue);
-    margin-top: 0;
+#whitelist-container.visible {
+    display: block;
 }
-.test-card.completed .card-btn.btn-view-results:hover {
-    background-color: #002244;
-}
-/* +++ END OF NEW STYLES +++ */
-
-
-/* --- 6. Admin Panel Page --- */
-
+/* +++ END: Access Modal Styles +++ */
 

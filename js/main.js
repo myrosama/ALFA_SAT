@@ -1,4 +1,6 @@
 // js/main.js - Update Dashboard for Completed Tests
+// UPDATED: To handle test visibility (Public/Private/Hide) and whitelisting.
+// UPDATED: To show "Continue Test" button if test is in progress.
 
 let auth;
 let db;
@@ -166,7 +168,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             db.collection('tests').doc(testId).set({
                 name: testName,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                visibility: 'hide' // +++ Default to 'hide' on creation +++
             }).then(() => {
                 console.log('Test created successfully!');
                 closeModal();
@@ -178,6 +181,72 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     } // End of Create Test Modal Logic check
+
+
+    // +++ NEW: Access Control Modal Logic +++
+    const accessModal = document.getElementById('access-modal');
+    const accessForm = document.getElementById('access-form');
+    const cancelAccessBtn = document.getElementById('cancel-access');
+    const visibilitySelect = document.getElementById('test-visibility');
+    const whitelistContainer = document.getElementById('whitelist-container');
+    const whitelistTextarea = document.getElementById('test-whitelist');
+    const accessModalTitle = document.getElementById('access-modal-title');
+    let currentEditingTestId = null;
+
+    if (accessModal && accessForm && cancelAccessBtn && visibilitySelect && whitelistContainer && whitelistTextarea && adminModalBackdrop) {
+        
+        // Show/hide whitelist box based on dropdown
+        visibilitySelect.addEventListener('change', () => {
+            whitelistContainer.classList.toggle('visible', visibilitySelect.value === 'private');
+        });
+
+        // Close modal function
+        const closeAccessModal = () => {
+            accessModal.classList.remove('visible');
+            adminModalBackdrop.classList.remove('visible');
+            accessForm.reset();
+            currentEditingTestId = null;
+            whitelistContainer.classList.remove('visible');
+        };
+
+        cancelAccessBtn.addEventListener('click', closeAccessModal);
+        adminModalBackdrop.addEventListener('click', (e) => {
+            // Check if the create modal is also hidden before closing backdrop
+            if (!createTestModal || !createTestModal.classList.contains('visible')) {
+                closeAccessModal();
+            }
+        });
+
+        // Save access settings
+        accessForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (!currentEditingTestId) return;
+
+            const visibility = visibilitySelect.value;
+            
+            // Convert textarea text to an array of user IDs
+            // Trim whitespace from each line and filter out empty lines
+            const whitelist = whitelistTextarea.value
+                .split('\n')
+                .map(id => id.trim())
+                .filter(id => id.length > 0);
+
+            const testRef = db.collection('tests').doc(currentEditingTestId);
+            
+            testRef.update({
+                visibility: visibility,
+                whitelist: whitelist // This will be an empty array if not 'private'
+            }).then(() => {
+                console.log(`Access updated for ${currentEditingTestId}`);
+                closeAccessModal();
+                window.location.reload(); // Reload admin page to show new status
+            }).catch(err => {
+                console.error("Error updating access:", err);
+                alert("Error saving: " + err.message);
+            });
+        });
+    }
+    // +++ END: Access Control Modal Logic +++
 
 
     // --- DISPLAY TESTS FROM DATABASE (Admin Panel) --- //
@@ -193,13 +262,33 @@ document.addEventListener('DOMContentLoaded', () => {
             snapshot.forEach(doc => {
                 const test = doc.data();
                 const testId = doc.id;
+                
+                // +++ Determine visibility status and class +++
+                const visibility = test.visibility || 'hide'; // Default to hide
+                let statusTag = '';
+                switch (visibility) {
+                    case 'public':
+                        statusTag = '<span class="test-status-tag public">Public</span>';
+                        break;
+                    case 'private':
+                        statusTag = `<span class="test-status-tag private">Private (${test.whitelist?.length || 0})</span>`;
+                        break;
+                    case 'hide':
+                        statusTag = '<span class="test-status-tag hide">Hidden</span>';
+                        break;
+                }
+
                 html += `
                     <div class="test-item-admin" data-id="${testId}">
                         <div class="test-info">
-                            <h4>${test.name || 'Unnamed Test'}</h4>
-                            <span>ID: ${testId}</span>
+                            ${statusTag} <!-- +++ ADDED status tag +++ -->
+                            <div>
+                                <h4>${test.name || 'Unnamed Test'}</h4>
+                                <span>ID: ${testId}</span>
+                            </div>
                         </div>
                         <div class="test-actions">
+                            <button class="btn-icon access-btn" data-testid="${testId}" title="Manage Access"><i class="fa-solid fa-shield-halved"></i></button> <!-- +++ ADDED access button +++ -->
                             <a href="edit-test.html?id=${testId}" class="btn-icon" title="Edit Questions"><i class="fa-solid fa-pen-to-square"></i></a>
                             <button class="btn-icon generate-code-btn" data-testid="${testId}" title="Generate Proctored Code"><i class="fa-solid fa-barcode"></i></button>
                             <button class="btn-icon danger delete-test-btn" data-testid="${testId}" data-testname="${test.name || 'this test'}" title="Delete Test"><i class="fa-solid fa-trash-can"></i></button>
@@ -227,6 +316,33 @@ document.addEventListener('DOMContentLoaded', () => {
                      const testIdForCode = generateCodeButton.dataset.testid;
                      console.warn(`Code generation requested for ${testIdForCode}, but not implemented yet.`);
                      alert('Proctored code generation not yet implemented.');
+                 }
+
+                 // +++ ADDED: Listener for Access Button +++
+                 const accessButton = e.target.closest('.access-btn');
+                 if (accessButton && accessModal) {
+                     currentEditingTestId = accessButton.dataset.testid;
+                     
+                     // Fetch current test data to populate modal
+                     db.collection('tests').doc(currentEditingTestId).get().then(doc => {
+                         if (!doc.exists) {
+                             alert("Test not found!");
+                             return;
+                         }
+                         const testData = doc.data();
+                         
+                         // Populate modal
+                         accessModalTitle.textContent = `Manage Access: ${testData.name}`;
+                         visibilitySelect.value = testData.visibility || 'hide';
+                         whitelistTextarea.value = (testData.whitelist || []).join('\n');
+                         
+                         // Trigger change event to show/hide whitelist box
+                         visibilitySelect.dispatchEvent(new Event('change'));
+                         
+                         // Show modal
+                         accessModal.classList.add('visible');
+                         adminModalBackdrop.classList.add('visible');
+                     });
                  }
 
             });
@@ -310,8 +426,36 @@ async function populateDashboard(userId) {
         console.log(`User has completed ${completedTestsMap.size} tests.`);
 
         // 2. Get all available tests from the main 'tests' collection
-        const testsSnapshot = await db.collection('tests').orderBy('createdAt', 'desc').get();
-        if (testsSnapshot.empty) {
+        // +++ UPDATED: Fetch public tests and private tests for this user +++
+        
+        // Query 1: Get all PUBLIC tests
+        const publicTestsQuery = db.collection('tests').where('visibility', '==', 'public');
+        
+        // Query 2: Get all PRIVATE tests this user is whitelisted for
+        const privateTestsQuery = db.collection('tests').where('whitelist', 'array-contains', userId);
+
+        const [publicSnapshot, privateSnapshot] = await Promise.all([
+            publicTestsQuery.get(),
+            privateTestsQuery.get()
+        ]);
+
+        // Combine results and remove duplicates (in case a test is somehow public AND user is whitelisted)
+        const allAvailableTests = new Map();
+        publicSnapshot.forEach(doc => {
+            allAvailableTests.set(doc.id, { id: doc.id, ...doc.data() });
+        });
+        privateSnapshot.forEach(doc => {
+            // This will add or overwrite, ensuring no duplicates
+            allAvailableTests.set(doc.id, { id: doc.id, ...doc.data() });
+        });
+        
+        // Convert map values to an array
+        const testsSnapshot = Array.from(allAvailableTests.values());
+        
+        // +++ Sort combined results by creation date (optional, but nice) +++
+        testsSnapshot.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+        if (testsSnapshot.length === 0) {
             testGrid.innerHTML = '<p>No practice tests are available at the moment.</p>';
             return;
         }
@@ -319,10 +463,13 @@ async function populateDashboard(userId) {
         testGrid.innerHTML = ''; // Clear loading message
 
         // 3. Render cards, modifying if completed
-        testsSnapshot.forEach(doc => {
-            const test = doc.data();
-            const testId = doc.id;
+        testsSnapshot.forEach(test => {
+            const testId = test.id;
             const completionData = completedTestsMap.get(testId); // Check if this testId is in our map
+            
+            // +++ ADDED: Check localStorage for in-progress test +++
+            const inProgressKey = `inProgressTest_${userId}_${testId}`;
+            const inProgressData = localStorage.getItem(inProgressKey);
 
             const card = document.createElement('div');
             card.classList.add('test-card');
@@ -344,6 +491,18 @@ async function populateDashboard(userId) {
                     </div>
                     <!-- +++ Link to new results page with resultId +++ -->
                     <a href="results.html?resultId=${completionData.resultId}" class="btn card-btn btn-view-results">View Results</a>
+                `;
+            } else if (inProgressData) {
+                // +++ NEW: Test is IN PROGRESS ---
+                card.classList.add('in-progress'); // You can add custom styles for this
+                cardHTML = `
+                    <div class="card-content">
+                        <h4>${test.name || 'Unnamed Test'}</h4>
+                        <p>${test.description || 'A full-length adaptive test.'}</p>
+                        <!-- +++ Updated status display +++ -->
+                        <span class="test-status not-started">In Progress</span>
+                    </div>
+                    <a href="test.html?id=${testId}" class="btn btn-primary card-btn">Continue Test</a>
                 `;
             } else {
                 // --- Test is NOT STARTED ---

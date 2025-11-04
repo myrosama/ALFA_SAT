@@ -64,6 +64,32 @@
         </form>
     </div>
 
+    <!-- +++ NEW: Test Access Modal +++ -->
+    <div class="admin-modal" id="access-modal">
+        <h3 id="access-modal-title">Manage Access for...</h3>
+        <form id="access-form">
+            <div class="input-group">
+                <label for="test-visibility">Test Visibility</label>
+                <select id="test-visibility">
+                    <option value="public">Public (Free for all users)</option>
+                    <option value="private">Private (Whitelist only)</option>
+                    <option value="hide">Hide (Hidden from all users)</option>
+                </select>
+            </div>
+            
+            <div class="input-group" id="whitelist-container">
+                <label for="test-whitelist">Whitelisted User IDs (one per line)</label>
+                <textarea id="test-whitelist" rows="8" placeholder="Paste user IDs here, one on each line..."></textarea>
+                <small>Set to "Private" to enable. Students can find their User ID on their dashboard.</small>
+            </div>
+            
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" id="cancel-access">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Access</button>
+            </div>
+        </form>
+    </div>
+
     <!-- Scripts -->
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
