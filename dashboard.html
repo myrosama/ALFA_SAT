@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Merriweather&display=swap" rel="stylesheet">
+    <!-- +++ ADDED: Font Awesome for icons +++ -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
 </head>
 <body class="dashboard-body">
 
@@ -17,7 +19,29 @@
                 <span>ALFA SAT</span>
             </div>
             <nav>
-                <a href="#" id="logout-btn">Log Out</a>
+                <!-- +++ REPLACED Log Out link with Profile Menu +++ -->
+                <div class="profile-nav">
+                    <button class="btn-icon" id="profile-btn" title="Profile">
+                        <i class="fa-solid fa-user-circle"></i>
+                    </button>
+                    
+                    <div class="profile-menu" id="profile-menu">
+                        <div class="user-id-display-container">
+                            <label for="user-id-display">Your User ID</label>
+                            <div class="user-id-input-wrapper">
+                                <input type="text" id="user-id-display" value="Loading..." readonly>
+                                <button class="btn-icon" id="copy-uid-btn" title="Copy ID">
+                                    <i class="fa-regular fa-copy"></i>
+                                </button>
+                            </div>
+                            <small>Give this ID to your admin for private test access.</small>
+                        </div>
+                        <button class="btn-logout" id="profile-logout-btn">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                            Log Out
+                        </button>
+                    </div>
+                </div>
             </nav>
         </div>
     </header>
@@ -37,7 +61,6 @@
 
         <div class="test-list-container">
             <h3>Full-Length Practice Tests</h3>
-            <!-- In dashboard.html, replace the old test-grid div -->
             <div class="test-grid" id="test-grid-container">
             <!-- Test cards will be dynamically inserted here by main.js -->
             <p>Loading available tests...</p>
@@ -53,9 +76,6 @@
     <script src="js/firebase-init.js"></script>
 
     <!-- Our main script (must be last) -->
-    <script src="js/main.js"></script>
-</body>
-</html>
     <script src="js/main.js"></script>
 </body>
 </html>

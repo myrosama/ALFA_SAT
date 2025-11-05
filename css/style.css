@@ -58,6 +58,12 @@ body {
     color: var(--white);
     margin-top: 10px;
 }
+
+.btn-primary:disabled {
+    background-color: #ac8ec2;
+    cursor: not-allowed;
+    transform: none;
+}
 .btn-primary:hover {
     background-color: #56088f;
     transform: translateY(-2px);
@@ -93,6 +99,108 @@ body {
     background-color: var(--error-red);
     color: var(--white);
 }
+
+/* +++ Style for the new Access Button +++ */
+.btn-icon.access-btn:hover {
+    background-color: #27ae60; /* A green color */
+    color: var(--white);
+}
+
+/* +++ NEW: Profile Dropdown Menu Styles +++ */
+.profile-nav {
+    position: relative;
+}
+#profile-btn {
+    font-size: 1.5rem; /* Make icon larger */
+}
+.profile-menu {
+    position: absolute;
+    top: calc(100% + 15px); /* Position below the button */
+    right: 0;
+    width: 300px;
+    background-color: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    z-index: 1100;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    /* Hidden by default */
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+}
+.profile-menu.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+.user-id-display-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.user-id-display-container label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--primary-blue);
+}
+.user-id-display-container .user-id-input-wrapper {
+    display: flex;
+    gap: 10px;
+}
+#user-id-display {
+    width: 100%;
+    font-family: monospace;
+    font-size: 0.9rem;
+    padding: 8px 12px;
+    background-color: var(--light-gray);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--dark-gray);
+}
+#copy-uid-btn {
+    width: 40px; /* Override default */
+    height: 40px;
+    flex-shrink: 0;
+    font-size: 0.9rem;
+}
+#copy-uid-btn:hover {
+    background-color: var(--primary-blue);
+}
+#copy-uid-btn i.fa-check {
+    color: #27ae60; /* Green check */
+}
+.user-id-display-container small {
+    font-size: 0.8rem;
+    color: var(--dark-gray);
+    line-height: 1.4;
+}
+.btn-logout {
+    background-color: #f8f9fa;
+    border: 1px solid var(--border-color);
+    color: var(--error-red);
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: background-color 0.2s, color 0.2s;
+}
+.btn-logout:hover {
+    background-color: var(--error-red);
+    color: var(--white);
+    border-color: var(--error-red);
+}
+/* +++ END: Profile Dropdown Styles +++ */
 
 .input-group {
     text-align: left;
@@ -368,6 +476,19 @@ body {
 .form-actions {
     display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;
 }
+
+/* +++ ADDED: Error message in modal +++ */
+.form-actions .error-message {
+    margin: 0;
+    margin-right: auto; /* Pushes error to the left */
+    text-align: left;
+    max-height: 50px; /* Allow it to be visible */
+    opacity: 0; /* Still hidden by default */
+}
+.form-actions .error-message.visible {
+    opacity: 1;
+}
+
 
 /* +++ ADDED: Access Modal Specific Styles +++ */
 .admin-modal select {

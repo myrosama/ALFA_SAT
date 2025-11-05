@@ -364,9 +364,59 @@ document.addEventListener('DOMContentLoaded', () => {
         if (user) {
             // User is logged in
             if (currentPage === 'dashboard.html') {
-                 // +++ Pass user.uid to the dashboard loader +++
                  populateDashboard(user.uid);
             }
+            
+            // +++ NEW: Profile Menu Logic (for dashboard) +++
+            const profileBtn = document.getElementById('profile-btn');
+            const profileMenu = document.getElementById('profile-menu');
+            const userIdDisplay = document.getElementById('user-id-display');
+            const copyUidBtn = document.getElementById('copy-uid-btn');
+            const profileLogoutBtn = document.getElementById('profile-logout-btn');
+
+            if(profileBtn && profileMenu && userIdDisplay && copyUidBtn && profileLogoutBtn) {
+                // 1. Populate User ID
+                userIdDisplay.value = user.uid;
+
+                // 2. Toggle Menu
+                profileBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent click from bubbling to document
+                    profileMenu.classList.toggle('visible');
+                });
+
+                // 3. Copy Button
+                copyUidBtn.addEventListener('click', () => {
+                    userIdDisplay.select();
+                    // Use execCommand for broader compatibility in simple HTML
+                    try {
+                        document.execCommand('copy');
+                        copyUidBtn.innerHTML = '<i class="fa-solid fa-check"></i>'; // Show checkmark
+                        setTimeout(() => {
+                            copyUidBtn.innerHTML = '<i class="fa-regular fa-copy"></i>'; // Revert icon
+                        }, 2000);
+                    } catch (err) {
+                        console.error('Failed to copy: ', err);
+                        alert('Failed to copy ID. Please copy it manually.');
+                    }
+                });
+
+                // 4. Logout Button
+                profileLogoutBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    auth.signOut().then(() => { window.location.href = 'index.html'; })
+                    .catch(error => { console.error("Sign out error", error); });
+                });
+            }
+
+            // +++ Global listener to close profile menu +++
+            document.addEventListener('click', (e) => {
+                if (profileMenu && profileMenu.classList.contains('visible') && !e.target.closest('.profile-nav')) {
+                    profileMenu.classList.remove('visible');
+                }
+            });
+            
+            // +++ Re-add the simple logout logic for OTHER pages +++
+            const logoutBtn = document.getElementById('logout-btn');
             if (logoutBtn) {
                 if (!logoutBtn.dataset.listenerAdded) {
                      logoutBtn.addEventListener('click', (e) => {
