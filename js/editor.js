@@ -107,9 +107,46 @@ document.addEventListener('DOMContentLoaded', () => {
      * Placeholder function - we are not using Telegram for this.
      * We will use image-to-base64 conversion instead.
      */
-    async function uploadImageToTelegram(file) {
-        alert("Image upload via Telegram is not configured for the AI helper.");
-        return null;
+     async function uploadImageToTelegram(file) {
+        // This function seems to be defined in the original file, but was missing in the provided snippet.
+        // Assuming it exists (e.g., from config.js or similar)
+        if (typeof TELEGRAM_BOT_TOKEN === 'undefined' || typeof TELEGRAM_CHANNEL_ID === 'undefined') {
+            console.error('Telegram configuration is missing.');
+            alert('Error: Telegram configuration is missing. Cannot upload image.');
+            return null;
+        }
+        
+        const formData = new FormData();
+        formData.append('chat_id', TELEGRAM_CHANNEL_ID);
+        formData.append('photo', file);
+        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`;
+
+        try {
+            const response = await fetch(url, { method: 'POST', body: formData });
+            const data = await response.json();
+            if (data.ok) {
+                // Get the file_id of the largest photo
+                const photoArray = data.result.photo;
+                const fileId = photoArray[photoArray.length - 1].file_id;
+                
+                // Use getFile to get the file_path
+                const fileUrlDataRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
+                const fileUrlData = await fileUrlDataRes.json();
+                
+                if (fileUrlData.ok) {
+                    // Construct the permanent file URL
+                    return `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${fileUrlData.result.file_path}`;
+                } else {
+                    throw new Error(fileUrlData.description);
+                }
+            } else {
+                throw new Error(data.description);
+            }
+        } catch (error) {
+            console.error('Telegram Upload Error:', error);
+            alert('Error uploading image: ' + error.message);
+            return null;
+        }
     }
 
     /**
@@ -136,7 +173,6 @@ document.addEventListener('DOMContentLoaded', () => {
      * Sets up mouse events for resizing the image container.
      */
     function setupImageResizing() {
-        // ... (existing image resizing code) ...
         const imageContainer = document.getElementById('stimulus-image-container');
         if (!imageContainer) return;
         const resizeHandle = imageContainer.querySelector('.resize-handle');
@@ -214,9 +250,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     /**
      * Generates navigation buttons for the given module.
+     * @param {number} count - Number of questions in the module.
+     * @param {number} moduleNum - The module number (1-4).
      */
     function generateNavButtons(count, moduleNum) {
-        // ... (existing nav button code) ...
         if (!questionNavigator) return;
         questionNavigator.innerHTML = '';
         for (let i = 1; i <= count; i++) {
@@ -237,12 +274,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     /**
      * Switches the editor view to a different module.
+     * @param {number} moduleNum - The module number to switch to (1-4).
      */
     function switchModule(moduleNum) {
-        // ... (existing module switch code) ...
         if (currentModule === moduleNum && currentQuestion != null) return; // Avoid redundant switch
         
-        currentModule = moduleNum;
+        currentModule = parseInt(moduleNum); // Ensure it's a number
         currentQuestion = null; // Deselect question
         
         cleanupStimulusPanel(); // Clear editors
@@ -262,7 +299,6 @@ document.addEventListener('DOMContentLoaded', () => {
      * Fetches question data and displays the editor form.
      */
     async function showEditorForQuestion(module, qNumber) {
-        // ... (existing editor form code) ...
         currentModule = parseInt(module);
         currentQuestion = parseInt(qNumber);
         
@@ -365,8 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
      * Handles the save button click for a question.
      */
     function handleFormSubmit(e) {
-        // ... (existing form submit code) ...
-        e.preventDefault();
+        if (e) e.preventDefault(); // Check if event exists (can be called manually)
         if (!currentQuestion) return;
 
         const questionId = `m${currentModule}_q${currentQuestion}`;
@@ -402,25 +437,30 @@ document.addEventListener('DOMContentLoaded', () => {
             lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        saveBtn.textContent = 'Saving...';
-        saveBtn.disabled = true;
+        if (saveBtn) { // saveBtn might not exist if called from AI
+            saveBtn.textContent = 'Saving...';
+            saveBtn.disabled = true;
+        }
 
         testRef.collection('questions').doc(questionId).set(dataToSave, { merge: true })
             .then(() => {
-                saveBtn.textContent = 'Saved!';
-                setTimeout(() => { 
-                    saveBtn.textContent = 'Save Question'; 
-                    saveBtn.disabled = false;
-                }, 2000);
-                
+                if (saveBtn) {
+                    saveBtn.textContent = 'Saved!';
+                    setTimeout(() => { 
+                        saveBtn.textContent = 'Save Question'; 
+                        saveBtn.disabled = false;
+                    }, 2000);
+                }
                 document.querySelector(`.q-nav-btn.active`)?.classList.add('completed');
                 savedQuestions[questionId] = true;
             })
             .catch(err => {
                 console.error("Error saving question:", err);
                 alert("Error saving question. See console for details.");
-                saveBtn.textContent = 'Save Question';
-                saveBtn.disabled = false;
+                if (saveBtn) {
+                    saveBtn.textContent = 'Save Question';
+                    saveBtn.disabled = false;
+                }
             });
     }
 
@@ -428,7 +468,6 @@ document.addEventListener('DOMContentLoaded', () => {
      * Handles the delete button click for a question.
      */
     function handleDeleteQuestion() {
-        // ... (existing delete code) ...
         if (!currentQuestion) return;
         
         const questionId = `m${currentModule}_q${currentQuestion}`;
@@ -459,7 +498,6 @@ document.addEventListener('DOMContentLoaded', () => {
      * Handles clicks on the question navigation buttons.
      */
     function handleNavClick(e) {
-        // ... (existing nav click code) ...
         const btn = e.target.closest('.q-nav-btn');
         if (!btn) return;
         
@@ -476,7 +514,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Module switcher buttons
     if (moduleSwitcher) {
-        // ... (existing module switcher code) ...
         moduleSwitcher.addEventListener('click', (e) => {
             if (e.target.matches('.module-btn') && !e.target.classList.contains('active')) {
                 switchModule(parseInt(e.target.dataset.module));
@@ -485,10 +522,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Add/Remove Image buttons
+    // Add/Remove Image buttons
     if (addImageBtn) {
-        // ... (existing add image code) ...
-        // THIS IS THE OLD TELEGRAM UPLOAD - We will leave it for now
-        // But the AI helper will use a different method.
         addImageBtn.addEventListener('click', async () => {
             if (!currentQuestion) return alert("Please select a question first!");
             
@@ -503,13 +538,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const imagePreview = document.getElementById('stimulus-image-preview');
                 const imageContainer = document.getElementById('stimulus-image-container');
                 
+                // Show a loading state
                 imagePreview.src = "https://i.gifer.com/ZZ5H.gif"; // Simple loading GIF
                 imageContainer.classList.remove('hidden');
 
-                // This function is in your original GitHub, but it's not
-                // included in the files. I've left the call here.
-                // We'll use a different method for the AI helper.
-                const imageUrl = await uploadImageToTelegram(file); 
+                const imageUrl = await uploadImageToTelegram(file);
                 
                 if (imageUrl) {
                     renderStimulus({ imageUrl: imageUrl, imageWidth: '100%' });
@@ -523,7 +556,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (removeImageBtn) {
-        // ... (existing remove image code) ...
         removeImageBtn.addEventListener('click', () => {
             if (!currentQuestion) return alert("Please select a question first!");
             if (confirm("Are you sure you want to remove the image? This will be permanent when you save.")) {
@@ -558,14 +590,23 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("Please select a question slot (e.g., M1: Q5) *before* using the AI helper.");
             return;
         }
-        aiModal.classList.add('visible');
-        aiModalBackdrop.classList.add('visible');
+        aiModal.style.display = 'block';
+        aiModalBackdrop.style.display = 'block';
+        setTimeout(() => {
+            aiModal.classList.add('visible');
+            aiModalBackdrop.classList.add('visible');
+        }, 10);
     };
 
     const closeAiModal = () => {
         aiModal.classList.remove('visible');
         aiModalBackdrop.classList.remove('visible');
-        resetAiModal();
+        // Hide with delay to allow transition
+        setTimeout(() => {
+            aiModal.style.display = 'none';
+            aiModalBackdrop.style.display = 'none';
+            resetAiModal();
+        }, 300);
     };
 
     const resetAiModal = () => {
@@ -575,6 +616,8 @@ document.addEventListener('DOMContentLoaded', () => {
         aiPreviewContainer.classList.add('hidden');
         aiLoadingContainer.classList.add('hidden');
         aiImportBtn.disabled = true;
+        aiImportBtn.innerHTML = '<i class="fa-solid fa-download"></i> Import'; // Reset button text
+        aiCancelBtn.disabled = false;
         aiUploadLabel.textContent = "Click to select an image";
         aiErrorMsg.classList.remove('visible');
     };
@@ -589,6 +632,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (aiUploadInput) aiUploadInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
+            if (file.size > 4 * 1024 * 1024) { // 4MB size limit (standard for API)
+                alert("Image is too large (Max 4MB). Please upload a smaller screenshot.");
+                aiUploadInput.value = null;
+                return;
+            }
             const reader = new FileReader();
             reader.onload = (readerEvent) => {
                 const base64String = readerEvent.target.result.split(',')[1]; // Get just the base64 data
@@ -599,6 +647,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 aiPreviewContainer.classList.remove('hidden');
                 aiImportBtn.disabled = false;
                 aiUploadLabel.textContent = file.name;
+            };
+            reader.onerror = (error) => {
+                console.error("File reading error:", error);
+                alert("Could not read the file. Please try again.");
             };
             reader.readAsDataURL(file);
         }
@@ -616,6 +668,12 @@ document.addEventListener('DOMContentLoaded', () => {
             showAiError("No question slot selected. Please close this and select a question.");
             return;
         }
+        
+        // Check if config.js was loaded correctly
+        if (typeof AI_API_KEY === 'undefined' || AI_API_KEY === "PASTE_YOUR_GOOGLE_AI_API_KEY_HERE" || AI_API_KEY === "") {
+             showAiError("API Key is missing. Please add it to js/config.js");
+             return;
+        }
 
         const isMath = currentModule > 2;
         const subject = isMath ? "Math" : "Reading & Writing";
@@ -623,14 +681,15 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // This is the "Master Prompt"
         const textPrompt = `You are an expert SAT question parser. Analyze this image of an SAT question.
+The image may contain a reading passage, a question prompt, and multiple-choice options.
 Extract the following information:
-1.  **passage**: The full text of the reading passage, if one exists. If not, this should be null.
-2.  **prompt**: The text of the question itself, including any inline text from the passage.
-3.  **options**: A JSON object of the four multiple-choice options, like {"A": "Text...", "B": "Text...", "C": "Text...", "D": "Text..."}.
-4.  **correctAnswer**: The correct option letter ("A", "B", "C", or "D"). Infer this from visual cues like a checkmark, bolding, or an "Answer:" key.
+1.  **passage**: The full text of the reading passage, if one exists. If not, this should be an empty string. Handle text formatting like bold and underline by wrapping them in <b></b> or <u></u> tags. For math, this is usually empty.
+2.  **prompt**: The text of the question itself, including any inline text from the passage. Handle all text formatting. For math, include all parts of the question, but *not* the multiple choice options.
+3.  **options**: A JSON object of the four multiple-choice options, like {"A": "Text...", "B": "Text...", "C": "Text...", "D": "Text..."}. Handle all text formatting, especially math formulas.
+4.  **correctAnswer**: The correct option letter ("A", "B", "C", or "D"). Infer this from visual cues in the image, such as a checkmark, a circle, or bolding on the correct answer. If no cue, select the most logical answer.
 5.  **domain**: Categorize this question into one of the following domains: ${domainList}.
-6.  **skill**: Based on the domain, categorize this into the most specific skill. (e.g., if domain is 'Craft and Structure', skill could be 'Words in Context').
-7.  **explanation**: Write a clear, concise explanation for why the correct answer is right.
+6.  **skill**: Based on the domain, categorize this into the most specific skill from the provided list. (e.g., if domain is 'Craft and Structure', skill could be 'Words in Context').
+7.  **explanation**: Write a clear, concise explanation for why the correct answer is right and the others are wrong.
 
 Return *only* a single, valid JSON object with these fields.
 `;
@@ -656,7 +715,7 @@ Return *only* a single, valid JSON object with these fields.
             "skill": { "type": "STRING" },
             "explanation": { "type": "STRING" }
           },
-          "required": ["prompt", "options", "correctAnswer", "explanation"]
+          "required": ["prompt", "options", "correctAnswer", "explanation", "domain", "skill"]
         };
 
         callGeminiToParseQuestion(textPrompt, jsonSchema, aiImageBase64);
@@ -666,10 +725,25 @@ Return *only* a single, valid JSON object with these fields.
         aiPreviewContainer.classList.add('hidden');
         aiLoadingContainer.classList.remove('hidden');
         aiImportBtn.disabled = true;
+        aiImportBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Importing...';
         aiCancelBtn.disabled = true;
         aiErrorMsg.classList.remove('visible');
 
-        const apiKey = ""; // Leave this empty!
+        // +++ THIS IS THE FIX +++
+        // Read the key from the config.js file (which must be loaded in the HTML)
+        const apiKey = (typeof AI_API_KEY !== 'undefined') ? AI_API_KEY : "";
+        if (apiKey === "" || apiKey === "PASTE_YOUR_GOOGLE_AI_API_KEY_HERE") {
+            showAiError("API Key is missing from js/config.js. Please add it.");
+            // Reset modal state
+            aiLoadingContainer.classList.add('hidden');
+            aiPreviewContainer.classList.remove('hidden');
+            aiImportBtn.disabled = false;
+            aiImportBtn.innerHTML = '<i class="fa-solid fa-download"></i> Import';
+            aiCancelBtn.disabled = false;
+            return;
+        }
+        // +++ END OF FIX +++
+        
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
         const payload = {
@@ -680,7 +754,7 @@ Return *only* a single, valid JSON object with these fields.
                         { text: prompt },
                         {
                             inlineData: {
-                                mimeType: "image/png", // Assuming PNG, but API handles JPG/WEBP too
+                                mimeType: "image/png", // The API can handle png/jpeg/webp
                                 data: base64ImageData
                             }
                         }
@@ -701,8 +775,15 @@ Return *only* a single, valid JSON object with these fields.
             });
 
             if (!response.ok) {
-                const errorBody = await response.json();
-                throw new Error(`API Error ${response.status}: ${errorBody.error.message}`);
+                // Try to parse error from Google
+                let errorBody;
+                try {
+                    errorBody = await response.json();
+                } catch(e) {
+                    throw new Error(`API Error ${response.status}: ${response.statusText}`);
+                }
+                console.error("API Error Body:", errorBody);
+                throw new Error(`API Error ${response.status}: ${errorBody.error?.message || 'Unknown API Error'}`);
             }
 
             const result = await response.json();
@@ -716,6 +797,7 @@ Return *only* a single, valid JSON object with these fields.
                 closeAiModal();
 
             } else {
+                console.error("Invalid response structure:", result);
                 throw new Error("Invalid response structure from API.");
             }
 
@@ -723,18 +805,19 @@ Return *only* a single, valid JSON object with these fields.
             console.error('Gemini API Error:', error);
             showAiError(error.message);
         } finally {
-            // Reset modal state on failure
+            // Reset modal state on failure (if it's still open)
             if (aiModal.classList.contains('visible')) {
                 aiPreviewContainer.classList.remove('hidden');
                 aiLoadingContainer.classList.add('hidden');
                 aiImportBtn.disabled = false;
+                aiImportBtn.innerHTML = '<i class="fa-solid fa-download"></i> Import';
                 aiCancelBtn.disabled = false;
             }
         }
     }
 
     function showAiError(message) {
-        aiErrorMsg.textContent = message;
+        aiErrorMsg.textContent = `Error: ${message}`;
         aiErrorMsg.classList.add('visible');
     }
 
@@ -752,19 +835,20 @@ Return *only* a single, valid JSON object with these fields.
 
         // 1. Fill Quill Editors
         if (data.passage && editors.passage) {
-            editors.passage.root.innerHTML = data.passage;
+            // Use <p> tags for proper Quill formatting
+            editors.passage.root.innerHTML = data.passage.split('\n').map(p => `<p>${p}</p>`).join('');
         }
         if (data.prompt && editors.prompt) {
-            editors.prompt.root.innerHTML = data.prompt;
+            editors.prompt.root.innerHTML = data.prompt.split('\n').map(p => `<p>${p}</p>`).join('');
         }
         if (data.options && editors.options) {
-            editors.options.A.root.innerHTML = data.options.A || '';
-            editors.options.B.root.innerHTML = data.options.B || '';
-            editors.options.C.root.innerHTML = data.options.C || '';
-            editors.options.D.root.innerHTML = data.options.D || '';
+            editors.options.A.root.innerHTML = `<p>${data.options.A || ''}</p>`;
+            editors.options.B.root.innerHTML = `<p>${data.options.B || ''}</p>`;
+            editors.options.C.root.innerHTML = `<p>${data.options.C || ''}</p>`;
+            editors.options.D.root.innerHTML = `<p>${data.options.D || ''}</p>`;
         }
         if (data.explanation && editors.explanation) {
-            editors.explanation.root.innerHTML = data.explanation;
+            editors.explanation.root.innerHTML = data.explanation.split('\n').map(p => `<p>${p}</p>`).join('');
         }
 
         // 2. Set Correct Answer
@@ -781,8 +865,11 @@ Return *only* a single, valid JSON object with these fields.
             domainSelect.dispatchEvent(new Event('change')); // Trigger skill populate
             
             if (data.skill && skillSelect) {
-                const bestSkill = findBestOption(skillSelect, data.skill);
-                skillSelect.value = bestSkill;
+                // We must wait for the skill dropdown to populate
+                setTimeout(() => {
+                     const bestSkill = findBestOption(skillSelect, data.skill);
+                     skillSelect.value = bestSkill;
+                }, 100); // 100ms delay to allow skills to populate
             }
         }
         
@@ -791,29 +878,35 @@ Return *only* a single, valid JSON object with these fields.
         formatSelect.dispatchEvent(new Event('change'));
         
         // 5. Auto-save the form
-        handleFormSubmit(new Event('submit'));
+        // We wrap this in a timeout to be 100% sure the skill dropdown has populated
+        setTimeout(() => {
+            handleFormSubmit(new Event('submit'));
+        }, 200);
     }
 
     /**
      * Helper function to find the best <option> value from AI text.
      * @param {HTMLSelectElement} select - The dropdown element.
      * @param {string} aiText - The text from the AI.
-     * @returns {string} The best matching option value.
      */
     function findBestOption(select, aiText) {
         let bestMatch = select.options[0].value;
         let bestScore = 0;
         
         if (!aiText) return bestMatch;
-        aiText = aiText.toLowerCase();
+        aiText = aiText.toLowerCase().trim();
 
         for (const option of select.options) {
-            const optionText = option.text.toLowerCase();
+            const optionText = option.text.toLowerCase().trim();
             if (optionText === aiText) return option.value; // Perfect match
             
-            // Check for partial match
+            // Check for partial match (e.g., AI says "Words in Context", option is "Words in Context")
             if (aiText.includes(optionText) || optionText.includes(aiText)) {
-                let score = Math.max(aiText.length, optionText.length);
+                // Simple scoring: prioritize longer matches
+                let score = 0;
+                if (aiText.includes(optionText)) score = optionText.length;
+                if (optionText.includes(aiText)) score = Math.max(score, aiText.length);
+
                 if (score > bestScore) {
                     bestScore = score;
                     bestMatch = option.value;
