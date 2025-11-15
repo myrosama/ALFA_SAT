@@ -1,6 +1,8 @@
 // js/main.js - Update Dashboard for Completed Tests
 // UPDATED: To handle test visibility (Public/Private/Hide) and whitelisting.
 // UPDATED: To show "Continue Test" button if test is in progress.
+// NEW: Added profile menu to dashboard to show User ID.
+// NEW: Added Proctored Test Code generation and joining.
 
 let auth;
 let db;
@@ -63,6 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Create user document in Firestore
                     return db.collection('users').doc(cred.user.uid).set({
                         fullName: name,
+                        email: email, // Store email
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     }).then(() => {
                         // Update Firebase Auth profile (optional but good practice)
@@ -137,8 +140,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminModalBackdrop = document.getElementById('modal-backdrop'); // Assuming same backdrop ID
     const cancelCreateTestBtn = document.getElementById('cancel-create-test');
     const createTestForm = document.getElementById('create-test-form');
+    
+    // --- Get references to all modals ---
+    const accessModal = document.getElementById('access-modal');
+    const proctorCodeModal = document.getElementById('proctor-code-modal');
 
-    // Only add listeners if all relevant elements are found (i.e., we are on admin.html)
     if (createTestBtn && createTestModal && adminModalBackdrop && cancelCreateTestBtn && createTestForm) {
         const openModal = () => {
             createTestModal.classList.add('visible');
@@ -147,20 +153,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const closeModal = () => {
             createTestModal.classList.remove('visible');
-            adminModalBackdrop.classList.remove('visible');
+            // Check if other modals are open before hiding backdrop
+            if (accessModal && !accessModal.classList.contains('visible') && proctorCodeModal && !proctorCodeModal.classList.contains('visible')) {
+                adminModalBackdrop.classList.remove('visible');
+            }
             createTestForm.reset(); // Reset form on close
         };
 
         createTestBtn.addEventListener('click', openModal);
         cancelCreateTestBtn.addEventListener('click', closeModal);
-        adminModalBackdrop.addEventListener('click', closeModal);
 
         createTestForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const testName = createTestForm['test-name'].value;
             const testId = createTestForm['test-id'].value;
 
-            // Basic validation (more could be added)
             if (!testName || !testId || !/^[a-z0-9_]+$/.test(testId)) {
                 alert("Please provide a valid name and ID (lowercase letters, numbers, underscores only).");
                 return;
@@ -169,7 +176,8 @@ document.addEventListener('DOMContentLoaded', () => {
             db.collection('tests').doc(testId).set({
                 name: testName,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                visibility: 'hide' // +++ Default to 'hide' on creation +++
+                visibility: 'hide', // Default to hidden
+                whitelist: []
             }).then(() => {
                 console.log('Test created successfully!');
                 closeModal();
@@ -183,17 +191,18 @@ document.addEventListener('DOMContentLoaded', () => {
     } // End of Create Test Modal Logic check
 
 
-    // +++ NEW: Access Control Modal Logic +++
-    const accessModal = document.getElementById('access-modal');
+    // +++ Access Control Modal Logic (Simple Version) +++
     const accessForm = document.getElementById('access-form');
     const cancelAccessBtn = document.getElementById('cancel-access');
     const visibilitySelect = document.getElementById('test-visibility');
     const whitelistContainer = document.getElementById('whitelist-container');
     const whitelistTextarea = document.getElementById('test-whitelist');
     const accessModalTitle = document.getElementById('access-modal-title');
+    const saveAccessBtn = document.getElementById('save-access-btn'); 
+    const accessErrorMsg = document.getElementById('access-error-msg');
     let currentEditingTestId = null;
 
-    if (accessModal && accessForm && cancelAccessBtn && visibilitySelect && whitelistContainer && whitelistTextarea && adminModalBackdrop) {
+    if (accessModal && accessForm && cancelAccessBtn && visibilitySelect && whitelistContainer && whitelistTextarea && adminModalBackdrop && saveAccessBtn && accessErrorMsg) {
         
         // Show/hide whitelist box based on dropdown
         visibilitySelect.addEventListener('change', () => {
@@ -203,50 +212,85 @@ document.addEventListener('DOMContentLoaded', () => {
         // Close modal function
         const closeAccessModal = () => {
             accessModal.classList.remove('visible');
-            adminModalBackdrop.classList.remove('visible');
+            if (createTestModal && !createTestModal.classList.contains('visible') && proctorCodeModal && !proctorCodeModal.classList.contains('visible')) {
+                adminModalBackdrop.classList.remove('visible');
+            }
             accessForm.reset();
             currentEditingTestId = null;
             whitelistContainer.classList.remove('visible');
+            saveAccessBtn.disabled = false;
+            saveAccessBtn.textContent = 'Save Access';
+            accessErrorMsg.classList.remove('visible');
+            accessErrorMsg.textContent = '';
         };
 
         cancelAccessBtn.addEventListener('click', closeAccessModal);
+
+        // Global backdrop click handler
         adminModalBackdrop.addEventListener('click', (e) => {
-            // Check if the create modal is also hidden before closing backdrop
-            if (!createTestModal || !createTestModal.classList.contains('visible')) {
-                closeAccessModal();
+            if (createTestModal && createTestModal.classList.contains('visible')) {
+                createTestModal.classList.remove('visible');
             }
+            if (accessModal && accessModal.classList.contains('visible')) {
+                accessModal.classList.remove('visible');
+            }
+            if (proctorCodeModal && proctorCodeModal.classList.contains('visible')) {
+                proctorCodeModal.classList.remove('visible');
+            }
+            adminModalBackdrop.classList.remove('visible');
         });
 
-        // Save access settings
+        // Save access settings by updating Firestore directly
         accessForm.addEventListener('submit', (e) => {
             e.preventDefault();
             if (!currentEditingTestId) return;
 
+            saveAccessBtn.disabled = true;
+            saveAccessBtn.textContent = 'Saving...';
+            accessErrorMsg.classList.remove('visible');
+
             const visibility = visibilitySelect.value;
             
-            // Convert textarea text to an array of user IDs
-            // Trim whitespace from each line and filter out empty lines
             const whitelist = whitelistTextarea.value
                 .split('\n')
                 .map(id => id.trim())
-                .filter(id => id.length > 0);
+                .filter(id => id.length > 0); 
 
             const testRef = db.collection('tests').doc(currentEditingTestId);
             
             testRef.update({
                 visibility: visibility,
-                whitelist: whitelist // This will be an empty array if not 'private'
+                whitelist: whitelist 
             }).then(() => {
                 console.log(`Access updated for ${currentEditingTestId}`);
                 closeAccessModal();
-                window.location.reload(); // Reload admin page to show new status
+                window.location.reload(); 
             }).catch(err => {
                 console.error("Error updating access:", err);
-                alert("Error saving: " + err.message);
+                accessErrorMsg.textContent = `Error: ${err.message}`;
+                accessErrorMsg.classList.add('visible');
+                saveAccessBtn.disabled = false;
+                saveAccessBtn.textContent = 'Save Access';
             });
         });
     }
-    // +++ END: Access Control Modal Logic +++
+
+    // +++ NEW: Proctored Code Modal Logic +++
+    const proctorCodeDisplay = document.getElementById('proctor-code-display');
+    const proctorTestName = document.getElementById('proctor-test-name');
+    const closeProctorModalBtn = document.getElementById('close-proctor-modal');
+
+    if (proctorCodeModal && proctorCodeDisplay && proctorTestName && closeProctorModalBtn) {
+        const closeProctorModal = () => {
+            proctorCodeModal.classList.remove('visible');
+            if (createTestModal && !createTestModal.classList.contains('visible') && accessModal && !accessModal.classList.contains('visible')) {
+                adminModalBackdrop.classList.remove('visible');
+            }
+        };
+
+        closeProctorModalBtn.addEventListener('click', closeProctorModal);
+    }
+    // +++ END: Proctored Code Modal Logic +++
 
 
     // --- DISPLAY TESTS FROM DATABASE (Admin Panel) --- //
@@ -263,32 +307,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 const test = doc.data();
                 const testId = doc.id;
                 
-                // +++ Determine visibility status and class +++
-                const visibility = test.visibility || 'hide'; // Default to hide
                 let statusTag = '';
-                switch (visibility) {
+                switch(test.visibility) {
                     case 'public':
                         statusTag = '<span class="test-status-tag public">Public</span>';
                         break;
                     case 'private':
                         statusTag = `<span class="test-status-tag private">Private (${test.whitelist?.length || 0})</span>`;
                         break;
-                    case 'hide':
+                    default:
                         statusTag = '<span class="test-status-tag hide">Hidden</span>';
-                        break;
                 }
 
                 html += `
                     <div class="test-item-admin" data-id="${testId}">
                         <div class="test-info">
-                            ${statusTag} <!-- +++ ADDED status tag +++ -->
+                            ${statusTag}
                             <div>
                                 <h4>${test.name || 'Unnamed Test'}</h4>
                                 <span>ID: ${testId}</span>
                             </div>
                         </div>
                         <div class="test-actions">
-                            <button class="btn-icon access-btn" data-testid="${testId}" title="Manage Access"><i class="fa-solid fa-shield-halved"></i></button> <!-- +++ ADDED access button +++ -->
+                            <button class="btn-icon access-btn" data-testid="${testId}" title="Manage Access"><i class="fa-solid fa-shield-halved"></i></button>
                             <a href="edit-test.html?id=${testId}" class="btn-icon" title="Edit Questions"><i class="fa-solid fa-pen-to-square"></i></a>
                             <button class="btn-icon generate-code-btn" data-testid="${testId}" title="Generate Proctored Code"><i class="fa-solid fa-barcode"></i></button>
                             <button class="btn-icon danger delete-test-btn" data-testid="${testId}" data-testname="${test.name || 'this test'}" title="Delete Test"><i class="fa-solid fa-trash-can"></i></button>
@@ -297,25 +338,53 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             testListContainerAdmin.innerHTML = html;
 
-            // Add event listeners for delete buttons (using event delegation)
-            testListContainerAdmin.addEventListener('click', (e) => {
+            testListContainerAdmin.addEventListener('click', async (e) => { // +++ Made async
                 const deleteButton = e.target.closest('.delete-test-btn');
                 if (deleteButton) {
                     const testIdToDelete = deleteButton.dataset.testid;
                     const testNameToDelete = deleteButton.dataset.testname;
-                    // Replace confirm with a custom modal in a real app
                     if (confirm(`Are you sure you want to delete the test "${testNameToDelete}" (${testIdToDelete})? This cannot be undone.`)) {
-                        // Add deletion logic here (deleting test doc and potentially questions subcollection)
-                        console.warn(`Deletion requested for ${testIdToDelete}, but not implemented yet.`);
-                        // Example: db.collection('tests').doc(testIdToDelete).delete().then(...).catch(...);
+                         console.warn(`Deletion requested for ${testIdToDelete}, but not implemented yet.`);
                          alert('Deletion functionality not yet implemented.');
                     }
                 }
+
+                 // +++ UPDATED: Proctored Code Button Logic +++
                  const generateCodeButton = e.target.closest('.generate-code-btn');
-                 if (generateCodeButton) {
+                 if (generateCodeButton && proctorCodeModal) {
                      const testIdForCode = generateCodeButton.dataset.testid;
-                     console.warn(`Code generation requested for ${testIdForCode}, but not implemented yet.`);
-                     alert('Proctored code generation not yet implemented.');
+                     
+                     // 1. Show modal in loading state
+                     proctorCodeDisplay.innerHTML = '<span>Generating...</span>';
+                     proctorTestName.textContent = '...';
+                     proctorCodeModal.classList.add('visible');
+                     adminModalBackdrop.classList.add('visible');
+                     
+                     try {
+                        // 2. Generate a 6-char code
+                        const code = generateProctorCode(6);
+                        
+                        // 3. Get Test Name
+                        const testDoc = await db.collection('tests').doc(testIdForCode).get();
+                        const testName = testDoc.exists ? testDoc.data().name : "Unknown Test";
+                        
+                        // 4. Save to Firestore (use code as ID for easy lookup)
+                        await db.collection('proctoredSessions').doc(code).set({
+                            testId: testIdForCode,
+                            testName: testName,
+                            adminId: auth.currentUser.uid,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        
+                        // 5. Display the code
+                        proctorCodeDisplay.innerHTML = `<span>${code.slice(0, 3)}-${code.slice(3)}</span>`;
+                        proctorTestName.textContent = testName;
+
+                     } catch (err) {
+                        console.error("Error generating proctor code:", err);
+                        proctorCodeDisplay.innerHTML = `<span style="font-size: 1rem; color: var(--error-red);">Error</span>`;
+                        proctorTestName.textContent = err.message;
+                     }
                  }
 
                  // +++ ADDED: Listener for Access Button +++
@@ -331,15 +400,12 @@ document.addEventListener('DOMContentLoaded', () => {
                          }
                          const testData = doc.data();
                          
-                         // Populate modal
                          accessModalTitle.textContent = `Manage Access: ${testData.name}`;
                          visibilitySelect.value = testData.visibility || 'hide';
-                         whitelistTextarea.value = (testData.whitelist || []).join('\n');
+                         whitelistTextarea.value = (testData.whitelist || []).join('\n'); 
                          
-                         // Trigger change event to show/hide whitelist box
                          visibilitySelect.dispatchEvent(new Event('change'));
                          
-                         // Show modal
                          accessModal.classList.add('visible');
                          adminModalBackdrop.classList.add('visible');
                      });
@@ -356,15 +422,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- LOGOUT & PAGE PROTECTION ---
     auth.onAuthStateChanged(user => {
-        // +++ Added results.html to protected pages +++
         const protectedPages = ['dashboard.html', 'admin.html', 'edit-test.html', 'test.html', 'review.html', 'results.html'];
         const currentPage = window.location.pathname.split('/').pop();
-        const logoutBtn = document.getElementById('logout-btn');
-
+        
         if (user) {
             // User is logged in
             if (currentPage === 'dashboard.html') {
                  populateDashboard(user.uid);
+                 // +++ ADDED: Student-side proctor code form listener +++
+                 const proctorCodeForm = document.getElementById('test-code-form');
+                 if (proctorCodeForm) {
+                     proctorCodeForm.addEventListener('submit', handleProctorCodeSubmit);
+                 }
             }
             
             // +++ NEW: Profile Menu Logic (for dashboard) +++
@@ -387,17 +456,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 3. Copy Button
                 copyUidBtn.addEventListener('click', () => {
                     userIdDisplay.select();
-                    // Use execCommand for broader compatibility in simple HTML
-                    try {
-                        document.execCommand('copy');
-                        copyUidBtn.innerHTML = '<i class="fa-solid fa-check"></i>'; // Show checkmark
-                        setTimeout(() => {
-                            copyUidBtn.innerHTML = '<i class="fa-regular fa-copy"></i>'; // Revert icon
-                        }, 2000);
-                    } catch (err) {
-                        console.error('Failed to copy: ', err);
-                        alert('Failed to copy ID. Please copy it manually.');
-                    }
+                    document.execCommand('copy');
+                    copyUidBtn.innerHTML = '<i class="fa-solid fa-check"></i>'; // Show checkmark
+                    setTimeout(() => {
+                        copyUidBtn.innerHTML = '<i class="fa-regular fa-copy"></i>'; // Revert icon
+                    }, 2000);
                 });
 
                 // 4. Logout Button
@@ -418,7 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // +++ Re-add the simple logout logic for OTHER pages +++
             const logoutBtn = document.getElementById('logout-btn');
             if (logoutBtn) {
-                if (!logoutBtn.dataset.listenerAdded) {
+                 if (!logoutBtn.dataset.listenerAdded) {
                      logoutBtn.addEventListener('click', (e) => {
                          e.preventDefault();
                          auth.signOut().then(() => { window.location.href = 'index.html'; })
@@ -443,6 +506,64 @@ document.addEventListener('DOMContentLoaded', () => {
 }); // --- END OF DOMContentLoaded for main.js ---
 
 
+// +++ NEW: Helper function to generate random code +++
+function generateProctorCode(length) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // (O, I, 0, 1 removed for clarity)
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
+// +++ NEW: Student-side handler for proctor code form +++
+async function handleProctorCodeSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const input = form.querySelector('.test-code-input');
+    const button = form.querySelector('button[type="submit"]');
+    
+    if (!input || !button) return;
+
+    const code = input.value.trim().toUpperCase().replace('-', ''); // Get code, normalize it
+    
+    if (code.length !== 6) {
+        alert("Please enter a 6-letter code.");
+        return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Checking...";
+
+    try {
+        const sessionRef = db.collection('proctoredSessions').doc(code);
+        const doc = await sessionRef.get();
+
+        if (doc.exists) {
+            // Code is valid! Get the testId and redirect.
+            const testId = doc.data().testId;
+            if (testId) {
+                window.location.href = `test.html?id=${testId}`;
+            } else {
+                alert("Error: This session code is valid but has no test associated with it.");
+                button.disabled = false;
+                button.textContent = "Start Proctored Test";
+            }
+        } else {
+            // Code does not exist
+            alert("Invalid code. Please check the code and try again.");
+            button.disabled = false;
+            button.textContent = "Start Proctored Test";
+        }
+    } catch (err) {
+        console.error("Error checking proctor code:", err);
+        alert("An error occurred. Please try again.");
+        button.disabled = false;
+        button.textContent = "Start Proctored Test";
+    }
+}
+
+
 /**
  * +++ MODIFIED popuplateDashboard +++
  * Fetches and displays tests, checking against the user's completed tests.
@@ -461,7 +582,6 @@ async function populateDashboard(userId) {
          testGrid.innerHTML = '<p>Error: Could not connect to the database.</p>';
          return;
      }
-
 
     testGrid.innerHTML = '<p>Loading available tests...</p>'; // Show loading message initially
 
@@ -576,4 +696,3 @@ async function populateDashboard(userId) {
         testGrid.innerHTML = '<p>Could not load tests due to an error. Please try refreshing the page.</p>';
     }
 }
-

@@ -61,6 +61,20 @@
                 <button type="button" class="btn btn-secondary" id="cancel-create-test">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save Test</button>
             </div>
+            <!-- +++ NEW: Proctored Code Modal +++ -->
+    <div class="admin-modal" id="proctor-code-modal">
+        <h3 id="proctor-modal-title">Proctored Session Code</h3>
+        <p>Share this code with your students to let them join the test session.</p>
+        <div class="proctor-code-display" id="proctor-code-display">
+            <span>Loading...</span>
+        </div>
+        <div class="proctor-code-info">
+            Test: <strong id="proctor-test-name">...</strong>
+        </div>
+        <div class="form-actions">
+            <button type="button" class="btn btn-primary" id="close-proctor-modal">Done</button>
+        </div>
+    </div>
         </form>
     </div>
 
