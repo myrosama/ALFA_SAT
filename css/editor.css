@@ -34,8 +34,6 @@
 .panel-content { padding: 15px; overflow-y: auto; height: 100%; }
 
 /* --- Stimulus Panel (Left) --- */
-
-/* THIS IS THE KEY FIX: Making the panel a flex container */
 #stimulus-panel .panel-content {
     display: flex;
     flex-direction: column;
@@ -48,7 +46,7 @@
     display: block;
     margin-left: auto;
     margin-right: auto;
-    flex-shrink: 0; /* Prevent the image from shrinking */
+    flex-shrink: 0; 
 }
 #stimulus-image-preview {
     width: 100%; height: auto; display: block;
@@ -60,12 +58,11 @@
     border: 2px solid white; cursor: nwse-resize;
 }
 
-/* NEW: Rules to make the Quill editor fill the remaining space */
 #stimulus-editor {
     display: flex;
     flex-direction: column;
-    flex-grow: 1; /* This is the magic: tells the editor to take all available space */
-    min-height: 200px; /* Ensures the editor has a decent minimum size even with no image */
+    flex-grow: 1; 
+    min-height: 200px; 
 }
 
 #stimulus-editor .ql-container {
@@ -191,3 +188,121 @@
 #stimulus-panel .panel-content.image-below > #stimulus-editor {
     order: -1;
 }
+
+/* +++ NEW: AI Helper Styles +++ */
+.ai-helper-btn {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, var(--primary-purple), var(--primary-blue));
+    color: var(--white);
+    border: none;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    cursor: pointer;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    z-index: 1500;
+    transition: transform 0.2s ease-in-out;
+}
+.ai-helper-btn:hover {
+    transform: scale(1.1);
+}
+
+#ai-modal {
+    z-index: 2001; /* Must be above modal backdrop */
+}
+#ai-modal-backdrop {
+    z-index: 2000; /* Must be above main backdrop */
+}
+#ai-modal i {
+    color: var(--primary-purple);
+}
+#ai-modal p {
+    font-size: 0.95rem;
+    color: var(--dark-gray);
+    margin: -15px 0 20px 0;
+}
+#ai-upload-container {
+    padding: 30px;
+    border: 2px dashed var(--medium-gray);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--light-gray);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+#ai-upload-container:hover {
+    background-color: #f0f0f0;
+}
+#ai-upload-container #ai-upload-button {
+    width: 60px;
+    height: 60px;
+    font-size: 1.5rem;
+    background-color: var(--white);
+    pointer-events: none; /* Click fires on container */
+}
+#ai-upload-container #ai-upload-label {
+    margin-top: 10px;
+    font-weight: 600;
+    color: var(--dark-gray);
+    pointer-events: none;
+}
+#ai-preview-container {
+    position: relative;
+    width: 100%;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+#ai-image-preview {
+    width: 100%;
+    height: auto;
+    display: block;
+    max-height: 300px;
+    object-fit: contain;
+    background-color: #f0f0f0;
+}
+#ai-remove-preview {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: rgba(0,0,0,0.6);
+    color: var(--white);
+    border: none;
+    font-size: 1.2rem;
+    font-weight: 700;
+    cursor: pointer;
+    line-height: 1;
+}
+#ai-loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 0;
+    gap: 15px;
+}
+#ai-loading-container p {
+    margin: 0;
+    font-weight: 500;
+}
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--light-gray);
+    border-top-color: var(--primary-purple);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+/* +++ END AI Helper Styles +++ */
