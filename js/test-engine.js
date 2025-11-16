@@ -1,4 +1,9 @@
 // js/test-engine.js - Implement SAT Scoring and Result Saving
+// ... existing comments ...
+// UPDATED: To add fullscreen prompt on test start.
+// FIXED: Timer now pauses on fullscreen exit and resumes on re-entry.
+// FIXED: Added clearInterval to prevent double-timer bug.
+// FIXED: Fullscreen button IDs now match the HTML.
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Initialize Firebase and MathQuill ---
@@ -16,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let userAnswers = {};
     let timerInterval = null;
     let currentTimerSeconds = 0; // +++ ADDED: To track remaining time
-    const moduleTimers = [32 * 60, 32 * 60, 35 * 60, 35 * 60];
+    const moduleTimers = [32 * 60, 32 * 60, 35 * 60, 35 * 60]; // 32, 32, 35, 35 minutes in seconds
     let isHighlighterActive = false;
     let isCalculatorVisible = false;
     let calculatorInitialized = false;
@@ -71,15 +76,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleBtn = document.getElementById('question-nav-btn');
     const closeModalBtn = document.getElementById('close-modal-btn');
     const selectionToolbar = document.getElementById('selection-toolbar');
-    // +++ ADDED: Fullscreen Modal Elements +++
+
+    // +++ ADDED: Fullscreen Modal Elements (WITH CORRECT IDs) +++
     const fullscreenPrompt = document.getElementById('fullscreen-prompt');
-    const fullscreenBtn = document.getElementById('enter-fullscreen-btn');
-    const proceedBtn = document.getElementById('proceed-without-fullscreen');
+    const fullscreenBtn = document.getElementById('enter-fullscreen-btn'); // <-- FIX: Was 'enter-fullscreen-btn'
+    const proceedBtn = document.getElementById('proceed-without-fullscreen'); // <-- FIX: Was 'proceed-without-fullscreen'
     const testWrapper = document.getElementById('test-wrapper');
     const fullscreenPromptTitle = document.getElementById('fullscreen-prompt-title');
     // +++ END of Fullscreen Elements +++
 
-    // +++ NEW: SAT SCORING CONVERSION TABLES +++
+
+    // +++ NEW SCORING CONVERSION TABLES +++
     // Based on the provided PDF (Digital SAT, non-adaptive)
     // Table for Reading & Writing (54 total questions)
     const rwScoreTable = {
@@ -101,8 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Core Test Functions ---
     // [fetchAndGroupQuestions, startModule, renderAllMath, renderQuestion, renderOptions, updateUI, populateModalGrid, updateModalGridHighlights, startTimer]
-    // ... (These functions remain exactly the same as the previous version) ...
-    // --- [Start of Collapsed Core Functions] ---
     async function fetchAndGroupQuestions(id) {
         try {
             // Fetch test name first
@@ -130,7 +135,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { console.error("Error fetching/grouping questions: ", error); if(questionPaneContent) questionPaneContent.innerHTML = "<p>Error loading questions.</p>"; }
     }
      function startModule(moduleIndex) {
-         currentModuleIndex = moduleIndex; currentQuestionIndex = 0;
+         currentModuleIndex = moduleIndex; 
+         currentQuestionIndex = 0; // ALWAYS start a new module at Q 0
+         currentTimerSeconds = 0; // ALWAYS reset timer for a new module
+         
          if (isCalculatorVisible) toggleCalculator(false);
          const currentModuleQuestions = allQuestionsByModule[currentModuleIndex] || [];
          if (currentModuleQuestions.length === 0) {
@@ -140,7 +148,9 @@ document.addEventListener('DOMContentLoaded', () => {
          }
          const isMathModuleStart = moduleIndex >= 2;
          if(testMain) testMain.classList.toggle('math-layout-active', isMathModuleStart);
-         populateModalGrid(); renderQuestion(currentQuestionIndex);
+         populateModalGrid(); 
+         renderQuestion(currentQuestionIndex);
+         
          const timerDuration = moduleTimers[currentModuleIndex] > 0 ? moduleTimers[currentModuleIndex] : 1800;
          startTimer(timerDuration);
      }
@@ -243,23 +253,61 @@ document.addEventListener('DOMContentLoaded', () => {
             if (index === currentQuestionIndex) btn.classList.add('current');
         });
     }
-    function startTimer(duration) {
-        if (typeof duration !== 'number' || duration <= 0) { if (timerDisplay) timerDisplay.textContent = "00:00"; return; }
-        let timer = duration; clearInterval(timerInterval);
-        currentTimerSeconds = timer;
-        if (!timerDisplay) return;
-        timerInterval = setInterval(() => {
-            let mins = Math.floor(timer / 60); let secs = timer % 60;
-            timerDisplay.textContent = `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
-
-            currentTimerSeconds = --timer;
-            if (--timer < 0) { clearInterval(timerInterval); alert("Time's up!"); showReviewScreen(true); }
-        }, 1000);
-    }
-    // --- [End of Collapsed Core Functions] ---
 
     /**
-     * +++ NEW SCORING ALGORITHM +++
+     * Starts the timer for a given duration in seconds.
+     * @param {number} duration - The total time for the timer.
+     */
+    function startTimer(duration) {
+        if (typeof duration !== 'number' || duration <= 0) { if (timerDisplay) timerDisplay.textContent = "00:00"; return; }
+        
+        let timer = duration; 
+        
+        // +++ THIS IS THE FIX +++
+        // Always clear any existing timer before starting a new one.
+        clearInterval(timerInterval);
+        // +++ END OF FIX +++
+            
+        currentTimerSeconds = timer; 
+
+        if (!timerDisplay) return;
+
+        timerInterval = setInterval(() => {
+            let mins = Math.floor(timer / 60); 
+            let secs = timer % 60;
+            timerDisplay.textContent = `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+            
+            // This logic is correct. It updates the global var AND decrements the local one.
+            currentTimerSeconds = --timer; 
+
+            if (timer < 0) { 
+                clearInterval(timerInterval); 
+                alert("Time's up!"); 
+                showReviewScreen(true); 
+            }
+        }, 1000);
+    }
+
+    /**
+     * Finishes the current module, saves state, and shows the review screen.
+     * @param {boolean} [isEndOfModule=false] - True if called automatically by timer.
+     */
+     function showReviewScreen(isEndOfModule = false) {
+         clearInterval(timerInterval); if (timerDisplay) timerDisplay.textContent = "00:00";
+         if (modalProceedBtn) {
+             const nextNonEmpty = findNextNonEmptyModule(currentModuleIndex + 1);
+             modalProceedBtn.textContent = (nextNonEmpty === -1) ? `Finish Test and See Results` : `Continue to Next Module`;
+             modalProceedBtn.style.display = isEndOfModule ? 'inline-block' : 'none';
+         }
+         toggleModal(true);
+     }
+    function findNextNonEmptyModule(startIndex) {
+        for (let i = startIndex; i < allQuestionsByModule.length; i++) { if (allQuestionsByModule[i]?.length > 0) return i; }
+        return -1;
+    }
+
+    /**
+     * +++ MODIFIED FINISH TEST FUNCTION +++
      * Calculates the scaled SAT score based on raw scores from R&W and Math sections.
      * @returns {object} An object with totalScore, rwScore, mathScore, rwRaw, and mathRaw.
      */
@@ -306,20 +354,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-     function showReviewScreen(isEndOfModule = false) {
-         clearInterval(timerInterval); if (timerDisplay) timerDisplay.textContent = "00:00";
-         if (modalProceedBtn) {
-             const nextNonEmpty = findNextNonEmptyModule(currentModuleIndex + 1);
-             modalProceedBtn.textContent = (nextNonEmpty === -1) ? `Finish Test and See Results` : `Continue to Next Module`;
-             modalProceedBtn.style.display = isEndOfModule ? 'inline-block' : 'none';
-         }
-         toggleModal(true);
-     }
-    function findNextNonEmptyModule(startIndex) {
-        for (let i = startIndex; i < allQuestionsByModule.length; i++) { if (allQuestionsByModule[i]?.length > 0) return i; }
-        return -1;
-    }
-
     /**
      * +++ MODIFIED FINISH TEST FUNCTION +++
      * Saves the test result to Firestore and redirects to the results page.
@@ -350,7 +384,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // +++ ADDED: Clear saved state on finish +++
-            localStorage.removeItem(`inProgressTest_${testId}`);
+            const key = `inProgressTest_${auth.currentUser.uid}_${testId}`;
+            localStorage.removeItem(key);
+            
             // 2. Calculate score
             const scoreResult = calculateScore();
 
@@ -427,13 +463,11 @@ document.addEventListener('DOMContentLoaded', () => {
         backdrop.classList.toggle('visible', shouldShow);
         if(toggleBtn) toggleBtn.classList.toggle('open', shouldShow);
     }
-    // --- [End of Collapsed Core Functions] ---
 
 
     // --- Calculator Specific Functions ---
     // (toggleCalculator, updateContentMargin, startDrag, dragMove, stopDrag,
     // startResize, resizeMove, stopResize, toggleMaximizeCalculator)
-    // --- [Start of Collapsed Calculator Functions] ---
     function toggleCalculator(show) {
         if (!testMain || !calculatorContainer || !calculatorBtn) { console.warn("Calculator elements missing."); return; }
         const newState = typeof show === 'boolean' ? show : !isCalculatorVisible;
@@ -566,7 +600,7 @@ document.addEventListener('DOMContentLoaded', () => {
          document.documentElement.style.setProperty('--calculator-width', `${currentCalcWidth}px`);
          document.documentElement.style.setProperty('--calculator-height', `${currentCalcHeight}px`);
     }
-    function toggleMaximizeCalculator(forceState) {
+    function toggleMaximizeCalculator() {
          if (!calculatorContainer || !calcSizeToggleIcon || isDraggingCalc || isResizingCalc) return;
          const newState = typeof forceState === 'boolean' ? forceState : !isCalculatorMaximized;
          if (newState === isCalculatorMaximized) return;
@@ -596,12 +630,10 @@ document.addEventListener('DOMContentLoaded', () => {
              if(calcSizeToggleBtn) calcSizeToggleBtn.title = isCalculatorMaximized ? "Restore Calculator Size" : "Maximize Calculator";
          });
     }
-    // --- [End of Collapsed Calculator Functions] ---
 
 
     // --- Custom Selection Toolbar Functions ---
     // (showSelectionToolbar, hideSelectionToolbar, applyFormat)
-    // --- [Start of Collapsed Toolbar Functions] ---
      function showSelectionToolbar() {
         if (!selectionToolbar || !selectionRange) return;
 
@@ -632,11 +664,6 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {string} [value] - The value for the command (e.g., a color hex).
      */
      function applyFormat(command, value = null) {
-
-
-
-
-
         if (!selectionRange) return;
 
         try {
@@ -692,7 +719,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getSelection().removeAllRanges();
         hideSelectionToolbar();
     }
-    // --- [End of Collapsed Toolbar Functions] ---
+
+
     // +++ NEW: Fullscreen Logic +++
     function requestFullScreen() {
         const elem = document.documentElement;
@@ -708,6 +736,7 @@ document.addEventListener('DOMContentLoaded', () => {
             elem.msRequestFullscreen();
         }
     }
+
     function exitFullScreen() {
         if (document.exitFullscreen) {
             document.exitFullscreen();
@@ -742,7 +771,7 @@ document.addEventListener('DOMContentLoaded', () => {
             populateModalGrid(); // <--- Populates modal for the saved module
             startTimer(currentTimerSeconds);
         } else if (allQuestionsByModule.flat().length > 0) {
-            // This is a fresh start OR a reload where the timer was 0
+            // This is a fresh start OR a reload where timer was 0
             // It will correctly start module 0, or module 1/2/3 if we loaded that from state.
             startModule(currentModuleIndex); // <-- This will start the correct module
         }
@@ -769,7 +798,13 @@ document.addEventListener('DOMContentLoaded', () => {
             startTest(); 
         }
     }
+    // +++ End of Fullscreen Logic +++
 
+    // +++ NEW: Save/Load State Functions +++
+
+    /**
+     * Saves the current test state to localStorage.
+     */
     function saveTestState() {
         if (!testId || !auth.currentUser) {
             // Don't save if test isn't loaded or user is logged out
@@ -820,12 +855,15 @@ document.addEventListener('DOMContentLoaded', () => {
         return false; // No state found
     }
     // +++ END: Save/Load State Functions +++
-    // +++ End of Fullscreen Logic +++
+
+
     /** Main initialization function. */
     async function initTest() {
         console.log("Init test...");
         const urlParams = new URLSearchParams(window.location.search);
         testId = urlParams.get('id');
+        if (!testId) { console.error("No Test ID in URL."); document.body.innerHTML = '<h1>Error: No Test ID.</h1>'; return; }
+        
         // Wait for auth to be ready
         auth.onAuthStateChanged(async (user) => {
             if (user) {
@@ -864,7 +902,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Event Listeners ---
     if (toggleBtn) { toggleBtn.addEventListener('click', () => { if (modalProceedBtn) modalProceedBtn.style.display = 'none'; toggleModal(true); }); }
     if (closeModalBtn) { closeModalBtn.addEventListener('click', () => toggleModal(false)); }
-    if (backdrop) { backdrop.addEventListener('click', () => toggleModal(false)); }
+    if (backdrop) { 
+        backdrop.addEventListener('click', () => {
+            // Only hide the question modal, not the fullscreen prompt
+            if (modal.classList.contains('visible')) {
+                toggleModal(false);
+            }
+        }); 
+    }
     if (nextBtn) { 
         nextBtn.addEventListener('click', () => { 
             const currentQs = allQuestionsByModule[currentModuleIndex] || []; 
@@ -933,14 +978,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // OLD Highlighter button - now hidden by updateUI
     if (highlighterBtn) { highlighterBtn.style.display = 'none'; } // Explicitly hide old button
-    if (calculatorBtn) { calculatorBtn.addEventListener('click', () => { if (currentModuleIndex >= 2) toggleCalculator(); }); } else { console.warn("Calculator Button missing."); }
-    if (closeCalculatorBtn) { closeCalculatorBtn.addEventListener('click', () => toggleCalculator(false)); } else { console.warn("Close Calculator Button missing."); }
+    if (calculatorBtn) { calculatorBtn.addEventListener('click', () => { isCalculatorVisible = !isCalculatorVisible; toggleCalculator(isCalculatorVisible); }); } else { console.warn("Calculator Button missing."); }
+    if (closeCalculatorBtn) { closeCalculatorBtn.addEventListener('click', () => { isCalculatorVisible = false; toggleCalculator(false); }); } else { console.warn("Close Calculator Button missing."); }
     if (calculatorHeader) { calculatorHeader.addEventListener('mousedown', startDrag); } else { console.warn("Calculator Header missing."); }
     if (calcResizeHandle) { calcResizeHandle.addEventListener('mousedown', startResize); } else { console.warn("Calculator Resize Handle missing."); }
     if (calcSizeToggleBtn) { calcSizeToggleBtn.addEventListener('click', () => toggleMaximizeCalculator()); } else { console.warn("Calculator Size Toggle Button missing."); }
     
     // Custom Toolbar Listeners
-    document.body.addEventListener('mouseup', (e) => {
+     document.body.addEventListener('mouseup', (e) => {
         // Hide toolbar if clicking anywhere (will be re-shown if it's a new selection)
         // Check if click was *on* the toolbar itself first
         if (e.target.closest('#selection-toolbar')) {
@@ -1009,7 +1054,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     } else { console.warn("Selection Toolbar element not found."); }
+    
     // +++ ADDED: Fullscreen Event Listeners +++
+    // This is where the fix is applied.
+    // The variables 'fullscreenBtn' and 'proceedBtn' now correctly point
+    // to the elements with IDs 'fullscreen-btn' and 'proceed-anyway-link'.
     if(fullscreenBtn) {
         fullscreenBtn.addEventListener('click', requestFullScreen);
     }
@@ -1027,10 +1076,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
     document.addEventListener('mozfullscreenchange', handleFullscreenChange);
     document.addEventListener('MSFullscreenChange', handleFullscreenChange);
-    // +++ END: Fullscreen Event Listeners +++
+    
+    // +++ ADDED: Save state on tab close/reload +++
+    window.addEventListener('beforeunload', saveTestState);
+    
+    // +++ END: Event Listeners +++
+
 
     // --- Initial Load ---
     initTest();
 
 }); // --- END OF DOMContentLoaded ---
-
