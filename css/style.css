@@ -1,5 +1,55 @@
 /* ====================================================== */
-/* === ALFA SAT: CORE STYLESHEET (style.css)          === */
+/* +++ PDF Import Styles +++ */
+.pdf-upload-area {
+    padding: 30px;
+    border: 2px dashed var(--primary-blue);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--light-gray);
+    cursor: pointer;
+    transition: background-color 0.2s;
+    text-align: center;
+    margin-bottom: 20px;
+}
+.pdf-upload-area:hover {
+    background-color: #e6e9ee;
+}
+.pdf-upload-area i {
+    font-size: 2.5rem;
+    color: var(--primary-blue);
+    margin-bottom: 10px;
+}
+#pdf-upload-label {
+    font-weight: 600;
+    color: var(--dark-gray);
+}
+
+.progress-container {
+    width: 100%;
+    background-color: var(--medium-gray);
+    border-radius: 8px;
+    overflow: hidden;
+    height: 25px;
+    margin: 10px 0;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #6A0DAD, #8a2be2);
+    border-radius: 8px 0 0 8px;
+    transition: width 0.5s ease-in-out;
+}
+
+#progress-log div {
+    margin-bottom: 4px;
+}
+/* +++ End PDF Import Styles +++ */
+
 /* ====================================================== */
 
 /* --- 1. Universal Styles & CSS Variables --- */
@@ -58,16 +108,16 @@ body {
     color: var(--white);
     margin-top: 10px;
 }
-
+.btn-primary:hover {
+    background-color: #56088f;
+    transform: translateY(-2px);
+}
 .btn-primary:disabled {
     background-color: #ac8ec2;
     cursor: not-allowed;
     transform: none;
 }
-.btn-primary:hover {
-    background-color: #56088f;
-    transform: translateY(-2px);
-}
+
 
 .btn-secondary {
     background-color: var(--primary-blue);
@@ -99,11 +149,84 @@ body {
     background-color: var(--error-red);
     color: var(--white);
 }
-
 /* +++ Style for the new Access Button +++ */
 .btn-icon.access-btn:hover {
     background-color: #27ae60; /* A green color */
     color: var(--white);
+}
+
+
+.input-group {
+    text-align: left;
+    margin-bottom: 15px;
+}
+.input-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--dark-gray);
+}
+.input-group input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    font-family: inherit;
+}
+.input-group input:focus {
+    outline: none;
+    border-color: var(--primary-purple);
+    box-shadow: 0 0 0 3px rgba(106, 13, 173, 0.15);
+}
+.input-group small {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.8rem;
+    color: var(--dark-gray);
+}
+
+/* --- 3. Main Header (Shared across Dashboard/Admin) --- */
+.main-header {
+    background-color: var(--white);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 40px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    height: 70px;
+}
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--primary-blue);
+}
+.logo-small {
+    width: 40px;
+    height: 40px;
+}
+.main-header nav a {
+    text-decoration: none;
+    color: var(--primary-purple);
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+}
+.main-header nav a:hover {
+    background-color: #f8f9fa;
 }
 
 /* +++ NEW: Profile Dropdown Menu Styles +++ */
@@ -202,78 +325,6 @@ body {
 }
 /* +++ END: Profile Dropdown Styles +++ */
 
-.input-group {
-    text-align: left;
-    margin-bottom: 15px;
-}
-.input-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    color: var(--dark-gray);
-}
-.input-group input {
-    width: 100%;
-    padding: 12px 15px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 1rem;
-    transition: border-color 0.3s, box-shadow 0.3s;
-    font-family: inherit;
-}
-.input-group input:focus {
-    outline: none;
-    border-color: var(--primary-purple);
-    box-shadow: 0 0 0 3px rgba(106, 13, 173, 0.15);
-}
-.input-group small {
-    display: block;
-    margin-top: 5px;
-    font-size: 0.8rem;
-    color: var(--dark-gray);
-}
-
-/* --- 3. Main Header (Shared across Dashboard/Admin) --- */
-.main-header {
-    background-color: var(--white);
-    border-bottom: 1px solid var(--border-color);
-    padding: 0 40px;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-}
-.header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    max-width: 1200px;
-    margin: 0 auto;
-    height: 70px;
-}
-.brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: 700;
-    font-size: 1.5rem;
-    color: var(--primary-blue);
-}
-.logo-small {
-    width: 40px;
-    height: 40px;
-}
-.main-header nav a {
-    text-decoration: none;
-    color: var(--primary-purple);
-    font-weight: 600;
-    padding: 8px 16px;
-    border-radius: 6px;
-    transition: background-color 0.2s;
-}
-.main-header nav a:hover {
-    background-color: #f8f9fa;
-}
 
 /* --- 4. Authentication Pages (Login/Signup) --- */
 .auth-body {
@@ -347,6 +398,9 @@ body {
     border-radius: 8px; font-size: 1rem; max-width: 300px; text-transform: uppercase;
 }
 .test-code-input::placeholder { text-transform: none; }
+
+/* --- User ID Display is REMOVED --- */
+
 .test-list-container h3 {
     font-size: 1.5rem; color: var(--primary-blue);
     border-bottom: 2px solid var(--light-gray); padding-bottom: 10px; margin-bottom: 20px;
@@ -474,9 +528,12 @@ body {
 .admin-modal h3 { margin: 0 0 25px 0; color: var(--primary-blue); }
 .admin-modal form { display: flex; flex-direction: column; gap: 20px; }
 .form-actions {
-    display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center; /* +++ ADDED +++ */
+    gap: 10px;
+    margin-top: 20px;
 }
-
 /* +++ ADDED: Error message in modal +++ */
 .form-actions .error-message {
     margin: 0;
@@ -532,3 +589,64 @@ body {
 }
 /* +++ END: Access Modal Styles +++ */
 
+/* +++ NEW: PDF Import Modal/Progress Bar Styles +++ */
+
+/* Styles for the PDF upload area */
+.pdf-upload-area {
+    padding: 30px;
+    border: 2px dashed var(--primary-blue);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--light-gray);
+    cursor: pointer;
+    transition: background-color 0.2s;
+    text-align: center;
+}
+.pdf-upload-area:hover {
+    background-color: #e6e9ee;
+}
+.pdf-upload-area i {
+    font-size: 2.5rem;
+    color: var(--primary-blue);
+    margin-bottom: 10px;
+}
+#pdf-upload-label {
+    font-weight: 600;
+    color: var(--dark-gray);
+}
+
+/* Styles for the progress bar */
+.progress-container {
+    width: 100%;
+    background-color: var(--medium-gray);
+    border-radius: 8px;
+    overflow: hidden;
+    height: 30px;
+    margin: 10px 0 20px 0;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #6A0DAD, #8a2be2); /* Primary Purple gradient */
+    border-radius: 8px 0 0 8px;
+    transition: width 0.4s ease-in-out;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+/* Specific styles for the text label during progress */
+#progress-text-label {
+    margin: 25px 0 0 0; 
+    padding: 0;
+    font-size: 1rem;
+}
+/* +++ END PDF Import Modal/Progress Bar Styles +++ */

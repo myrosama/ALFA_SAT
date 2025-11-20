@@ -44,9 +44,11 @@
     <!-- Modal Backdrop -->
     <div class="modal-backdrop" id="modal-backdrop"></div>
 
-    <!-- Create Test Modal -->
+    <!-- 1. Create Test Modal (Selection) -->
     <div class="admin-modal" id="create-test-modal">
         <h3>Create a New Practice Test</h3>
+        
+        <!-- Manual Form -->
         <form id="create-test-form">
             <div class="input-group">
                 <label for="test-name">Test Name (e.g., "Practice Test 3")</label>
@@ -57,58 +59,113 @@
                 <input type="text" id="test-id" required pattern="[a-z0-9_]+">
                 <small>Lowercase letters, numbers, and underscores only.</small>
             </div>
-            <div class="form-actions">
-                <button type="button" class="btn btn-secondary" id="cancel-create-test">Cancel</button>
-                <button type="submit" class="btn btn-primary">Save Test</button>
+            <div class="form-actions" style="justify-content: space-between; align-items: center;">
+                 <button type="button" class="btn btn-secondary" id="cancel-create-test">Cancel</button>
+                 <button type="submit" class="btn btn-primary" id="start-manual-btn">Create Manually</button>
             </div>
-            <!-- +++ NEW: Proctored Code Modal +++ -->
-    <div class="admin-modal" id="proctor-code-modal">
-        <h3 id="proctor-modal-title">Proctored Session Code</h3>
-        <p>Share this code with your students to let them join the test session.</p>
-        <div class="proctor-code-display" id="proctor-code-display">
-            <span>Loading...</span>
+        </form>
+        
+        <div style="text-align: center; margin: 15px 0; color: var(--dark-gray); font-size: 0.9rem;">— OR —</div>
+        
+        <!-- AI Import Button -->
+        <button class="btn" id="open-pdf-import-modal" style="width: 100%; background-color: #27ae60; color: white; display: flex; justify-content: center; gap: 10px;">
+             <i class="fa-solid fa-robot"></i> Import from PDF (AI Agent)
+        </button>
+    </div>
+
+    <!-- 2. PDF Import Modal -->
+    <div class="admin-modal" id="pdf-import-modal" style="display: none;">
+        <h3><i class="fa-solid fa-file-pdf"></i> AI Test Architect</h3>
+        
+        <!-- Step 1: Upload -->
+        <div id="pdf-upload-step">
+            <p style="margin-top: -10px; color: var(--dark-gray);">Upload a PDF (even 100+ pages). The AI will process it in batches to stay free.</p>
+
+            <div class="input-group">
+                <label>Test Name for Import</label>
+                <input type="text" id="pdf-import-name" placeholder="e.g., Spring SAT 2025">
+            </div>
+            <div class="input-group">
+                <label>Test ID</label>
+                <input type="text" id="pdf-import-id" placeholder="e.g., spring_2025" pattern="[a-z0-9_]+">
+            </div>
+
+            <div id="pdf-upload-container" class="pdf-upload-area">
+                <input type="file" id="pdf-file-input" accept="application/pdf" hidden>
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+                <span id="pdf-upload-label">Select PDF File</span>
+            </div>
+            
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" id="cancel-pdf-import">Cancel</button>
+                <button type="button" class="btn btn-primary" id="start-pdf-analysis" disabled>Start AI Agent</button>
+            </div>
         </div>
-        <div class="proctor-code-info">
-            Test: <strong id="proctor-test-name">...</strong>
-        </div>
-        <div class="form-actions">
-            <button type="button" class="btn btn-primary" id="close-proctor-modal">Done</button>
+
+        <!-- Step 2: Progress -->
+        <div id="pdf-progress-step" class="hidden">
+            <h4 id="progress-status-title" style="text-align: center; color: var(--primary-blue);">Initializing...</h4>
+            
+            <div class="progress-container">
+                <div class="progress-bar" id="import-progress-bar"></div>
+            </div>
+            
+            <div id="progress-log" style="height: 150px; overflow-y: auto; background: #f8f9fa; border: 1px solid #ddd; padding: 10px; font-family: monospace; font-size: 0.85rem; border-radius: 8px; margin-top: 15px;">
+                <div style="color: #888;">> Waiting for start...</div>
+            </div>
+
+            <div class="form-actions" style="justify-content: center;">
+                <button type="button" class="btn btn-secondary" id="stop-pdf-import" disabled>Processing...</button>
+            </div>
         </div>
     </div>
+
+    <!-- 3. Access Modal -->
+    <div class="admin-modal" id="access-modal">
+        <h3 id="access-modal-title">Manage Access</h3>
+        <form id="access-form">
+            <div class="input-group">
+                <label for="test-visibility">Visibility</label>
+                <select id="test-visibility">
+                    <option value="public">Public</option>
+                    <option value="private">Private</option>
+                    <option value="hide">Hide</option>
+                </select>
+            </div>
+            <div class="input-group" id="whitelist-container">
+                <label for="test-whitelist">User IDs (one per line)</label>
+                <textarea id="test-whitelist" rows="5"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" id="cancel-access">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="save-access-btn">Save</button>
+            </div>
         </form>
     </div>
 
-    <!-- +++ NEW: Test Access Modal +++ -->
-    <div class="admin-modal" id="access-modal">
-        <h3 id="access-modal-title">Manage Access for...</h3>
-        <form id="access-form">
-            <div class="input-group">
-                <label for="test-visibility">Test Visibility</label>
-                <select id="test-visibility">
-                    <option value="public">Public (Free for all users)</option>
-                    <option value="private">Private (Whitelist only)</option>
-                    <option value="hide">Hide (Hidden from all users)</option>
-                </select>
-            </div>
-            
-            <div class="input-group" id="whitelist-container">
-                <label for="test-whitelist">Whitelisted User IDs (one per line)</label>
-                <textarea id="test-whitelist" rows="8" placeholder="Paste user IDs here, one on each line..."></textarea>
-                <small>Set to "Private" to enable. Students can find their User ID on their dashboard.</small>
-            </div>
-            
-            <div class="form-actions">
-                <button type="button" class="btn btn-secondary" id="cancel-access">Cancel</button>
-                <button type="submit" class="btn btn-primary">Save Access</button>
-            </div>
-        </form>
+    <!-- +++ Proctored Code Modal +++ -->
+    <div class="admin-modal" id="proctor-code-modal">
+        <h3 id="proctor-modal-title">Proctored Session Code</h3>
+        <div class="proctor-code-display" id="proctor-code-display">Generating...</div>
+        <div class="proctor-code-info">Test: <strong id="proctor-test-name">...</strong></div>
+        <div class="form-actions">
+            <button type="button" class="btn btn-primary" id="close-proctor-modal">Done</button>
+        </div>
     </div>
 
     <!-- Scripts -->
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
+    
+    <!-- +++ PDF.js LIBRARY (Crucial for reading PDFs) +++ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+
     <script src="js/firebase-init.js"></script>
+    <script src="js/config.js"></script> <!-- Load Config -->
     <script src="js/main.js"></script>
 </body>
 </html>
