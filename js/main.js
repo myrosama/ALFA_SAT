@@ -1,6 +1,7 @@
 // js/main.js - Core Logic & AI Agent for PDF Import
-// FIXED: Restored all admin button functionality (Access, Proctor Code, Delete).
 // FIXED: Ensures admin test list only loads after user is authenticated.
+// FIXED: Restored all admin button functionality (Access, Proctor Code, Delete).
+// FIXED: PDF Import Modal triggers correctly and handles inputs safely.
 
 let auth;
 let db;
@@ -137,6 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (createTestBtn && createTestModal && cancelCreateTestBtn && createTestForm) {
         const openModal = (modalEl) => {
+            if(!modalEl) return;
             modalEl.style.display = 'block';
             adminModalBackdrop.style.display = 'block';
             setTimeout(() => {
@@ -146,6 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const closeModal = (modalEl) => {
+            if(!modalEl) return;
             modalEl.classList.remove('visible');
             adminModalBackdrop.classList.remove('visible');
             setTimeout(() => { modalEl.style.display = 'none'; }, 300);
@@ -184,10 +187,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Listener to switch to PDF modal
         const openPdfModalBtn = document.getElementById('open-pdf-import-modal');
-        if (openPdfModalBtn) {
-            openPdfModalBtn.addEventListener('click', () => {
-                closeModal(createTestModal);
-                openModal(pdfImportModal);
+        const pdfImportModal = document.getElementById('pdf-import-modal');
+
+        if (openPdfModalBtn && pdfImportModal) {
+            openPdfModalBtn.addEventListener('click', (e) => {
+                 e.preventDefault(); // Prevent default if in form
+                 closeModal(createTestModal);
+                 // Small delay to allow first modal to close
+                 setTimeout(() => openModal(pdfImportModal), 300);
             });
         }
     }
@@ -204,8 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressBar = document.getElementById('import-progress-bar');
     const progressTextLabel = document.getElementById('progress-text-label');
     const pdfErrorMsg = document.getElementById('pdf-error-msg');
-    const pdfTestNameInput = document.getElementById('pdf-import-test-name');
-    const pdfTestIdInput = document.getElementById('pdf-import-test-id');
+    // Removed global const for inputs to fetch them dynamically inside event listener
 
     let pdfFileBlob = null; 
 
@@ -214,24 +220,28 @@ document.addEventListener('DOMContentLoaded', () => {
         if (step === 'upload') {
             pdfUploadStep?.classList.remove('hidden');
             pdfProgressStep?.classList.add('hidden');
-            startAnalysisBtn.disabled = true;
+            if (startAnalysisBtn) startAnalysisBtn.disabled = true;
             pdfErrorMsg?.classList.remove('visible');
-            pdfErrorMsg.textContent = '';
-            progressBar.style.width = '0%';
+            if (pdfErrorMsg) pdfErrorMsg.textContent = '';
+            if (progressBar) progressBar.style.width = '0%';
         } else if (step === 'progress') {
             pdfUploadStep?.classList.add('hidden');
             pdfProgressStep?.classList.remove('hidden');
-            startAnalysisBtn.disabled = true;
-            cancelPdfImportBtn.disabled = true;
+            if (startAnalysisBtn) startAnalysisBtn.disabled = true;
+            if (cancelPdfImportBtn) cancelPdfImportBtn.disabled = true;
         }
     }
 
     function showPdfError(message) {
-        pdfErrorMsg.textContent = message;
-        pdfErrorMsg.classList.add('visible');
-        progressBar.style.width = '100%';
-        progressBar.style.backgroundColor = 'var(--error-red)';
-        progressTextLabel.textContent = "Error Detected";
+        if (pdfErrorMsg) {
+            pdfErrorMsg.textContent = message;
+            pdfErrorMsg.classList.add('visible');
+        }
+        if (progressBar) {
+            progressBar.style.width = '100%';
+            progressBar.style.backgroundColor = 'var(--error-red)';
+        }
+        if (progressTextLabel) progressTextLabel.textContent = "Error Detected";
     }
 
     // --- File Input Handler ---
@@ -240,13 +250,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = e.target.files[0];
             if (file && file.type === 'application/pdf') {
                 pdfFileBlob = file;
-                pdfUploadLabel.textContent = file.name;
-                startAnalysisBtn.disabled = false;
+                if (pdfUploadLabel) pdfUploadLabel.textContent = file.name;
+                if (startAnalysisBtn) startAnalysisBtn.disabled = false;
                 pdfErrorMsg?.classList.remove('visible');
             } else {
                 pdfFileBlob = null;
-                pdfUploadLabel.textContent = "Select PDF File (Max 5 pages recommended)";
-                startAnalysisBtn.disabled = true;
+                if (pdfUploadLabel) pdfUploadLabel.textContent = "Select PDF File (Max 5 pages recommended)";
+                if (startAnalysisBtn) startAnalysisBtn.disabled = true;
                 showPdfError("Please select a valid PDF file.");
             }
         });
@@ -259,17 +269,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Cancel Button Handler ---
     if (cancelPdfImportBtn) {
-        cancelPdfImportBtn.addEventListener('click', () => {
+        cancelPdfImportBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             updatePdfModalStep('upload');
-            // Check if the create modal should be re-opened
-            if (createTestModal) {
-                 pdfImportModal?.classList.remove('visible');
-                 createTestModal.style.display = 'block';
-                 createTestModal.classList.add('visible');
-                 pdfImportModal.style.display = 'none';
-            } else {
-                 pdfImportModal?.classList.remove('visible');
-                 adminModalBackdrop?.classList.remove('visible');
+            
+            // Logic to close the modal correctly
+            if (pdfImportModal) {
+                pdfImportModal.classList.remove('visible');
+                setTimeout(() => { pdfImportModal.style.display = 'none'; }, 300);
+            }
+            if (adminModalBackdrop) {
+                adminModalBackdrop.classList.remove('visible');
             }
         });
     }
@@ -277,14 +287,29 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Start Analysis Button Handler ---
     if (startAnalysisBtn) {
         startAnalysisBtn.addEventListener('click', async () => {
+            
+            // +++ FIX: Re-select input elements here to ensure they exist +++
+            const pdfTestNameInput = document.getElementById('pdf-import-test-name');
+            const pdfTestIdInput = document.getElementById('pdf-import-test-id');
+
+            // Debugging: Check if elements exist
+            if (!pdfTestNameInput || !pdfTestIdInput) {
+                console.error("PDF Input fields missing in DOM! IDs: pdf-import-test-name, pdf-import-test-id");
+                alert("Error: Input fields missing. Please reload the page.");
+                return;
+            }
+
             if (!pdfFileBlob) return showPdfError("Please select a PDF to start.");
+            
+            // Use .value safely now
             const testName = pdfTestNameInput.value.trim();
             const testId = pdfTestIdInput.value.trim();
+            
             if (!testName || !testId || !/^[a-z0-9_]+$/.test(testId)) return showPdfError("Please provide a valid Test Name and ID.");
 
             updatePdfModalStep('progress');
-            progressBar.style.width = '5%';
-            progressTextLabel.textContent = "1/4: Reading PDF pages...";
+            if (progressBar) progressBar.style.width = '5%';
+            if (progressTextLabel) progressTextLabel.textContent = "1/4: Reading PDF pages...";
 
             try {
                 // Check API Key first (using the global variable from config.js)
@@ -296,20 +321,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const images = await readPDFAndConvert(pdfFileBlob);
                 if (images.length === 0) throw new Error("Could not extract images from PDF.");
                 
-                progressBar.style.width = '30%';
-                progressTextLabel.textContent = `2/4: Sending ${images.length} pages to AI...`;
+                if (progressBar) progressBar.style.width = '30%';
+                if (progressTextLabel) progressTextLabel.textContent = `2/4: Sending ${images.length} pages to AI...`;
 
                 // 2. Call Gemini for parsing
                 const allQuestions = await callGeminiToParseTest(testName, images);
                 
-                progressBar.style.width = '70%';
-                progressTextLabel.textContent = `3/4: Saving ${allQuestions.length} questions to Firestore...`;
+                if (progressBar) progressBar.style.width = '70%';
+                if (progressTextLabel) progressTextLabel.textContent = `3/4: Saving ${allQuestions.length} questions to Firestore...`;
                 
                 // 3. Save all questions to Firestore
                 await saveParsedQuestions(testId, testName, allQuestions);
 
-                progressBar.style.width = '100%';
-                progressTextLabel.textContent = `Success! Redirecting to Editor...`;
+                if (progressBar) progressBar.style.width = '100%';
+                if (progressTextLabel) progressTextLabel.textContent = `Success! Redirecting to Editor...`;
                 
                 // 4. Redirect for review
                 setTimeout(() => {
@@ -319,364 +344,10 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error("Full Import Process Failed:", error);
                 showPdfError(`Import Failed: ${error.message}`);
-                cancelPdfImportBtn.disabled = false;
+                if (cancelPdfImportBtn) cancelPdfImportBtn.disabled = false;
                 
                 // Clean up the invalid test entry if it was created
                 db.collection('tests').doc(testId).delete().catch(() => {});
-            }
-        });
-    }
-
-    // --- CORE PDF & AI FUNCTIONS (Defined at end) ---
-
-    // --- ADMIN TEST DISPLAY FUNCTION ---
-    /**
-     * Fetches and displays all tests in the admin panel.
-     */
-    async function displayAdminTests(userId) {
-        const testListContainerAdmin = document.getElementById('admin-test-list');
-        if (!testListContainerAdmin) return;
-        
-        testListContainerAdmin.innerHTML = '<p>Loading tests...</p>';
-
-        try {
-            const snapshot = await db.collection('tests').orderBy('createdAt', 'desc').get();
-            if (snapshot.empty) {
-                testListContainerAdmin.innerHTML = "<p>No tests found. Create one to get started!</p>";
-                return;
-            }
-
-            let html = '';
-            snapshot.forEach(doc => {
-                const test = doc.data();
-                const testId = doc.id;
-                
-                let statusTag = '';
-                switch(test.visibility) {
-                    case 'public':
-                        statusTag = '<span class="test-status-tag public">Public</span>';
-                        break;
-                    case 'private':
-                        statusTag = `<span class="test-status-tag private">Private (${test.whitelist?.length || 0})</span>`;
-                        break;
-                    default:
-                        statusTag = '<span class="test-status-tag hide">Hidden</span>';
-                }
-
-                html += `
-                    <div class="test-item-admin" data-id="${testId}">
-                        <div class="test-info">
-                            ${statusTag}
-                            <div>
-                                <h4>${test.name || 'Unnamed Test'}</h4>
-                                <span>ID: ${testId}</span>
-                            </div>
-                        </div>
-                        <div class="test-actions">
-                            <button class="btn-icon access-btn" data-testid="${testId}" title="Manage Access"><i class="fa-solid fa-shield-halved"></i></button>
-                            <a href="edit-test.html?id=${testId}" class="btn-icon" title="Edit Questions"><i class="fa-solid fa-pen-to-square"></i></a>
-                            <button class="btn-icon generate-code-btn" data-testid="${testId}" title="Generate Proctored Code"><i class="fa-solid fa-barcode"></i></button>
-                            <button class="btn-icon danger delete-test-btn" data-testid="${testId}" data-testname="${test.name || 'this test'}" title="Delete Test"><i class="fa-solid fa-trash-can"></i></button>
-                        </div>
-                    </div>`;
-            });
-            testListContainerAdmin.innerHTML = html;
-
-            // --- Add event listeners for new buttons (Restored logic) ---
-            testListContainerAdmin.addEventListener('click', async (e) => {
-                
-                // 1. DELETE BUTTON
-                const deleteButton = e.target.closest('.delete-test-btn');
-                if (deleteButton) { 
-                    const testIdToDelete = deleteButton.dataset.testid;
-                    const testNameToDelete = deleteButton.dataset.testname;
-                    if (confirm(`Are you sure you want to delete the test "${testNameToDelete}" (${testIdToDelete})? This cannot be undone.`)) {
-                        try {
-                             // Delete main document
-                             await db.collection('tests').doc(testIdToDelete).delete();
-                             // Note: Firestore subcollections (questions) are NOT auto-deleted by this.
-                             // In a real app, use a Cloud Function or batch delete.
-                             alert('Test deleted successfully (Note: Questions may remain in database until cleanup).');
-                             window.location.reload();
-                        } catch (err) {
-                             console.error("Delete failed:", err);
-                             alert("Failed to delete test.");
-                        }
-                    }
-                }
-                
-                 // 2. GENERATE CODE BUTTON
-                 const generateCodeButton = e.target.closest('.generate-code-btn');
-                 if (generateCodeButton && proctorCodeModal) {
-                     const testIdForCode = generateCodeButton.dataset.testid;
-                     
-                     // Setup modal
-                     document.getElementById('proctor-code-display').innerHTML = '<span>Generating...</span>';
-                     document.getElementById('proctor-test-name').textContent = '...';
-                     
-                     proctorCodeModal.classList.add('visible');
-                     adminModalBackdrop.classList.add('visible');
-                     
-                     try {
-                        // Generate code
-                        const code = generateProctorCode(6);
-                        
-                        // Get Test Name
-                        const testDoc = await db.collection('tests').doc(testIdForCode).get();
-                        const testName = testDoc.exists ? testDoc.data().name : "Unknown Test";
-                        
-                        // Save to Firestore
-                        await db.collection('proctoredSessions').doc(code).set({
-                            testId: testIdForCode,
-                            testName: testName,
-                            adminId: userId, // Use passed userId
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                        
-                        // Display
-                        document.getElementById('proctor-code-display').innerHTML = `<span>${code.slice(0, 3)}-${code.slice(3)}</span>`;
-                        document.getElementById('proctor-test-name').textContent = testName;
-
-                     } catch (err) {
-                        console.error("Error generating proctor code:", err);
-                        document.getElementById('proctor-code-display').innerHTML = `<span style="font-size: 1rem; color: var(--error-red);">Error</span>`;
-                     }
-                 }
-                 
-                 // 3. ACCESS BUTTON
-                 const accessButton = e.target.closest('.access-btn');
-                 if (accessButton && accessModal) {
-                     currentEditingTestId = accessButton.dataset.testid; // Use global var
-                     
-                     // Fetch test data
-                     db.collection('tests').doc(currentEditingTestId).get().then(doc => {
-                         if (!doc.exists) return alert("Test not found!");
-                         const testData = doc.data();
-                         
-                         const title = document.getElementById('access-modal-title');
-                         const select = document.getElementById('test-visibility');
-                         const text = document.getElementById('test-whitelist');
-                         
-                         if(title) title.textContent = `Manage Access: ${testData.name}`;
-                         if(select) select.value = testData.visibility || 'hide';
-                         if(text) text.value = (testData.whitelist || []).join('\n');
-                         
-                         if(select) select.dispatchEvent(new Event('change')); // Trigger toggle logic
-                         
-                         accessModal.classList.add('visible');
-                         adminModalBackdrop.classList.add('visible');
-                     });
-                 }
-            });
-
-        } catch (error) {
-            console.error("Error fetching admin tests:", error);
-            testListContainerAdmin.innerHTML = `<p style="color: var(--error-red);">Error loading tests. Check console for permissions. ${error.message}</p>`;
-        }
-    }
-
-    // --- ACCESS MODAL HANDLERS ---
-    // Logic for the access modal save/cancel
-    const saveAccessBtn = document.getElementById('save-access-btn');
-    const cancelAccessBtn = document.getElementById('cancel-access');
-    const accessForm = document.getElementById('access-form');
-    const visibilitySelect = document.getElementById('test-visibility');
-    const whitelistContainer = document.getElementById('whitelist-container');
-    const whitelistTextarea = document.getElementById('test-whitelist');
-    const accessErrorMsg = document.getElementById('access-error-msg');
-    
-    let currentEditingTestId = null; // Global for access modal
-
-    if (accessForm && saveAccessBtn) {
-        visibilitySelect?.addEventListener('change', () => {
-            whitelistContainer?.classList.toggle('visible', visibilitySelect.value === 'private');
-        });
-
-        const closeAccessModal = () => {
-            accessModal?.classList.remove('visible');
-            // Only remove backdrop if no other modals are open
-            if (!createTestModal.classList.contains('visible') && !proctorCodeModal.classList.contains('visible')) {
-                adminModalBackdrop?.classList.remove('visible');
-            }
-            accessForm.reset();
-            currentEditingTestId = null;
-        };
-
-        cancelAccessBtn?.addEventListener('click', closeAccessModal);
-
-        accessForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            if (!currentEditingTestId) return;
-
-            saveAccessBtn.disabled = true;
-            saveAccessBtn.textContent = 'Saving...';
-
-            const visibility = visibilitySelect.value;
-            const whitelist = whitelistTextarea.value.split('\n').map(id => id.trim()).filter(id => id.length > 0);
-
-            db.collection('tests').doc(currentEditingTestId).update({
-                visibility: visibility,
-                whitelist: whitelist
-            }).then(() => {
-                console.log(`Access updated for ${currentEditingTestId}`);
-                closeAccessModal();
-                window.location.reload(); 
-            }).catch(err => {
-                console.error("Error updating access:", err);
-                if(accessErrorMsg) {
-                    accessErrorMsg.textContent = `Error: ${err.message}`;
-                    accessErrorMsg.classList.add('visible');
-                }
-                saveAccessBtn.disabled = false;
-                saveAccessBtn.textContent = 'Save Access';
-            });
-        });
-    }
-    
-    // --- PROCTOR MODAL CLOSE HANDLER ---
-    const closeProctorBtn = document.getElementById('close-proctor-modal');
-    if (closeProctorBtn) {
-        closeProctorBtn.addEventListener('click', () => {
-             proctorCodeModal.classList.remove('visible');
-             if (!createTestModal.classList.contains('visible') && !accessModal.classList.contains('visible')) {
-                adminModalBackdrop.classList.remove('visible');
-             }
-        });
-    }
-
-
-    // --- LOGOUT & PAGE PROTECTION ---
-    auth.onAuthStateChanged(async (user) => { 
-        const protectedPages = ['dashboard.html', 'admin.html', 'edit-test.html', 'test.html', 'review.html', 'results.html'];
-        const currentPage = window.location.pathname.split('/').pop();
-        
-        if (user) {
-            // +++ CRITICAL FIX: Run test display only AFTER auth +++
-            if (currentPage === 'admin.html') {
-                 const adminDoc = await db.collection('admins').doc(user.uid).get();
-                 if (adminDoc.exists) {
-                    displayAdminTests(user.uid); 
-                 } else {
-                     auth.signOut();
-                     return;
-                 }
-            }
-            // --- End Admin Logic ---
-
-            if (currentPage === 'dashboard.html') {
-                 populateDashboard(user.uid);
-                 const proctorCodeForm = document.getElementById('test-code-form');
-                 if (proctorCodeForm) {
-                     proctorCodeForm.addEventListener('submit', handleProctorCodeSubmit);
-                 }
-            }
-            
-            // --- Profile Menu Logic ---
-            setupProfileMenu(user);
-            
-            // --- Global Logout Logic ---
-            const logoutBtn = document.getElementById('logout-btn');
-            if (logoutBtn && !logoutBtn.dataset.listenerAdded) {
-                 logoutBtn.addEventListener('click', (e) => {
-                     e.preventDefault();
-                     auth.signOut().then(() => { window.location.href = 'index.html'; });
-                 });
-                 logoutBtn.dataset.listenerAdded = 'true';
-            }
-
-        } else {
-            // User is NOT logged in
-            if (protectedPages.includes(currentPage)) {
-                window.location.href = 'index.html';
-            }
-        }
-    });
-
-    // --- PROCTOR CODE HELPERS ---
-    function generateProctorCode(length) {
-        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; 
-        let result = '';
-        for (let i = 0; i < length; i++) {
-            result += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return result;
-    }
-
-    async function handleProctorCodeSubmit(e) {
-        e.preventDefault();
-        const form = e.target;
-        const input = form.querySelector('.test-code-input');
-        const button = form.querySelector('button[type="submit"]');
-        
-        if (!input || !button) return;
-
-        const code = input.value.trim().toUpperCase().replace('-', ''); 
-        
-        if (code.length !== 6) {
-            alert("Please enter a 6-letter code.");
-            return;
-        }
-
-        button.disabled = true;
-        button.textContent = "Checking...";
-
-        try {
-            const sessionRef = db.collection('proctoredSessions').doc(code);
-            const doc = await sessionRef.get();
-
-            if (doc.exists) {
-                const testId = doc.data().testId;
-                if (testId) {
-                    window.location.href = `test.html?id=${testId}`;
-                } else {
-                    alert("Error: Test not found.");
-                    button.disabled = false;
-                    button.textContent = "Start Proctored Test";
-                }
-            } else {
-                alert("Invalid code.");
-                button.disabled = false;
-                button.textContent = "Start Proctored Test";
-            }
-        } catch (err) {
-            console.error("Error checking code:", err);
-            alert("An error occurred.");
-            button.disabled = false;
-            button.textContent = "Start Proctored Test";
-        }
-    }
-    
-    function setupProfileMenu(user) {
-        const profileBtn = document.getElementById('profile-btn');
-        const profileMenu = document.getElementById('profile-menu');
-        const userIdDisplay = document.getElementById('user-id-display');
-        const copyUidBtn = document.getElementById('copy-uid-btn');
-        const profileLogoutBtn = document.getElementById('profile-logout-btn');
-
-        if(profileBtn && profileMenu && userIdDisplay && copyUidBtn && profileLogoutBtn) {
-            userIdDisplay.value = user.uid;
-
-            profileBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); 
-                profileMenu.classList.toggle('visible');
-            });
-
-            copyUidBtn.addEventListener('click', () => {
-                userIdDisplay.select();
-                document.execCommand('copy');
-                copyUidBtn.innerHTML = '<i class="fa-solid fa-check"></i>'; 
-                setTimeout(() => { copyUidBtn.innerHTML = '<i class="fa-regular fa-copy"></i>'; }, 2000);
-            });
-
-            profileLogoutBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                auth.signOut().then(() => { window.location.href = 'index.html'; });
-            });
-        }
-
-        document.addEventListener('click', (e) => {
-            if (profileMenu && profileMenu.classList.contains('visible') && !e.target.closest('.profile-nav')) {
-                profileMenu.classList.remove('visible');
             }
         });
     }
@@ -844,7 +515,372 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`Successfully imported and saved ${questions.length} questions for ${testId}.`);
     }
 
-    // --- POPULATE DASHBOARD (Snipped for brevity, assuming it's correct) ---
+    // --- ADMIN TEST DISPLAY FUNCTION ---
+    /**
+     * Fetches and displays all tests in the admin panel.
+     */
+    async function displayAdminTests(userId) {
+        const testListContainerAdmin = document.getElementById('admin-test-list');
+        if (!testListContainerAdmin) return;
+        
+        testListContainerAdmin.innerHTML = '<p>Loading tests...</p>';
+
+        try {
+            const snapshot = await db.collection('tests').orderBy('createdAt', 'desc').get();
+            if (snapshot.empty) {
+                testListContainerAdmin.innerHTML = "<p>No tests found. Create one to get started!</p>";
+                return;
+            }
+
+            let html = '';
+            snapshot.forEach(doc => {
+                const test = doc.data();
+                const testId = doc.id;
+                
+                let statusTag = '';
+                switch(test.visibility) {
+                    case 'public':
+                        statusTag = '<span class="test-status-tag public">Public</span>';
+                        break;
+                    case 'private':
+                        statusTag = `<span class="test-status-tag private">Private (${test.whitelist?.length || 0})</span>`;
+                        break;
+                    default:
+                        statusTag = '<span class="test-status-tag hide">Hidden</span>';
+                }
+
+                html += `
+                    <div class="test-item-admin" data-id="${testId}">
+                        <div class="test-info">
+                            ${statusTag}
+                            <div>
+                                <h4>${test.name || 'Unnamed Test'}</h4>
+                                <span>ID: ${testId}</span>
+                            </div>
+                        </div>
+                        <div class="test-actions">
+                            <button class="btn-icon access-btn" data-testid="${testId}" title="Manage Access"><i class="fa-solid fa-shield-halved"></i></button>
+                            <a href="edit-test.html?id=${testId}" class="btn-icon" title="Edit Questions"><i class="fa-solid fa-pen-to-square"></i></a>
+                            <button class="btn-icon generate-code-btn" data-testid="${testId}" title="Generate Proctored Code"><i class="fa-solid fa-barcode"></i></button>
+                            <button class="btn-icon danger delete-test-btn" data-testid="${testId}" data-testname="${test.name || 'this test'}" title="Delete Test"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>`;
+            });
+            testListContainerAdmin.innerHTML = html;
+
+            // --- Add event listeners for new buttons ---
+            testListContainerAdmin.addEventListener('click', async (e) => {
+                
+                // 1. DELETE BUTTON
+                const deleteButton = e.target.closest('.delete-test-btn');
+                if (deleteButton) { 
+                    const testIdToDelete = deleteButton.dataset.testid;
+                    const testNameToDelete = deleteButton.dataset.testname;
+                    if (confirm(`Are you sure you want to delete the test "${testNameToDelete}" (${testIdToDelete})? This cannot be undone.`)) {
+                        try {
+                             // Delete main document
+                             await db.collection('tests').doc(testIdToDelete).delete();
+                             alert('Test deleted successfully (Note: Questions may remain in database until cleanup).');
+                             window.location.reload();
+                        } catch (err) {
+                             console.error("Delete failed:", err);
+                             alert("Failed to delete test.");
+                        }
+                    }
+                }
+                
+                 // 2. GENERATE CODE BUTTON
+                 const generateCodeButton = e.target.closest('.generate-code-btn');
+                 if (generateCodeButton && proctorCodeModal) {
+                     const testIdForCode = generateCodeButton.dataset.testid;
+                     
+                     // Setup modal
+                     document.getElementById('proctor-code-display').innerHTML = '<span>Generating...</span>';
+                     document.getElementById('proctor-test-name').textContent = '...';
+                     
+                     proctorCodeModal.classList.add('visible');
+                     adminModalBackdrop.classList.add('visible');
+                     
+                     try {
+                        // Generate code
+                        const code = generateProctorCode(6);
+                        
+                        // Get Test Name
+                        const testDoc = await db.collection('tests').doc(testIdForCode).get();
+                        const testName = testDoc.exists ? testDoc.data().name : "Unknown Test";
+                        
+                        // Save to Firestore
+                        await db.collection('proctoredSessions').doc(code).set({
+                            testId: testIdForCode,
+                            testName: testName,
+                            adminId: userId, // Use passed userId
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        
+                        // Display
+                        document.getElementById('proctor-code-display').innerHTML = `<span>${code.slice(0, 3)}-${code.slice(3)}</span>`;
+                        document.getElementById('proctor-test-name').textContent = testName;
+
+                     } catch (err) {
+                        console.error("Error generating proctor code:", err);
+                        document.getElementById('proctor-code-display').innerHTML = `<span style="font-size: 1rem; color: var(--error-red);">Error</span>`;
+                     }
+                 }
+                 
+                 // 3. ACCESS BUTTON
+                 const accessButton = e.target.closest('.access-btn');
+                 if (accessButton && accessModal) {
+                     currentEditingTestId = accessButton.dataset.testid; // Use global var
+                     
+                     // Fetch test data
+                     db.collection('tests').doc(currentEditingTestId).get().then(doc => {
+                         if (!doc.exists) return alert("Test not found!");
+                         const testData = doc.data();
+                         
+                         const title = document.getElementById('access-modal-title');
+                         const select = document.getElementById('test-visibility');
+                         const text = document.getElementById('test-whitelist');
+                         
+                         if(title) title.textContent = `Manage Access: ${testData.name}`;
+                         if(select) select.value = testData.visibility || 'hide';
+                         if(text) text.value = (testData.whitelist || []).join('\n');
+                         
+                         if(select) select.dispatchEvent(new Event('change')); // Trigger toggle logic
+                         
+                         accessModal.classList.add('visible');
+                         adminModalBackdrop.classList.add('visible');
+                     });
+                 }
+
+            });
+
+        } catch (error) {
+            console.error("Error fetching admin tests:", error);
+            testListContainerAdmin.innerHTML = `<p style="color: var(--error-red);">Error loading tests. Check console for permissions. ${error.message}</p>`;
+        }
+    }
+
+    // --- ACCESS MODAL HANDLERS ---
+    // Logic for the access modal save/cancel
+    const saveAccessBtn = document.getElementById('save-access-btn');
+    const cancelAccessBtn = document.getElementById('cancel-access');
+    const accessForm = document.getElementById('access-form');
+    const visibilitySelect = document.getElementById('test-visibility');
+    const whitelistContainer = document.getElementById('whitelist-container');
+    const whitelistTextarea = document.getElementById('test-whitelist');
+    const accessErrorMsg = document.getElementById('access-error-msg');
+    
+    let currentEditingTestId = null; // Global for access modal
+
+    if (accessForm && saveAccessBtn) {
+        visibilitySelect?.addEventListener('change', () => {
+            whitelistContainer?.classList.toggle('visible', visibilitySelect.value === 'private');
+        });
+
+        const closeAccessModal = () => {
+            accessModal?.classList.remove('visible');
+            // Only remove backdrop if no other modals are open
+            if (!createTestModal.classList.contains('visible') && !proctorCodeModal.classList.contains('visible')) {
+                adminModalBackdrop?.classList.remove('visible');
+            }
+            accessForm.reset();
+            currentEditingTestId = null;
+        };
+
+        cancelAccessBtn?.addEventListener('click', closeAccessModal);
+
+        accessForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (!currentEditingTestId) return;
+
+            saveAccessBtn.disabled = true;
+            saveAccessBtn.textContent = 'Saving...';
+
+            const visibility = visibilitySelect.value;
+            const whitelist = whitelistTextarea.value.split('\n').map(id => id.trim()).filter(id => id.length > 0);
+
+            db.collection('tests').doc(currentEditingTestId).update({
+                visibility: visibility,
+                whitelist: whitelist
+            }).then(() => {
+                console.log(`Access updated for ${currentEditingTestId}`);
+                closeAccessModal();
+                window.location.reload(); 
+            }).catch(err => {
+                console.error("Error updating access:", err);
+                if(accessErrorMsg) {
+                    accessErrorMsg.textContent = `Error: ${err.message}`;
+                    accessErrorMsg.classList.add('visible');
+                }
+                saveAccessBtn.disabled = false;
+                saveAccessBtn.textContent = 'Save Access';
+            });
+        });
+    }
+    
+    // --- PROCTOR MODAL CLOSE HANDLER ---
+    const closeProctorBtn = document.getElementById('close-proctor-modal');
+    if (closeProctorBtn) {
+        closeProctorBtn.addEventListener('click', () => {
+             proctorCodeModal.classList.remove('visible');
+             if (!createTestModal.classList.contains('visible') && !accessModal.classList.contains('visible')) {
+                adminModalBackdrop.classList.remove('visible');
+             }
+        });
+    }
+
+
+    // --- LOGOUT & PAGE PROTECTION ---
+    auth.onAuthStateChanged(async (user) => { 
+        const protectedPages = ['dashboard.html', 'admin.html', 'edit-test.html', 'test.html', 'review.html', 'results.html'];
+        const currentPage = window.location.pathname.split('/').pop();
+        
+        if (user) {
+            
+            // +++ CRITICAL FIX: Run test display only AFTER auth +++
+            if (currentPage === 'admin.html') {
+                 // Check if user is an admin before displaying content
+                 const adminDoc = await db.collection('admins').doc(user.uid).get();
+                 if (adminDoc.exists) {
+                    displayAdminTests(user.uid); 
+                 } else {
+                     auth.signOut();
+                     return;
+                 }
+            }
+            // --- End Admin Logic ---
+
+            if (currentPage === 'dashboard.html') {
+                 populateDashboard(user.uid);
+                 const proctorCodeForm = document.getElementById('test-code-form');
+                 if (proctorCodeForm) {
+                     proctorCodeForm.addEventListener('submit', handleProctorCodeSubmit);
+                 }
+            }
+            
+            // --- Profile Menu Logic (for dashboard) ---
+            const profileBtn = document.getElementById('profile-btn');
+            const profileMenu = document.getElementById('profile-menu');
+            const userIdDisplay = document.getElementById('user-id-display');
+            const copyUidBtn = document.getElementById('copy-uid-btn');
+            const profileLogoutBtn = document.getElementById('profile-logout-btn');
+
+            if(profileBtn && profileMenu && userIdDisplay && copyUidBtn && profileLogoutBtn) {
+                // 1. Populate User ID
+                userIdDisplay.value = user.uid;
+
+                // 2. Toggle Menu
+                profileBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent click from bubbling to document
+                    profileMenu.classList.toggle('visible');
+                });
+
+                // 3. Copy Button
+                copyUidBtn.addEventListener('click', () => {
+                    userIdDisplay.select();
+                    document.execCommand('copy');
+                    copyUidBtn.innerHTML = '<i class="fa-solid fa-check"></i>'; // Show checkmark
+                    setTimeout(() => {
+                        copyUidBtn.innerHTML = '<i class="fa-regular fa-copy"></i>'; // Revert icon
+                    }, 2000);
+                });
+
+                // 4. Logout Button
+                profileLogoutBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    auth.signOut().then(() => { window.location.href = 'index.html'; })
+                    .catch(error => { console.error("Sign out error", error); });
+                });
+            }
+
+            // Global listener to close profile menu on outside click
+            document.addEventListener('click', (e) => {
+                if (profileMenu && profileMenu.classList.contains('visible') && !e.target.closest('.profile-nav')) {
+                    profileMenu.classList.remove('visible');
+                }
+            });
+            
+            // Re-add the simple logout logic for OTHER pages
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                 if (!logoutBtn.dataset.listenerAdded) {
+                     logoutBtn.addEventListener('click', (e) => {
+                         e.preventDefault();
+                         auth.signOut().then(() => { window.location.href = 'index.html'; })
+                         .catch(error => { console.error("Sign out error", error); });
+                     });
+                     logoutBtn.dataset.listenerAdded = 'true';
+                }
+            }
+        } else {
+            // User is NOT logged in
+            if (protectedPages.includes(currentPage)) {
+                console.log(`User not logged in, redirecting from protected page: ${currentPage}`);
+                window.location.href = 'index.html';
+            }
+        }
+    });
+
+    // --- PROCTOR CODE HELPERS (Outside DOMContentLoaded) ---
+
+    function generateProctorCode(length) {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // (O, I, 0, 1 removed for clarity)
+        let result = '';
+        for (let i = 0; i < length; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    }
+
+    async function handleProctorCodeSubmit(e) {
+        e.preventDefault();
+        const form = e.target;
+        const input = form.querySelector('.test-code-input');
+        const button = form.querySelector('button[type="submit"]');
+        
+        if (!input || !button) return;
+
+        const code = input.value.trim().toUpperCase().replace('-', ''); // Get code, normalize it
+        
+        if (code.length !== 6) {
+            alert("Please enter a 6-letter code.");
+            return;
+        }
+
+        button.disabled = true;
+        button.textContent = "Checking...";
+
+        try {
+            const sessionRef = db.collection('proctoredSessions').doc(code);
+            const doc = await sessionRef.get();
+
+            if (doc.exists) {
+                const testId = doc.data().testId;
+                if (testId) {
+                    window.location.href = `test.html?id=${testId}`;
+                } else {
+                    alert("Error: This session code is valid but has no test associated with it.");
+                    button.disabled = false;
+                    button.textContent = "Start Proctored Test";
+                }
+            } else {
+                alert("Invalid code. Please check the code and try again.");
+                button.disabled = false;
+                button.textContent = "Start Proctored Test";
+            }
+        } catch (err) {
+            console.error("Error checking proctor code:", err);
+            alert("An error occurred. Please try again.");
+            button.disabled = false;
+            button.textContent = "Start Proctored Test";
+        }
+    }
+
+
+    /**
+     * Fetches and displays tests, checking against the user's completed tests.
+     * @param {string} userId - The UID of the currently logged-in user.
+     */
     async function populateDashboard(userId) {
         const testGrid = document.getElementById('test-grid-container');
         if (!testGrid) return;
@@ -854,7 +890,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        testGrid.innerHTML = '<p>Loading available tests...</p>'; 
+        testGrid.innerHTML = '<p>Loading available tests...</p>'; // Show loading message initially
 
         try {
             // 1. Get a map of completed test IDs and their results
@@ -889,7 +925,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            testGrid.innerHTML = ''; 
+            testGrid.innerHTML = ''; // Clear loading message
 
             // 3. Render cards
             testsSnapshot.forEach(test => {
