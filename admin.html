@@ -41,85 +41,82 @@
         </div>
     </main>
 
-    <!-- Modal Backdrop -->
+    <!-- Modal Backdrop (Shared) -->
     <div class="modal-backdrop" id="modal-backdrop"></div>
 
-    <!-- 1. Create Test Modal (Selection) -->
+    <!-- 1. Create Test Modal (Manual/AI Selector) -->
     <div class="admin-modal" id="create-test-modal">
         <h3>Create a New Practice Test</h3>
-        
-        <!-- Manual Form -->
-        <form id="create-test-form">
-            <div class="input-group">
-                <label for="test-name">Test Name (e.g., "Practice Test 3")</label>
-                <input type="text" id="test-name" required>
-            </div>
-            <div class="input-group">
-                <label for="test-id">Unique Test ID (e.g., "pt3_2024")</label>
-                <input type="text" id="test-id" required pattern="[a-z0-9_]+">
-                <small>Lowercase letters, numbers, and underscores only.</small>
-            </div>
-            <div class="form-actions" style="justify-content: space-between; align-items: center;">
-                 <button type="button" class="btn btn-secondary" id="cancel-create-test">Cancel</button>
-                 <button type="submit" class="btn btn-primary" id="start-manual-btn">Create Manually</button>
-            </div>
-        </form>
-        
-        <div style="text-align: center; margin: 15px 0; color: var(--dark-gray); font-size: 0.9rem;">— OR —</div>
-        
-        <!-- AI Import Button -->
-        <button class="btn" id="open-pdf-import-modal" style="width: 100%; background-color: #27ae60; color: white; display: flex; justify-content: center; gap: 10px;">
-             <i class="fa-solid fa-robot"></i> Import from PDF (AI Agent)
-        </button>
+        <div id="create-test-options" class="flex flex-col gap-4">
+            <!-- Manual Creation Form -->
+            <form id="create-test-form" class="flex flex-col gap-4">
+                 <div class="input-group">
+                    <label for="test-name">Test Name (e.g., "Practice Test 3")</label>
+                    <input type="text" id="test-name" required>
+                </div>
+                <div class="input-group">
+                    <label for="test-id">Unique Test ID (e.g., "pt3_2024")</label>
+                    <input type="text" id="test-id" required pattern="[a-z0-9_]+">
+                    <small>Lowercase letters, numbers, and underscores only.</small>
+                </div>
+                <div class="form-actions" style="justify-content: flex-end; border-top: none; padding-top: 0;">
+                    <button type="button" class="btn btn-secondary" id="cancel-create-test" style="margin-top: 0;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="start-manual-creation" style="margin-top: 0;">Start Manual Creation</button>
+                </div>
+            </form>
+            
+            <div style="text-align: center; color: var(--dark-gray); font-size: 0.9rem;">— OR —</div>
+            
+            <!-- AI Import Button -->
+            <button class="btn btn-secondary" id="open-pdf-import-modal" style="background-color: #27ae60; margin-top: 0; width: 100%;">
+                 <i class="fa-solid fa-file-pdf"></i> AI Import from PDF
+            </button>
+        </div>
     </div>
-
-    <!-- 2. PDF Import Modal -->
+    
+    <!-- 2. AI PDF Import Modal (Upload and Progress) -->
     <div class="admin-modal" id="pdf-import-modal" style="display: none;">
-        <h3><i class="fa-solid fa-file-pdf"></i> AI Test Architect</h3>
+        <h3><i class="fa-solid fa-file-pdf"></i> AI Test Import</h3>
         
-        <!-- Step 1: Upload -->
         <div id="pdf-upload-step">
-            <p style="margin-top: -10px; color: var(--dark-gray);">Upload a PDF (even 100+ pages). The AI will process it in batches to stay free.</p>
+            <p style="margin: -15px 0 20px 0; color: var(--dark-gray);">Upload a PDF to automatically extract and structure all questions.</p>
 
+            <!-- THESE ARE THE CRITICAL INPUTS THAT WERE MISSING -->
             <div class="input-group">
-                <label>Test Name for Import</label>
-                <input type="text" id="pdf-import-name" placeholder="e.g., Spring SAT 2025">
+                <label for="pdf-import-test-name">New Test Name</label>
+                <input type="text" id="pdf-import-test-name" required placeholder="e.g., AI Generated Test 1">
             </div>
             <div class="input-group">
-                <label>Test ID</label>
-                <input type="text" id="pdf-import-id" placeholder="e.g., spring_2025" pattern="[a-z0-9_]+">
+                <label for="pdf-import-test-id">New Test ID</label>
+                <input type="text" id="pdf-import-test-id" required placeholder="e.g., ai_test_1" pattern="[a-z0-9_]+">
             </div>
+            <!-- END CRITICAL INPUTS -->
 
             <div id="pdf-upload-container" class="pdf-upload-area">
                 <input type="file" id="pdf-file-input" accept="application/pdf" hidden>
                 <i class="fa-solid fa-cloud-arrow-up"></i>
                 <span id="pdf-upload-label">Select PDF File</span>
             </div>
-            
-            <div class="form-actions">
-                <button type="button" class="btn btn-secondary" id="cancel-pdf-import">Cancel</button>
-                <button type="button" class="btn btn-primary" id="start-pdf-analysis" disabled>Start AI Agent</button>
-            </div>
         </div>
 
-        <!-- Step 2: Progress -->
         <div id="pdf-progress-step" class="hidden">
-            <h4 id="progress-status-title" style="text-align: center; color: var(--primary-blue);">Initializing...</h4>
-            
+            <p id="progress-text-label" style="font-weight: 600; text-align: center; color: var(--primary-purple);">Processing PDF...</p>
             <div class="progress-container">
                 <div class="progress-bar" id="import-progress-bar"></div>
             </div>
-            
-            <div id="progress-log" style="height: 150px; overflow-y: auto; background: #f8f9fa; border: 1px solid #ddd; padding: 10px; font-family: monospace; font-size: 0.85rem; border-radius: 8px; margin-top: 15px;">
-                <div style="color: #888;">> Waiting for start...</div>
-            </div>
+             <!-- Added a scrollable log area for better feedback -->
+            <div id="progress-log" style="height: 100px; overflow-y: auto; background: #f8f9fa; border: 1px solid #e8e8e8; padding: 10px; margin-top: 10px; font-family: monospace; font-size: 0.8rem; color: #555;"></div>
+        </div>
 
-            <div class="form-actions" style="justify-content: center;">
-                <button type="button" class="btn btn-secondary" id="stop-pdf-import" disabled>Processing...</button>
-            </div>
+        <div class="form-actions">
+            <small class="error-message" id="pdf-error-msg" style="margin-right: auto;"></small>
+            <button type="button" class="btn btn-secondary" id="cancel-pdf-import">Cancel</button>
+            <button type="button" class="btn btn-primary" id="start-pdf-analysis" disabled>
+                <i class="fa-solid fa-robot"></i> Start Analysis
+            </button>
         </div>
     </div>
-
+    
     <!-- 3. Access Modal -->
     <div class="admin-modal" id="access-modal">
         <h3 id="access-modal-title">Manage Access</h3>
@@ -137,6 +134,7 @@
                 <textarea id="test-whitelist" rows="5"></textarea>
             </div>
             <div class="form-actions">
+                <small class="error-message" id="access-error-msg"></small>
                 <button type="button" class="btn btn-secondary" id="cancel-access">Cancel</button>
                 <button type="submit" class="btn btn-primary" id="save-access-btn">Save</button>
             </div>
@@ -158,7 +156,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
     
-    <!-- +++ PDF.js LIBRARY (Crucial for reading PDFs) +++ -->
+    <!-- +++ PDF.js LIBRARY (Required for PDF rendering) +++ -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';

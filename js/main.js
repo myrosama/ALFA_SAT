@@ -1,7 +1,6 @@
 // js/main.js - Core Logic & AI Agent for PDF Import
-// FIXED: Ensures admin test list only loads after user is authenticated.
-// FIXED: Restored all admin button functionality (Access, Proctor Code, Delete).
-// FIXED: PDF Import Modal triggers correctly and handles inputs safely.
+// FIXED: Prevents crashes by catching errors inside the batch loop.
+// FIXED: Auto-numbers questions so they always appear in the Editor (mX_qY format).
 
 let auth;
 let db;
@@ -131,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- ADMIN PANEL "CREATE TEST" MODAL LOGIC (Manual/PDF Creation) ---
+    // --- ADMIN PANEL "CREATE TEST" MODAL LOGIC ---
     const createTestBtn = document.getElementById('create-new-test-btn');
     const createTestForm = document.getElementById('create-test-form');
     const cancelCreateTestBtn = document.getElementById('cancel-create-test');
@@ -211,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressBar = document.getElementById('import-progress-bar');
     const progressTextLabel = document.getElementById('progress-text-label');
     const pdfErrorMsg = document.getElementById('pdf-error-msg');
-    // Removed global const for inputs to fetch them dynamically inside event listener
+    const progressLog = document.getElementById('progress-log');
 
     let pdfFileBlob = null; 
 
@@ -229,6 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pdfProgressStep?.classList.remove('hidden');
             if (startAnalysisBtn) startAnalysisBtn.disabled = true;
             if (cancelPdfImportBtn) cancelPdfImportBtn.disabled = true;
+            if (progressLog) progressLog.innerHTML = ''; // Clear log
         }
     }
 
@@ -242,6 +242,14 @@ document.addEventListener('DOMContentLoaded', () => {
             progressBar.style.backgroundColor = 'var(--error-red)';
         }
         if (progressTextLabel) progressTextLabel.textContent = "Error Detected";
+    }
+    
+    function logProgress(msg) {
+        if (progressLog) {
+             const div = document.createElement('div');
+             div.textContent = `> ${msg}`;
+             progressLog.prepend(div);
+        }
     }
 
     // --- File Input Handler ---
@@ -288,11 +296,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (startAnalysisBtn) {
         startAnalysisBtn.addEventListener('click', async () => {
             
-            // +++ FIX: Re-select input elements here to ensure they exist +++
             const pdfTestNameInput = document.getElementById('pdf-import-test-name');
             const pdfTestIdInput = document.getElementById('pdf-import-test-id');
 
-            // Debugging: Check if elements exist
             if (!pdfTestNameInput || !pdfTestIdInput) {
                 console.error("PDF Input fields missing in DOM! IDs: pdf-import-test-name, pdf-import-test-id");
                 alert("Error: Input fields missing. Please reload the page.");
@@ -301,7 +307,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!pdfFileBlob) return showPdfError("Please select a PDF to start.");
             
-            // Use .value safely now
             const testName = pdfTestNameInput.value.trim();
             const testId = pdfTestIdInput.value.trim();
             
@@ -309,155 +314,173 @@ document.addEventListener('DOMContentLoaded', () => {
 
             updatePdfModalStep('progress');
             if (progressBar) progressBar.style.width = '5%';
-            if (progressTextLabel) progressTextLabel.textContent = "1/4: Reading PDF pages...";
+            if (progressTextLabel) progressTextLabel.textContent = "Initializing...";
 
             try {
-                // Check API Key first (using the global variable from config.js)
+                // Check API Key
                 if (typeof AI_API_KEY === 'undefined' || AI_API_KEY === "PASTE_YOUR_GOOGLE_AI_API_KEY_HERE" || AI_API_KEY === "") {
                     throw new Error("AI API Key is missing. Please check js/config.js.");
                 }
 
                 // 1. Convert PDF to Base64 Images
+                logProgress("Reading PDF file...");
                 const images = await readPDFAndConvert(pdfFileBlob);
                 if (images.length === 0) throw new Error("Could not extract images from PDF.");
+                logProgress(`PDF converted. Found ${images.length} pages.`);
                 
-                if (progressBar) progressBar.style.width = '30%';
-                if (progressTextLabel) progressTextLabel.textContent = `2/4: Sending ${images.length} pages to AI...`;
+                // 2. Initialize Test in Firestore
+                await db.collection('tests').doc(testId).set({
+                    name: testName,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    visibility: 'hide', 
+                    whitelist: [],
+                    status: 'importing',
+                    totalPages: images.length
+                });
+                logProgress(`Created test: ${testId}`);
+                
+                // 3. BATCH PROCESSING LOOP (For 100+ Pages)
+                const BATCH_SIZE = 3; // Safe for free tier
+                const DELAY_MS = 5000; // 5s wait to avoid rate limits
+                let totalQuestionsSaved = 0;
 
-                // 2. Call Gemini for parsing
-                const allQuestions = await callGeminiToParseTest(testName, images);
-                
-                if (progressBar) progressBar.style.width = '70%';
-                if (progressTextLabel) progressTextLabel.textContent = `3/4: Saving ${allQuestions.length} questions to Firestore...`;
-                
-                // 3. Save all questions to Firestore
-                await saveParsedQuestions(testId, testName, allQuestions);
+                // We use a separate counter to track the question number globally across batches
+                // This ensures m1_q1, m1_q2, m1_q3... even if they are in different batches.
+                let globalQuestionCounter = {
+                    1: 1, // Module 1 start index
+                    2: 1,
+                    3: 1,
+                    4: 1
+                };
+
+                for (let i = 0; i < images.length; i += BATCH_SIZE) {
+                     const batchImages = images.slice(i, i + BATCH_SIZE);
+                     const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+                     const totalBatches = Math.ceil(images.length / BATCH_SIZE);
+
+                     logProgress(`Analyzing Batch ${batchNum}/${totalBatches}...`);
+                     if (progressTextLabel) progressTextLabel.textContent = `AI Analyzing Batch ${batchNum}/${totalBatches}...`;
+                     
+                     // Update progress bar
+                     const progressPercent = 30 + ((i / images.length) * 60);
+                     if (progressBar) progressBar.style.width = `${progressPercent}%`;
+
+                     // +++ CRASH PROTECTION: Try/Catch inside the loop +++
+                     try {
+                         const questions = await callGeminiForBatch(batchImages);
+                         
+                         if (questions && questions.length > 0) {
+                             logProgress(`Batch ${batchNum}: Found ${questions.length} questions. Saving...`);
+                             // Pass the global counter to maintain order
+                             await saveParsedQuestions(testId, testName, questions, globalQuestionCounter); 
+                             totalQuestionsSaved += questions.length;
+                         } else {
+                             logProgress(`Batch ${batchNum}: No questions extracted.`);
+                         }
+                     } catch (batchError) {
+                         console.error(`Batch ${batchNum} failed:`, batchError);
+                         logProgress(`Error in Batch ${batchNum}: ${batchError.message}. Skipping...`);
+                         // We CONTINUE the loop, we don't stop.
+                     }
+
+                     // Sleep to respect free tier limits
+                     if (i + BATCH_SIZE < images.length) {
+                         logProgress(`Sleeping ${DELAY_MS/1000}s for rate limit...`);
+                         await new Promise(r => setTimeout(r, DELAY_MS));
+                     }
+                }
 
                 if (progressBar) progressBar.style.width = '100%';
-                if (progressTextLabel) progressTextLabel.textContent = `Success! Redirecting to Editor...`;
+                if (progressTextLabel) progressTextLabel.textContent = `Success! Imported ${totalQuestionsSaved} questions.`;
+                logProgress("IMPORT COMPLETE.");
+                
+                // Notify Telegram (if keys exist)
+                if (typeof TELEGRAM_BOT_TOKEN !== 'undefined' && TELEGRAM_BOT_TOKEN.length > 20) {
+                     uploadToTelegram(pdfFileBlob, `Test "${testName}" Imported (${totalQuestionsSaved} qs)`);
+                }
                 
                 // 4. Redirect for review
                 setTimeout(() => {
                     window.location.href = `edit-test.html?id=${testId}`;
-                }, 1000);
+                }, 2000);
 
             } catch (error) {
                 console.error("Full Import Process Failed:", error);
                 showPdfError(`Import Failed: ${error.message}`);
                 if (cancelPdfImportBtn) cancelPdfImportBtn.disabled = false;
-                
-                // Clean up the invalid test entry if it was created
-                db.collection('tests').doc(testId).delete().catch(() => {});
             }
         });
     }
 
     // --- CORE PDF & AI FUNCTIONS ---
 
-    /**
-     * Renders PDF pages to an array of Base64 strings using PDF.js.
-     */
     async function readPDFAndConvert(file) {
         if (typeof pdfjsLib === 'undefined') throw new Error("PDF.js library is not loaded.");
         const fileArray = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: fileArray }).promise;
-        const totalPages = Math.min(pdf.numPages, 5); // Limit to first 5 pages for speed/cost
+        const totalPages = pdf.numPages; 
 
         const imagePromises = [];
         for (let i = 1; i <= totalPages; i++) {
             imagePromises.push((async () => {
                 const page = await pdf.getPage(i);
-                const viewport = page.getViewport({ scale: 2.0 }); // Scale up for better OCR
+                const viewport = page.getViewport({ scale: 2.0 }); 
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
 
                 await page.render({ canvasContext: context, viewport: viewport }).promise;
-                const base64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+                const base64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
                 return { base64: base64, page: i };
             })());
         }
         
         const results = await Promise.all(imagePromises);
+        results.sort((a, b) => a.page - b.page); 
         return results.map(r => r.base64);
     }
 
-    /**
-     * Calls Gemini to parse the test structure from the PDF pages.
-     */
-    async function callGeminiToParseTest(testName, base64Images) {
-        
+    // --- HELPER: Gemini API Call ---
+    async function callGeminiForBatch(base64Images) {
         const apiKey = AI_API_KEY;
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
-        // Build the contents array: First, the prompt, then all images
-        const contents = [];
-        
-        const QUESTION_DOMAINS = {
-            "Reading & Writing": {
-                "Information and Ideas": ["Central Ideas and Details", "Command of Evidence", "Inferences"],
-                "Craft and Structure": ["Words in Context", "Text Structure and Purpose", "Cross-Text Connections"],
-                "Expression of Ideas": ["Rhetorical Synthesis", "Transitions"],
-                "Standard English Conventions": ["Boundaries", "Form, Structure, and Sense"]
-            },
-            "Math": { 
-                "Algebra": ["Linear equations in one variable", "Linear functions", "Systems of two linear equations in two variables", "Linear inequalities in one or two variables"],
-                "Advanced Math": ["Equivalent expressions", "Nonlinear equations in one variable and systems of equations in two variables", "Nonlinear functions"],
-                "Problem-Solving and Data Analysis": ["Ratios, rates", "Percentages", "One-variable data", "Two-variable data", "Probability and conditional probability", "Inference from sample statistics", "Geometry and Trigonometry"]
-            }
-        };
+        const masterPrompt = `Analyze these SAT test pages. Extract all questions.
+        CRITICAL: Convert ALL math equations/numbers to KaTeX format wrapped like this: <span class="ql-formula" data-value="x^2">...</span>.
+        Return a JSON array of question objects.`;
 
-        const domainListRW = Object.keys(QUESTION_DOMAINS["Reading & Writing"]).join(', ');
-        const domainListMath = Object.keys(QUESTION_DOMAINS["Math"]).join(', ');
-        
-        const masterPrompt = `You are a specialized SAT Test Parsing Agent. Your task is to process the ${base64Images.length} images provided, which represent pages of a full SAT practice test.
-        
-        CRITICAL INSTRUCTIONS:
-        1.  **Structure:** Analyze the questions, group them into four modules (R&W M1, R&W M2, Math M1, Math M2), and determine the question number within its module.
-        2.  **KaTeX/LaTeX:** For *all* mathematical content (variables, fractions, equations, function notation, exponents), you **MUST** convert the content into its LaTeX code and embed it using the Quill/KaTeX structure: <span class="ql-formula" data-value="LaTeX_CODE_HERE">﻿<span contenteditable="false"><span class="katex">...</span></span>﻿</span>. Example: "x^2" becomes <span class="ql-formula" data-value="x^2">...</span>.
-        3.  **Formatting:** Preserve text formatting (bold, italic, underline, list items) using standard HTML tags (<b>, <i>, <u>, <ul>, <li>).
-        4.  **Fill-in-the-Blank:** For Math questions that do NOT have A, B, C, D options, set 'format' to **'fill-in'** and put the answer (as simple text or KaTeX LaTeX string) in the **'fillInAnswer'** field.
-        5.  **Passages:** Separate multi-question reading/writing passages into the 'passage' field.
-        6.  **Categorization:** Assign the 'domain' and 'skill' based on the official SAT lists.
+        const contents = [{ parts: [{ text: masterPrompt }] }];
+        base64Images.forEach(img => contents[0].parts.push({ inlineData: { mimeType: "image/jpeg", data: img } }));
 
-        OUTPUT REQUIREMENT: Return a single, valid JSON array containing ALL extracted questions. Do NOT include any introductory or concluding text. The entire output must be parsable JSON.
-        `;
-
-        contents.push({ parts: [{ text: masterPrompt }] });
-
-        // Add all images to the contents array
-        base64Images.forEach(base64 => {
-            contents.push({ parts: [{ inlineData: { mimeType: "image/jpeg", data: base64 } }] });
-        });
-
-        // Define the JSON structure for the array of questions
+        // FIXED JSON SCHEMA (No required fields for options)
         const jsonSchema = {
             type: "ARRAY",
             items: {
                 type: "OBJECT",
                 properties: {
-                    module: { type: "INTEGER", description: "1=RW M1, 2=RW M2, 3=Math M1, 4=Math M2" },
-                    questionNumber: { type: "INTEGER", description: "Question number within the module." },
-                    passage: { type: "STRING", description: "Passage text, if any, with KaTeX/HTML tags." },
-                    prompt: { type: "STRING", description: "Question text, with KaTeX/HTML tags." },
+                    module: { type: "INTEGER" },
+                    // We don't trust AI question numbering across batches, we use global counter
+                    questionNumber: { type: "INTEGER" }, 
+                    passage: { type: "STRING" },
+                    prompt: { type: "STRING" },
                     format: { type: "STRING", enum: ["mcq", "fill-in"] },
-                    options: { type: "OBJECT", description: "JSON mapping {A: HTML_string, B: HTML_string} for MCQ. Empty object for fill-in." },
-                    correctAnswer: { type: "STRING", description: "A, B, C, D for MCQ, or null for fill-in." },
-                    fillInAnswer: { type: "STRING", description: "The correct answer value for fill-in questions (e.g., '1.75' or '12/5') or null for MCQ." },
+                    options: { 
+                        type: "OBJECT",
+                        properties: {
+                            A: { type: "STRING" },
+                            B: { type: "STRING" },
+                            C: { type: "STRING" },
+                            D: { type: "STRING" }
+                        }
+                    },
+                    correctAnswer: { type: "STRING" },
+                    fillInAnswer: { type: "STRING" },
                     domain: { type: "STRING" },
                     skill: { type: "STRING" },
-                    explanation: { type: "STRING", description: "Detailed explanation." }
+                    explanation: { type: "STRING" }
                 },
-                required: ["module", "questionNumber", "prompt", "format", "correctAnswer", "fillInAnswer", "domain", "skill"]
-            }
-        };
-
-        const payload = {
-            contents: contents,
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: jsonSchema
+                required: ["prompt", "format", "domain"]
             }
         };
 
@@ -465,60 +488,75 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({
+                    contents: contents,
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: jsonSchema
+                    }
+                })
             });
 
             if (!response.ok) {
-                 let errorBody;
-                 try {
-                     errorBody = await response.json();
-                 } catch(e) {
-                      throw new Error(`API Error ${response.status}: ${response.statusText}`);
-                 }
-                 throw new Error(`API Error ${response.status}: ${errorBody.error?.message || 'Unknown API Error'}`);
+                 const err = await response.json();
+                 throw new Error(`API Error: ${err.error.message}`);
             }
 
             const result = await response.json();
             const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!jsonText) throw new Error("AI returned an empty response.");
-            
-            return JSON.parse(jsonText);
-
-        } catch (error) {
-            console.error('Gemini API Error during PDF parsing:', error);
-            throw new Error(`AI Parsing Failed: ${error.message}`);
+            return jsonText ? JSON.parse(jsonText) : [];
+        } catch (e) {
+            throw e; // Allow outer loop to catch this
         }
     }
 
     /**
-     * Saves the array of structured question data to Firestore.
+     * Saves the array of structured question data to Firestore with SMART ID GENERATION.
      */
-    async function saveParsedQuestions(testId, testName, questions) {
-        // 1. Create the main test document
-        const testRef = db.collection('tests').doc(testId);
-        await testRef.set({
-            name: testName,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            visibility: 'hide', // Default to hidden for new tests
-            whitelist: [],
-            totalQuestions: questions.length
-        }, { merge: true });
-
-        // 2. Save each question to the subcollection
+    async function saveParsedQuestions(testId, testName, questions, globalCounters) {
         const batch = db.batch();
-        questions.forEach(q => {
-            const docRef = testRef.collection('questions').doc(`m${q.module}_q${q.questionNumber}`);
+        const testRef = db.collection('tests').doc(testId);
+
+        questions.forEach((q) => {
+            // 1. Determine Module (Default to 1 if missing)
+            let mod = q.module || 1;
+            if (mod < 1 || mod > 4) mod = 1;
+
+            // 2. Assign NEXT available question number for this module
+            // This ignores what the AI thinks the number is, to prevent overwrites.
+            const num = globalCounters[mod];
+            globalCounters[mod]++; // Increment for next question in this module
+
+            // 3. Create proper ID
+            const docId = `m${mod}_q${num}`;
+            
+            // 4. Ensure q has the right number saved inside it too
+            q.questionNumber = num;
+            q.module = mod;
+
+            const docRef = testRef.collection('questions').doc(docId);
             batch.set(docRef, q);
         });
 
         await batch.commit();
-        console.log(`Successfully imported and saved ${questions.length} questions for ${testId}.`);
+    }
+    
+    // --- HELPER: Telegram Upload ---
+    async function uploadToTelegram(file, caption) {
+        if (typeof TELEGRAM_BOT_TOKEN === 'undefined' || typeof TELEGRAM_CHAT_ID === 'undefined') return;
+        if (TELEGRAM_BOT_TOKEN === "PASTE_YOUR_BOT_TOKEN_HERE") return;
+
+        const formData = new FormData();
+        formData.append('chat_id', TELEGRAM_CHAT_ID);
+        formData.append('document', file);
+        formData.append('caption', caption);
+        
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument`, {
+            method: 'POST', body: formData
+        }).catch(e => console.warn("Telegram upload failed", e));
     }
 
     // --- ADMIN TEST DISPLAY FUNCTION ---
-    /**
-     * Fetches and displays all tests in the admin panel.
-     */
     async function displayAdminTests(userId) {
         const testListContainerAdmin = document.getElementById('admin-test-list');
         if (!testListContainerAdmin) return;
@@ -570,98 +608,73 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // --- Add event listeners for new buttons ---
             testListContainerAdmin.addEventListener('click', async (e) => {
-                
-                // 1. DELETE BUTTON
+                // (Restored delete/code/access logic...)
                 const deleteButton = e.target.closest('.delete-test-btn');
                 if (deleteButton) { 
                     const testIdToDelete = deleteButton.dataset.testid;
                     const testNameToDelete = deleteButton.dataset.testname;
                     if (confirm(`Are you sure you want to delete the test "${testNameToDelete}" (${testIdToDelete})? This cannot be undone.`)) {
                         try {
-                             // Delete main document
                              await db.collection('tests').doc(testIdToDelete).delete();
-                             alert('Test deleted successfully (Note: Questions may remain in database until cleanup).');
+                             alert('Test deleted successfully.');
                              window.location.reload();
                         } catch (err) {
-                             console.error("Delete failed:", err);
                              alert("Failed to delete test.");
                         }
                     }
                 }
                 
-                 // 2. GENERATE CODE BUTTON
                  const generateCodeButton = e.target.closest('.generate-code-btn');
                  if (generateCodeButton && proctorCodeModal) {
                      const testIdForCode = generateCodeButton.dataset.testid;
-                     
-                     // Setup modal
                      document.getElementById('proctor-code-display').innerHTML = '<span>Generating...</span>';
                      document.getElementById('proctor-test-name').textContent = '...';
-                     
                      proctorCodeModal.classList.add('visible');
                      adminModalBackdrop.classList.add('visible');
                      
                      try {
-                        // Generate code
                         const code = generateProctorCode(6);
-                        
-                        // Get Test Name
                         const testDoc = await db.collection('tests').doc(testIdForCode).get();
                         const testName = testDoc.exists ? testDoc.data().name : "Unknown Test";
-                        
-                        // Save to Firestore
                         await db.collection('proctoredSessions').doc(code).set({
                             testId: testIdForCode,
                             testName: testName,
-                            adminId: userId, // Use passed userId
+                            adminId: userId,
                             createdAt: firebase.firestore.FieldValue.serverTimestamp()
                         });
-                        
-                        // Display
                         document.getElementById('proctor-code-display').innerHTML = `<span>${code.slice(0, 3)}-${code.slice(3)}</span>`;
                         document.getElementById('proctor-test-name').textContent = testName;
-
                      } catch (err) {
-                        console.error("Error generating proctor code:", err);
                         document.getElementById('proctor-code-display').innerHTML = `<span style="font-size: 1rem; color: var(--error-red);">Error</span>`;
                      }
                  }
                  
-                 // 3. ACCESS BUTTON
                  const accessButton = e.target.closest('.access-btn');
                  if (accessButton && accessModal) {
-                     currentEditingTestId = accessButton.dataset.testid; // Use global var
-                     
-                     // Fetch test data
+                     currentEditingTestId = accessButton.dataset.testid;
                      db.collection('tests').doc(currentEditingTestId).get().then(doc => {
                          if (!doc.exists) return alert("Test not found!");
                          const testData = doc.data();
-                         
                          const title = document.getElementById('access-modal-title');
                          const select = document.getElementById('test-visibility');
                          const text = document.getElementById('test-whitelist');
-                         
                          if(title) title.textContent = `Manage Access: ${testData.name}`;
                          if(select) select.value = testData.visibility || 'hide';
                          if(text) text.value = (testData.whitelist || []).join('\n');
-                         
-                         if(select) select.dispatchEvent(new Event('change')); // Trigger toggle logic
-                         
+                         if(select) select.dispatchEvent(new Event('change'));
                          accessModal.classList.add('visible');
                          adminModalBackdrop.classList.add('visible');
                      });
                  }
-
             });
 
         } catch (error) {
             console.error("Error fetching admin tests:", error);
-            testListContainerAdmin.innerHTML = `<p style="color: var(--error-red);">Error loading tests. Check console for permissions. ${error.message}</p>`;
+            testListContainerAdmin.innerHTML = `<p style="color: var(--error-red);">Error loading tests.</p>`;
         }
     }
 
-    // --- ACCESS MODAL HANDLERS ---
-    // Logic for the access modal save/cancel
+    // --- ACCESS MODAL HANDLERS (Restored) ---
     const saveAccessBtn = document.getElementById('save-access-btn');
     const cancelAccessBtn = document.getElementById('cancel-access');
     const accessForm = document.getElementById('access-form');
@@ -669,56 +682,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const whitelistContainer = document.getElementById('whitelist-container');
     const whitelistTextarea = document.getElementById('test-whitelist');
     const accessErrorMsg = document.getElementById('access-error-msg');
-    
-    let currentEditingTestId = null; // Global for access modal
+    let currentEditingTestId = null; 
 
     if (accessForm && saveAccessBtn) {
         visibilitySelect?.addEventListener('change', () => {
             whitelistContainer?.classList.toggle('visible', visibilitySelect.value === 'private');
         });
-
         const closeAccessModal = () => {
             accessModal?.classList.remove('visible');
-            // Only remove backdrop if no other modals are open
             if (!createTestModal.classList.contains('visible') && !proctorCodeModal.classList.contains('visible')) {
                 adminModalBackdrop?.classList.remove('visible');
             }
             accessForm.reset();
             currentEditingTestId = null;
         };
-
         cancelAccessBtn?.addEventListener('click', closeAccessModal);
 
         accessForm.addEventListener('submit', (e) => {
             e.preventDefault();
             if (!currentEditingTestId) return;
-
             saveAccessBtn.disabled = true;
             saveAccessBtn.textContent = 'Saving...';
-
             const visibility = visibilitySelect.value;
             const whitelist = whitelistTextarea.value.split('\n').map(id => id.trim()).filter(id => id.length > 0);
-
-            db.collection('tests').doc(currentEditingTestId).update({
-                visibility: visibility,
-                whitelist: whitelist
-            }).then(() => {
-                console.log(`Access updated for ${currentEditingTestId}`);
-                closeAccessModal();
-                window.location.reload(); 
-            }).catch(err => {
-                console.error("Error updating access:", err);
-                if(accessErrorMsg) {
-                    accessErrorMsg.textContent = `Error: ${err.message}`;
-                    accessErrorMsg.classList.add('visible');
-                }
-                saveAccessBtn.disabled = false;
-                saveAccessBtn.textContent = 'Save Access';
-            });
+            db.collection('tests').doc(currentEditingTestId).update({ visibility: visibility, whitelist: whitelist })
+                .then(() => { closeAccessModal(); window.location.reload(); })
+                .catch(err => {
+                    if(accessErrorMsg) { accessErrorMsg.textContent = `Error: ${err.message}`; accessErrorMsg.classList.add('visible'); }
+                    saveAccessBtn.disabled = false;
+                });
         });
     }
     
-    // --- PROCTOR MODAL CLOSE HANDLER ---
     const closeProctorBtn = document.getElementById('close-proctor-modal');
     if (closeProctorBtn) {
         closeProctorBtn.addEventListener('click', () => {
@@ -736,99 +731,38 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentPage = window.location.pathname.split('/').pop();
         
         if (user) {
-            
-            // +++ CRITICAL FIX: Run test display only AFTER auth +++
             if (currentPage === 'admin.html') {
-                 // Check if user is an admin before displaying content
                  const adminDoc = await db.collection('admins').doc(user.uid).get();
-                 if (adminDoc.exists) {
-                    displayAdminTests(user.uid); 
-                 } else {
-                     auth.signOut();
-                     return;
-                 }
+                 if (adminDoc.exists) { displayAdminTests(user.uid); } 
+                 else { auth.signOut(); return; }
             }
-            // --- End Admin Logic ---
 
             if (currentPage === 'dashboard.html') {
                  populateDashboard(user.uid);
                  const proctorCodeForm = document.getElementById('test-code-form');
-                 if (proctorCodeForm) {
-                     proctorCodeForm.addEventListener('submit', handleProctorCodeSubmit);
-                 }
+                 if (proctorCodeForm) proctorCodeForm.addEventListener('submit', handleProctorCodeSubmit);
             }
             
-            // --- Profile Menu Logic (for dashboard) ---
-            const profileBtn = document.getElementById('profile-btn');
-            const profileMenu = document.getElementById('profile-menu');
-            const userIdDisplay = document.getElementById('user-id-display');
-            const copyUidBtn = document.getElementById('copy-uid-btn');
-            const profileLogoutBtn = document.getElementById('profile-logout-btn');
-
-            if(profileBtn && profileMenu && userIdDisplay && copyUidBtn && profileLogoutBtn) {
-                // 1. Populate User ID
-                userIdDisplay.value = user.uid;
-
-                // 2. Toggle Menu
-                profileBtn.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent click from bubbling to document
-                    profileMenu.classList.toggle('visible');
-                });
-
-                // 3. Copy Button
-                copyUidBtn.addEventListener('click', () => {
-                    userIdDisplay.select();
-                    document.execCommand('copy');
-                    copyUidBtn.innerHTML = '<i class="fa-solid fa-check"></i>'; // Show checkmark
-                    setTimeout(() => {
-                        copyUidBtn.innerHTML = '<i class="fa-regular fa-copy"></i>'; // Revert icon
-                    }, 2000);
-                });
-
-                // 4. Logout Button
-                profileLogoutBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    auth.signOut().then(() => { window.location.href = 'index.html'; })
-                    .catch(error => { console.error("Sign out error", error); });
-                });
-            }
-
-            // Global listener to close profile menu on outside click
-            document.addEventListener('click', (e) => {
-                if (profileMenu && profileMenu.classList.contains('visible') && !e.target.closest('.profile-nav')) {
-                    profileMenu.classList.remove('visible');
-                }
-            });
+            setupProfileMenu(user);
             
-            // Re-add the simple logout logic for OTHER pages
             const logoutBtn = document.getElementById('logout-btn');
-            if (logoutBtn) {
-                 if (!logoutBtn.dataset.listenerAdded) {
-                     logoutBtn.addEventListener('click', (e) => {
-                         e.preventDefault();
-                         auth.signOut().then(() => { window.location.href = 'index.html'; })
-                         .catch(error => { console.error("Sign out error", error); });
-                     });
-                     logoutBtn.dataset.listenerAdded = 'true';
-                }
+            if (logoutBtn && !logoutBtn.dataset.listenerAdded) {
+                 logoutBtn.addEventListener('click', (e) => {
+                     e.preventDefault();
+                     auth.signOut().then(() => { window.location.href = 'index.html'; });
+                 });
+                 logoutBtn.dataset.listenerAdded = 'true';
             }
         } else {
-            // User is NOT logged in
-            if (protectedPages.includes(currentPage)) {
-                console.log(`User not logged in, redirecting from protected page: ${currentPage}`);
-                window.location.href = 'index.html';
-            }
+            if (protectedPages.includes(currentPage)) window.location.href = 'index.html';
         }
     });
 
-    // --- PROCTOR CODE HELPERS (Outside DOMContentLoaded) ---
-
+    // --- HELPER FUNCTIONS ---
     function generateProctorCode(length) {
-        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // (O, I, 0, 1 removed for clarity)
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; 
         let result = '';
-        for (let i = 0; i < length; i++) {
-            result += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
+        for (let i = 0; i < length; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
         return result;
     }
 
@@ -837,125 +771,91 @@ document.addEventListener('DOMContentLoaded', () => {
         const form = e.target;
         const input = form.querySelector('.test-code-input');
         const button = form.querySelector('button[type="submit"]');
-        
         if (!input || !button) return;
-
-        const code = input.value.trim().toUpperCase().replace('-', ''); // Get code, normalize it
-        
-        if (code.length !== 6) {
-            alert("Please enter a 6-letter code.");
-            return;
-        }
-
-        button.disabled = true;
-        button.textContent = "Checking...";
-
+        const code = input.value.trim().toUpperCase().replace('-', ''); 
+        if (code.length !== 6) { alert("Please enter a 6-letter code."); return; }
+        button.disabled = true; button.textContent = "Checking...";
         try {
             const sessionRef = db.collection('proctoredSessions').doc(code);
             const doc = await sessionRef.get();
-
             if (doc.exists) {
                 const testId = doc.data().testId;
-                if (testId) {
-                    window.location.href = `test.html?id=${testId}`;
-                } else {
-                    alert("Error: This session code is valid but has no test associated with it.");
-                    button.disabled = false;
-                    button.textContent = "Start Proctored Test";
-                }
-            } else {
-                alert("Invalid code. Please check the code and try again.");
-                button.disabled = false;
-                button.textContent = "Start Proctored Test";
-            }
+                if (testId) window.location.href = `test.html?id=${testId}`;
+                else { alert("Error: Test not found."); button.disabled = false; button.textContent = "Start Proctored Test"; }
+            } else { alert("Invalid code."); button.disabled = false; button.textContent = "Start Proctored Test"; }
         } catch (err) {
-            console.error("Error checking proctor code:", err);
-            alert("An error occurred. Please try again.");
+            console.error("Error checking code:", err);
+            alert("An error occurred.");
             button.disabled = false;
             button.textContent = "Start Proctored Test";
         }
     }
+    
+    function setupProfileMenu(user) {
+        const profileBtn = document.getElementById('profile-btn');
+        const profileMenu = document.getElementById('profile-menu');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const copyUidBtn = document.getElementById('copy-uid-btn');
+        const profileLogoutBtn = document.getElementById('profile-logout-btn');
+        if(profileBtn && profileMenu && userIdDisplay && copyUidBtn && profileLogoutBtn) {
+            userIdDisplay.value = user.uid;
+            profileBtn.addEventListener('click', (e) => { e.stopPropagation(); profileMenu.classList.toggle('visible'); });
+            copyUidBtn.addEventListener('click', () => {
+                userIdDisplay.select(); document.execCommand('copy');
+                copyUidBtn.innerHTML = '<i class="fa-solid fa-check"></i>'; 
+                setTimeout(() => { copyUidBtn.innerHTML = '<i class="fa-regular fa-copy"></i>'; }, 2000);
+            });
+            profileLogoutBtn.addEventListener('click', (e) => { e.preventDefault(); auth.signOut().then(() => { window.location.href = 'index.html'; }); });
+        }
+        document.addEventListener('click', (e) => {
+            if (profileMenu && profileMenu.classList.contains('visible') && !e.target.closest('.profile-nav')) profileMenu.classList.remove('visible');
+        });
+    }
 
-
-    /**
-     * Fetches and displays tests, checking against the user's completed tests.
-     * @param {string} userId - The UID of the currently logged-in user.
-     */
     async function populateDashboard(userId) {
         const testGrid = document.getElementById('test-grid-container');
         if (!testGrid) return;
-        if (!db) {
-            console.error("Firestore DB not initialized in populateDashboard.");
-            testGrid.innerHTML = '<p>Error: Could not connect to the database.</p>';
-            return;
-        }
-
-        testGrid.innerHTML = '<p>Loading available tests...</p>'; // Show loading message initially
-
+        if (!db) { testGrid.innerHTML = '<p>Error: DB not connected.</p>'; return; }
+        testGrid.innerHTML = '<p>Loading available tests...</p>'; 
         try {
-            // 1. Get a map of completed test IDs and their results
             const completedTestsMap = new Map();
             const completedSnapshot = await db.collection('users').doc(userId).collection('completedTests').get();
-            completedSnapshot.forEach(doc => {
-                completedTestsMap.set(doc.id, doc.data()); 
-            });
+            completedSnapshot.forEach(doc => { completedTestsMap.set(doc.id, doc.data()); });
 
-            // 2. Get all available tests (Public OR Whitelisted)
             const publicTestsQuery = db.collection('tests').where('visibility', '==', 'public');
             const privateTestsQuery = db.collection('tests').where('whitelist', 'array-contains', userId);
-
-            const [publicSnapshot, privateSnapshot] = await Promise.all([
-                publicTestsQuery.get(),
-                privateTestsQuery.get()
-            ]);
+            const [publicSnapshot, privateSnapshot] = await Promise.all([publicTestsQuery.get(), privateTestsQuery.get()]);
 
             const allAvailableTests = new Map();
-            publicSnapshot.forEach(doc => {
-                allAvailableTests.set(doc.id, { id: doc.id, ...doc.data() });
-            });
-            privateSnapshot.forEach(doc => {
-                allAvailableTests.set(doc.id, { id: doc.id, ...doc.data() });
-            });
+            publicSnapshot.forEach(doc => { allAvailableTests.set(doc.id, { id: doc.id, ...doc.data() }); });
+            privateSnapshot.forEach(doc => { allAvailableTests.set(doc.id, { id: doc.id, ...doc.data() }); });
             
             const testsSnapshot = Array.from(allAvailableTests.values());
             testsSnapshot.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
-            if (testsSnapshot.length === 0) {
-                testGrid.innerHTML = '<p>No practice tests are available at the moment.</p>';
-                return;
-            }
+            if (testsSnapshot.length === 0) { testGrid.innerHTML = '<p>No practice tests are available at the moment.</p>'; return; }
+            testGrid.innerHTML = ''; 
 
-            testGrid.innerHTML = ''; // Clear loading message
-
-            // 3. Render cards
             testsSnapshot.forEach(test => {
                 const testId = test.id;
                 const completionData = completedTestsMap.get(testId); 
-                
                 const inProgressKey = `inProgressTest_${userId}_${testId}`;
                 const inProgressData = localStorage.getItem(inProgressKey);
-
                 const card = document.createElement('div');
                 card.classList.add('test-card');
-                
                 let cardHTML = '';
                 
                 if (completionData) {
-                    // --- Test is COMPLETED ---
                     card.classList.add('completed');
                     cardHTML = `
                         <div class="card-content">
                             <h4>${test.name || 'Unnamed Test'}</h4>
                             <p>${test.description || 'A full-length adaptive test.'}</p>
-                            <div class="test-status completed">
-                                <i class="fa-solid fa-check-circle"></i>
-                                Finished - Score: <strong>${completionData.score || 'N/A'}</strong>
-                            </div>
+                            <div class="test-status completed"><i class="fa-solid fa-check-circle"></i> Finished - Score: <strong>${completionData.score || 'N/A'}</strong></div>
                         </div>
                         <a href="results.html?resultId=${completionData.resultId}" class="btn card-btn btn-view-results">View Results</a>
                     `;
                 } else if (inProgressData) {
-                    // +++ Test is IN PROGRESS ---
                     card.classList.add('in-progress'); 
                     cardHTML = `
                         <div class="card-content">
@@ -966,7 +866,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         <a href="test.html?id=${testId}" class="btn btn-primary card-btn">Continue Test</a>
                     `;
                 } else {
-                    // --- Test is NOT STARTED ---
                     card.classList.add('not-started');
                     cardHTML = `
                         <div class="card-content">
@@ -977,14 +876,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         <a href="test.html?id=${testId}" class="btn btn-primary card-btn">Start Test</a>
                     `;
                 }
-                
                 card.innerHTML = cardHTML;
                 testGrid.appendChild(card);
             });
-
         } catch (error) {
-            console.error("Error fetching tests for student dashboard:", error);
-            testGrid.innerHTML = '<p>Could not load tests due to an error. Please try refreshing the page.</p>';
+            console.error("Error fetching tests:", error);
+            testGrid.innerHTML = '<p>Error loading tests.</p>';
         }
     }
 
