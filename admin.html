@@ -41,38 +41,38 @@
         </div>
     </main>
 
-    <!-- Modal Backdrop (Shared) -->
+    <!-- Modal Backdrop -->
     <div class="modal-backdrop" id="modal-backdrop"></div>
 
-    <!-- 1. Create Test Modal (Manual/AI Selector) -->
+    <!-- 1. Create Test Modal (Selection) -->
     <div class="admin-modal" id="create-test-modal">
         <h3>Create a New Practice Test</h3>
-        <div id="create-test-options" class="flex flex-col gap-4">
-            <!-- Manual Creation Form -->
-            <form id="create-test-form" class="flex flex-col gap-4">
-                 <div class="input-group">
-                    <label for="test-name">Test Name (e.g., "Practice Test 3")</label>
-                    <input type="text" id="test-name" required>
-                </div>
-                <div class="input-group">
-                    <label for="test-id">Unique Test ID (e.g., "pt3_2024")</label>
-                    <input type="text" id="test-id" required pattern="[a-z0-9_]+">
-                    <small>Lowercase letters, numbers, and underscores only.</small>
-                </div>
-                <div class="form-actions" style="justify-content: flex-end; border-top: none; padding-top: 0;">
-                    <button type="button" class="btn btn-secondary" id="cancel-create-test" style="margin-top: 0;">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="start-manual-creation" style="margin-top: 0;">Start Manual Creation</button>
-                </div>
-            </form>
-            
-            <div style="text-align: center; color: var(--dark-gray); font-size: 0.9rem;">— OR —</div>
-            
-            <!-- AI Import Button -->
-            <button class="btn btn-secondary" id="open-pdf-import-modal" style="background-color: #27ae60; margin-top: 0; width: 100%;">
-                 <i class="fa-solid fa-file-pdf"></i> AI Import from PDF
-            </button>
-        </div>
+        
+        <!-- Manual Form -->
+        <form id="create-test-form">
+            <div class="input-group">
+                <label for="test-name">Test Name (e.g., "Practice Test 3")</label>
+                <input type="text" id="test-name" required>
+            </div>
+            <div class="input-group">
+                <label for="test-id">Unique Test ID (e.g., "pt3_2024")</label>
+                <input type="text" id="test-id" required pattern="[a-z0-9_]+">
+                <small>Lowercase letters, numbers, and underscores only.</small>
+            </div>
+            <div class="form-actions" style="justify-content: space-between; align-items: center;">
+                 <button type="button" class="btn btn-secondary" id="cancel-create-test">Cancel</button>
+                 <button type="submit" class="btn btn-primary" id="start-manual-btn">Create Manually</button>
+            </div>
+        </form>
+        
+        <div style="text-align: center; margin: 15px 0; color: var(--dark-gray); font-size: 0.9rem;">— OR —</div>
+        
+        <!-- AI Import Button -->
+        <button class="btn" id="open-pdf-import-modal" style="width: 100%; background-color: #27ae60; color: white; display: flex; justify-content: center; gap: 10px;">
+             <i class="fa-solid fa-robot"></i> Import from PDF (AI Agent)
+        </button>
     </div>
+
     
     <!-- 2. AI PDF Import Modal (Upload and Progress) -->
     <div class="admin-modal" id="pdf-import-modal" style="display: none;">
