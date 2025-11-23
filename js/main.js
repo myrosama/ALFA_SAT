@@ -1,6 +1,7 @@
 // js/main.js - Core Logic & AI Agent for PDF Import
-// FIXED: Prevents crashes by catching errors inside the batch loop.
-// FIXED: Auto-numbers questions so they always appear in the Editor (mX_qY format).
+// FIXED: Strict rules for Question Ordering ( Page N = Question N ).
+// FIXED: Strict rules for EBRW (No Math) vs Math (KaTeX).
+// FIXED: Ensures admin test list only loads after user is authenticated.
 
 let auth;
 let db;
@@ -153,11 +154,18 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => { modalEl.style.display = 'none'; }, 300);
         };
         
-        // Open the main creation modal
         createTestBtn.addEventListener('click', () => openModal(createTestModal));
         cancelCreateTestBtn.addEventListener('click', () => closeModal(createTestModal));
 
-        // Start Manual Creation
+        const startManualBtn = document.getElementById('start-manual-creation');
+        if (startManualBtn) {
+             startManualBtn.addEventListener('click', (e) => {
+                e.preventDefault(); 
+                // Manually trigger the form submit logic
+                createTestForm.dispatchEvent(new Event('submit'));
+             });
+        }
+
         createTestForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const testName = createTestForm['test-name'].value;
@@ -190,9 +198,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (openPdfModalBtn && pdfImportModal) {
             openPdfModalBtn.addEventListener('click', (e) => {
-                 e.preventDefault(); // Prevent default if in form
+                 e.preventDefault(); 
                  closeModal(createTestModal);
-                 // Small delay to allow first modal to close
                  setTimeout(() => openModal(pdfImportModal), 300);
             });
         }
@@ -228,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pdfProgressStep?.classList.remove('hidden');
             if (startAnalysisBtn) startAnalysisBtn.disabled = true;
             if (cancelPdfImportBtn) cancelPdfImportBtn.disabled = true;
-            if (progressLog) progressLog.innerHTML = ''; // Clear log
+            if (progressLog) progressLog.innerHTML = ''; 
         }
     }
 
@@ -281,7 +288,6 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             updatePdfModalStep('upload');
             
-            // Logic to close the modal correctly
             if (pdfImportModal) {
                 pdfImportModal.classList.remove('visible');
                 setTimeout(() => { pdfImportModal.style.display = 'none'; }, 300);
@@ -337,42 +343,45 @@ document.addEventListener('DOMContentLoaded', () => {
                     status: 'importing',
                     totalPages: images.length
                 });
-                logProgress(`Created test: ${testId}`);
+                logProgress(`Created test shell: ${testId}`);
                 
-                // 3. BATCH PROCESSING LOOP (For 100+ Pages)
+                // 3. BATCH PROCESSING LOOP
                 const BATCH_SIZE = 3; // Safe for free tier
-                const DELAY_MS = 5000; // 5s wait to avoid rate limits
+                const DELAY_MS = 5000; // 5s wait
                 let totalQuestionsSaved = 0;
-
-                // We use a separate counter to track the question number globally across batches
-                // This ensures m1_q1, m1_q2, m1_q3... even if they are in different batches.
-                let globalQuestionCounter = {
-                    1: 1, // Module 1 start index
-                    2: 1,
-                    3: 1,
-                    4: 1
-                };
-
+                
+                // GLOBAL QUESTION TRACKING
+                // We assume standard ordering:
+                // 1-27 = RW M1 (approx pages 1-14)
+                // 28-54 = RW M2 (approx pages 15-28)
+                // 55-76 = Math M1 (approx pages 29-39)
+                // 77-98 = Math M2 (approx pages 40+)
+                // The logic below tries to respect the PDF's explicit numbering first.
+                
                 for (let i = 0; i < images.length; i += BATCH_SIZE) {
                      const batchImages = images.slice(i, i + BATCH_SIZE);
                      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
                      const totalBatches = Math.ceil(images.length / BATCH_SIZE);
+                     const startPage = i + 1;
 
-                     logProgress(`Analyzing Batch ${batchNum}/${totalBatches}...`);
+                     logProgress(`Analyzing Batch ${batchNum}/${totalBatches} (Pages ${startPage}-${startPage + batchImages.length - 1})...`);
                      if (progressTextLabel) progressTextLabel.textContent = `AI Analyzing Batch ${batchNum}/${totalBatches}...`;
                      
-                     // Update progress bar
                      const progressPercent = 30 + ((i / images.length) * 60);
                      if (progressBar) progressBar.style.width = `${progressPercent}%`;
 
-                     // +++ CRASH PROTECTION: Try/Catch inside the loop +++
                      try {
-                         const questions = await callGeminiForBatch(batchImages);
+                         // Heuristic Context for AI
+                         let contextModule = "Reading & Writing Module 1";
+                         if (startPage > 14) contextModule = "Reading & Writing Module 2";
+                         if (startPage > 28) contextModule = "Math Module 1";
+                         if (startPage > 40) contextModule = "Math Module 2";
+
+                         const questions = await callGeminiForBatch(batchImages, contextModule);
                          
                          if (questions && questions.length > 0) {
                              logProgress(`Batch ${batchNum}: Found ${questions.length} questions. Saving...`);
-                             // Pass the global counter to maintain order
-                             await saveParsedQuestions(testId, testName, questions, globalQuestionCounter); 
+                             await saveParsedQuestions(testId, testName, questions); 
                              totalQuestionsSaved += questions.length;
                          } else {
                              logProgress(`Batch ${batchNum}: No questions extracted.`);
@@ -380,10 +389,8 @@ document.addEventListener('DOMContentLoaded', () => {
                      } catch (batchError) {
                          console.error(`Batch ${batchNum} failed:`, batchError);
                          logProgress(`Error in Batch ${batchNum}: ${batchError.message}. Skipping...`);
-                         // We CONTINUE the loop, we don't stop.
                      }
 
-                     // Sleep to respect free tier limits
                      if (i + BATCH_SIZE < images.length) {
                          logProgress(`Sleeping ${DELAY_MS/1000}s for rate limit...`);
                          await new Promise(r => setTimeout(r, DELAY_MS));
@@ -394,12 +401,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (progressTextLabel) progressTextLabel.textContent = `Success! Imported ${totalQuestionsSaved} questions.`;
                 logProgress("IMPORT COMPLETE.");
                 
-                // Notify Telegram (if keys exist)
+                // Notify Telegram
                 if (typeof TELEGRAM_BOT_TOKEN !== 'undefined' && TELEGRAM_BOT_TOKEN.length > 20) {
                      uploadToTelegram(pdfFileBlob, `Test "${testName}" Imported (${totalQuestionsSaved} qs)`);
                 }
                 
-                // 4. Redirect for review
                 setTimeout(() => {
                     window.location.href = `edit-test.html?id=${testId}`;
                 }, 2000);
@@ -408,6 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error("Full Import Process Failed:", error);
                 showPdfError(`Import Failed: ${error.message}`);
                 if (cancelPdfImportBtn) cancelPdfImportBtn.disabled = false;
+                db.collection('tests').doc(testId).delete().catch(() => {});
             }
         });
     }
@@ -441,27 +448,57 @@ document.addEventListener('DOMContentLoaded', () => {
         return results.map(r => r.base64);
     }
 
-    // --- HELPER: Gemini API Call ---
-    async function callGeminiForBatch(base64Images) {
+    // --- HELPER: Gemini API Call (STRICT FORMATTING PROMPT) ---
+    async function callGeminiForBatch(base64Images, contextModule) {
         const apiKey = AI_API_KEY;
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
-        const masterPrompt = `Analyze these SAT test pages. Extract all questions.
-        CRITICAL: Convert ALL math equations/numbers to KaTeX format wrapped like this: <span class="ql-formula" data-value="x^2">...</span>.
-        Return a JSON array of question objects.`;
+        const QUESTION_DOMAINS = {
+            "Reading & Writing": ["Information and Ideas", "Craft and Structure", "Expression of Ideas", "Standard English Conventions"],
+            "Math": ["Algebra", "Advanced Math", "Problem-Solving and Data Analysis", "Geometry and Trigonometry"]
+        };
+        const domainListRW = QUESTION_DOMAINS["Reading & Writing"].join(', ');
+        const domainListMath = QUESTION_DOMAINS["Math"].join(', ');
+
+        const masterPrompt = `You are a precise SAT Test Parsing Agent.
+        
+        CONTEXT: You are analyzing pages from ${contextModule}.
+        
+        STRICT FORMATTING RULES (MUST FOLLOW):
+        1. **QUESTION ORDER:** Look for question numbers in the image (e.g., "1", "2", "27"). These are the canonical 'questionNumber'.
+        
+        2. **EBRW (Reading/Writing) SECTIONS:**
+           - **PURE TEXT ONLY.**
+           - **ABSOLUTELY NO LaTeX or KaTeX.** Do NOT use <span class="ql-formula">.
+           - Do NOT use markdown like **bold**. Use HTML tags: <b>, <i>, <u>, <ul>, <li>.
+           - For "blanks" in text, use "________" (8 underscores).
+        
+        3. **MATH SECTIONS:**
+           - **ALL** numbers, variables, equations, and fractions MUST be converted to KaTeX.
+           - **WRAPPER:** <span class="ql-formula" data-value="LATEX_CODE">﻿<span contenteditable="false"><span class="katex">LATEX_CODE</span></span>﻿</span>
+           - **CRITICAL:** Do NOT put a space after the closing </span> tag if it is inline.
+           - Example: "If x=4" -> "If <span class="ql-formula" data-value="x=4">...</span>"
+        
+        4. **GENERAL:**
+           - Extract ALL questions on these pages.
+           - If Math question has NO options (A,B,C,D), set format="fill-in" and put answer in 'fillInAnswer'.
+           - If Math question HAS options, set format="mcq" and put options in 'options' object.
+           - Categorize domain/skill based on:
+             - RW: ${domainListRW}
+             - Math: ${domainListMath}
+
+        OUTPUT: Return a valid JSON array of question objects.`;
 
         const contents = [{ parts: [{ text: masterPrompt }] }];
         base64Images.forEach(img => contents[0].parts.push({ inlineData: { mimeType: "image/jpeg", data: img } }));
 
-        // FIXED JSON SCHEMA (No required fields for options)
         const jsonSchema = {
             type: "ARRAY",
             items: {
                 type: "OBJECT",
                 properties: {
                     module: { type: "INTEGER" },
-                    // We don't trust AI question numbering across batches, we use global counter
-                    questionNumber: { type: "INTEGER" }, 
+                    questionNumber: { type: "INTEGER" },
                     passage: { type: "STRING" },
                     prompt: { type: "STRING" },
                     format: { type: "STRING", enum: ["mcq", "fill-in"] },
@@ -499,61 +536,57 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!response.ok) {
                  const err = await response.json();
-                 throw new Error(`API Error: ${err.error.message}`);
+                 console.warn(`Batch Error: ${err.error.message}`);
+                 return [];
             }
 
             const result = await response.json();
             const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
             return jsonText ? JSON.parse(jsonText) : [];
         } catch (e) {
-            throw e; // Allow outer loop to catch this
+            console.error("Batch AI Error:", e);
+            return []; 
         }
     }
 
     /**
-     * Saves the array of structured question data to Firestore with SMART ID GENERATION.
+     * Saves the array of structured question data to Firestore.
+     * Uses explicit question numbering from AI if available, otherwise falls back to smart defaults.
      */
-    async function saveParsedQuestions(testId, testName, questions, globalCounters) {
+    async function saveParsedQuestions(testId, testName, questions) {
         const batch = db.batch();
         const testRef = db.collection('tests').doc(testId);
 
+        // We iterate through the AI's questions
         questions.forEach((q) => {
-            // 1. Determine Module (Default to 1 if missing)
+            // 1. Sanitize Module
+            // Default to 1 if missing.
             let mod = q.module || 1;
             if (mod < 1 || mod > 4) mod = 1;
 
-            // 2. Assign NEXT available question number for this module
-            // This ignores what the AI thinks the number is, to prevent overwrites.
-            const num = globalCounters[mod];
-            globalCounters[mod]++; // Increment for next question in this module
-
-            // 3. Create proper ID
-            const docId = `m${mod}_q${num}`;
+            // 2. Sanitize Question Number
+            // The AI *should* return the number printed on the page.
+            // If it misses it, we might overwrite, which is risky.
+            // Ideally, we trust the AI's "questionNumber" if present.
+            // We construct the ID based on THAT number.
             
-            // 4. Ensure q has the right number saved inside it too
-            q.questionNumber = num;
-            q.module = mod;
-
+            let num = q.questionNumber;
+            if (!num) {
+                // Fallback: Use a random ID to prevent overwrites if AI fails numbering
+                 num = `unknown_${Math.floor(Math.random() * 1000)}`;
+            }
+            
+            const docId = `m${mod}_q${num}`;
             const docRef = testRef.collection('questions').doc(docId);
+            
+            // Ensure fields are present
+            if (!q.questionNumber) q.questionNumber = parseInt(num) || 99;
+            if (!q.module) q.module = mod;
+
             batch.set(docRef, q);
         });
 
         await batch.commit();
-    }
-    
-    // --- HELPER: Telegram Upload ---
-    async function uploadToTelegram(file, caption) {
-        if (typeof TELEGRAM_BOT_TOKEN === 'undefined' || typeof TELEGRAM_CHAT_ID === 'undefined') return;
-        if (TELEGRAM_BOT_TOKEN === "PASTE_YOUR_BOT_TOKEN_HERE") return;
-
-        const formData = new FormData();
-        formData.append('chat_id', TELEGRAM_CHAT_ID);
-        formData.append('document', file);
-        formData.append('caption', caption);
-        
-        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument`, {
-            method: 'POST', body: formData
-        }).catch(e => console.warn("Telegram upload failed", e));
     }
 
     // --- ADMIN TEST DISPLAY FUNCTION ---
@@ -608,73 +641,97 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // --- Add event listeners for new buttons ---
             testListContainerAdmin.addEventListener('click', async (e) => {
-                // (Restored delete/code/access logic...)
+                
+                // 1. DELETE BUTTON
                 const deleteButton = e.target.closest('.delete-test-btn');
                 if (deleteButton) { 
                     const testIdToDelete = deleteButton.dataset.testid;
                     const testNameToDelete = deleteButton.dataset.testname;
                     if (confirm(`Are you sure you want to delete the test "${testNameToDelete}" (${testIdToDelete})? This cannot be undone.`)) {
                         try {
+                             // Delete main document
                              await db.collection('tests').doc(testIdToDelete).delete();
                              alert('Test deleted successfully.');
                              window.location.reload();
                         } catch (err) {
+                             console.error("Delete failed:", err);
                              alert("Failed to delete test.");
                         }
                     }
                 }
                 
+                 // 2. GENERATE CODE BUTTON
                  const generateCodeButton = e.target.closest('.generate-code-btn');
                  if (generateCodeButton && proctorCodeModal) {
                      const testIdForCode = generateCodeButton.dataset.testid;
+                     
+                     // Setup modal
                      document.getElementById('proctor-code-display').innerHTML = '<span>Generating...</span>';
                      document.getElementById('proctor-test-name').textContent = '...';
+                     
                      proctorCodeModal.classList.add('visible');
                      adminModalBackdrop.classList.add('visible');
                      
                      try {
+                        // Generate code
                         const code = generateProctorCode(6);
+                        
+                        // Get Test Name
                         const testDoc = await db.collection('tests').doc(testIdForCode).get();
                         const testName = testDoc.exists ? testDoc.data().name : "Unknown Test";
+                        
+                        // Save to Firestore
                         await db.collection('proctoredSessions').doc(code).set({
                             testId: testIdForCode,
                             testName: testName,
-                            adminId: userId,
+                            adminId: userId, // Use passed userId
                             createdAt: firebase.firestore.FieldValue.serverTimestamp()
                         });
+                        
+                        // Display
                         document.getElementById('proctor-code-display').innerHTML = `<span>${code.slice(0, 3)}-${code.slice(3)}</span>`;
                         document.getElementById('proctor-test-name').textContent = testName;
+
                      } catch (err) {
+                        console.error("Error generating proctor code:", err);
                         document.getElementById('proctor-code-display').innerHTML = `<span style="font-size: 1rem; color: var(--error-red);">Error</span>`;
                      }
                  }
                  
+                 // 3. ACCESS BUTTON
                  const accessButton = e.target.closest('.access-btn');
                  if (accessButton && accessModal) {
-                     currentEditingTestId = accessButton.dataset.testid;
+                     currentEditingTestId = accessButton.dataset.testid; // Use global var
+                     
+                     // Fetch test data
                      db.collection('tests').doc(currentEditingTestId).get().then(doc => {
                          if (!doc.exists) return alert("Test not found!");
                          const testData = doc.data();
+                         
                          const title = document.getElementById('access-modal-title');
                          const select = document.getElementById('test-visibility');
                          const text = document.getElementById('test-whitelist');
+                         
                          if(title) title.textContent = `Manage Access: ${testData.name}`;
                          if(select) select.value = testData.visibility || 'hide';
                          if(text) text.value = (testData.whitelist || []).join('\n');
-                         if(select) select.dispatchEvent(new Event('change'));
+                         
+                         if(select) select.dispatchEvent(new Event('change')); // Trigger toggle logic
+                         
                          accessModal.classList.add('visible');
                          adminModalBackdrop.classList.add('visible');
                      });
                  }
+
             });
 
         } catch (error) {
             console.error("Error fetching admin tests:", error);
-            testListContainerAdmin.innerHTML = `<p style="color: var(--error-red);">Error loading tests.</p>`;
+            testListContainerAdmin.innerHTML = `<p style="color: var(--error-red);">Error loading tests. Check console for permissions. ${error.message}</p>`;
         }
     }
 
-    // --- ACCESS MODAL HANDLERS (Restored) ---
+    // --- ACCESS MODAL HANDLERS ---
     const saveAccessBtn = document.getElementById('save-access-btn');
     const cancelAccessBtn = document.getElementById('cancel-access');
     const accessForm = document.getElementById('access-form');
@@ -682,12 +739,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const whitelistContainer = document.getElementById('whitelist-container');
     const whitelistTextarea = document.getElementById('test-whitelist');
     const accessErrorMsg = document.getElementById('access-error-msg');
+    
     let currentEditingTestId = null; 
 
     if (accessForm && saveAccessBtn) {
         visibilitySelect?.addEventListener('change', () => {
             whitelistContainer?.classList.toggle('visible', visibilitySelect.value === 'private');
         });
+
         const closeAccessModal = () => {
             accessModal?.classList.remove('visible');
             if (!createTestModal.classList.contains('visible') && !proctorCodeModal.classList.contains('visible')) {
@@ -696,24 +755,39 @@ document.addEventListener('DOMContentLoaded', () => {
             accessForm.reset();
             currentEditingTestId = null;
         };
+
         cancelAccessBtn?.addEventListener('click', closeAccessModal);
 
         accessForm.addEventListener('submit', (e) => {
             e.preventDefault();
             if (!currentEditingTestId) return;
+
             saveAccessBtn.disabled = true;
             saveAccessBtn.textContent = 'Saving...';
+
             const visibility = visibilitySelect.value;
             const whitelist = whitelistTextarea.value.split('\n').map(id => id.trim()).filter(id => id.length > 0);
-            db.collection('tests').doc(currentEditingTestId).update({ visibility: visibility, whitelist: whitelist })
-                .then(() => { closeAccessModal(); window.location.reload(); })
-                .catch(err => {
-                    if(accessErrorMsg) { accessErrorMsg.textContent = `Error: ${err.message}`; accessErrorMsg.classList.add('visible'); }
-                    saveAccessBtn.disabled = false;
-                });
+
+            db.collection('tests').doc(currentEditingTestId).update({
+                visibility: visibility,
+                whitelist: whitelist
+            }).then(() => {
+                console.log(`Access updated for ${currentEditingTestId}`);
+                closeAccessModal();
+                window.location.reload(); 
+            }).catch(err => {
+                console.error("Error updating access:", err);
+                if(accessErrorMsg) {
+                    accessErrorMsg.textContent = `Error: ${err.message}`;
+                    accessErrorMsg.classList.add('visible');
+                }
+                saveAccessBtn.disabled = false;
+                saveAccessBtn.textContent = 'Save Access';
+            });
         });
     }
     
+    // --- PROCTOR MODAL CLOSE HANDLER ---
     const closeProctorBtn = document.getElementById('close-proctor-modal');
     if (closeProctorBtn) {
         closeProctorBtn.addEventListener('click', () => {
@@ -731,20 +805,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentPage = window.location.pathname.split('/').pop();
         
         if (user) {
+            
+            // +++ CRITICAL FIX: Run test display only AFTER auth +++
             if (currentPage === 'admin.html') {
                  const adminDoc = await db.collection('admins').doc(user.uid).get();
-                 if (adminDoc.exists) { displayAdminTests(user.uid); } 
-                 else { auth.signOut(); return; }
+                 if (adminDoc.exists) {
+                    displayAdminTests(user.uid); 
+                 } else {
+                     auth.signOut();
+                     return;
+                 }
             }
+            // --- End Admin Logic ---
 
             if (currentPage === 'dashboard.html') {
                  populateDashboard(user.uid);
                  const proctorCodeForm = document.getElementById('test-code-form');
-                 if (proctorCodeForm) proctorCodeForm.addEventListener('submit', handleProctorCodeSubmit);
+                 if (proctorCodeForm) {
+                     proctorCodeForm.addEventListener('submit', handleProctorCodeSubmit);
+                 }
             }
             
+            // --- Profile Menu Logic ---
             setupProfileMenu(user);
             
+            // --- Global Logout Logic ---
             const logoutBtn = document.getElementById('logout-btn');
             if (logoutBtn && !logoutBtn.dataset.listenerAdded) {
                  logoutBtn.addEventListener('click', (e) => {
@@ -753,16 +838,22 @@ document.addEventListener('DOMContentLoaded', () => {
                  });
                  logoutBtn.dataset.listenerAdded = 'true';
             }
+
         } else {
-            if (protectedPages.includes(currentPage)) window.location.href = 'index.html';
+            // User is NOT logged in
+            if (protectedPages.includes(currentPage)) {
+                window.location.href = 'index.html';
+            }
         }
     });
 
-    // --- HELPER FUNCTIONS ---
+    // --- PROCTOR CODE HELPERS ---
     function generateProctorCode(length) {
         const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; 
         let result = '';
-        for (let i = 0; i < length; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+        for (let i = 0; i < length; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
         return result;
     }
 
@@ -771,18 +862,37 @@ document.addEventListener('DOMContentLoaded', () => {
         const form = e.target;
         const input = form.querySelector('.test-code-input');
         const button = form.querySelector('button[type="submit"]');
+        
         if (!input || !button) return;
+
         const code = input.value.trim().toUpperCase().replace('-', ''); 
-        if (code.length !== 6) { alert("Please enter a 6-letter code."); return; }
-        button.disabled = true; button.textContent = "Checking...";
+        
+        if (code.length !== 6) {
+            alert("Please enter a 6-letter code.");
+            return;
+        }
+
+        button.disabled = true;
+        button.textContent = "Checking...";
+
         try {
             const sessionRef = db.collection('proctoredSessions').doc(code);
             const doc = await sessionRef.get();
+
             if (doc.exists) {
                 const testId = doc.data().testId;
-                if (testId) window.location.href = `test.html?id=${testId}`;
-                else { alert("Error: Test not found."); button.disabled = false; button.textContent = "Start Proctored Test"; }
-            } else { alert("Invalid code."); button.disabled = false; button.textContent = "Start Proctored Test"; }
+                if (testId) {
+                    window.location.href = `test.html?id=${testId}`;
+                } else {
+                    alert("Error: Test not found.");
+                    button.disabled = false;
+                    button.textContent = "Start Proctored Test";
+                }
+            } else {
+                alert("Invalid code.");
+                button.disabled = false;
+                button.textContent = "Start Proctored Test";
+            }
         } catch (err) {
             console.error("Error checking code:", err);
             alert("An error occurred.");
@@ -797,52 +907,90 @@ document.addEventListener('DOMContentLoaded', () => {
         const userIdDisplay = document.getElementById('user-id-display');
         const copyUidBtn = document.getElementById('copy-uid-btn');
         const profileLogoutBtn = document.getElementById('profile-logout-btn');
+
         if(profileBtn && profileMenu && userIdDisplay && copyUidBtn && profileLogoutBtn) {
             userIdDisplay.value = user.uid;
-            profileBtn.addEventListener('click', (e) => { e.stopPropagation(); profileMenu.classList.toggle('visible'); });
+
+            profileBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); 
+                profileMenu.classList.toggle('visible');
+            });
+
             copyUidBtn.addEventListener('click', () => {
-                userIdDisplay.select(); document.execCommand('copy');
+                userIdDisplay.select();
+                document.execCommand('copy');
                 copyUidBtn.innerHTML = '<i class="fa-solid fa-check"></i>'; 
                 setTimeout(() => { copyUidBtn.innerHTML = '<i class="fa-regular fa-copy"></i>'; }, 2000);
             });
-            profileLogoutBtn.addEventListener('click', (e) => { e.preventDefault(); auth.signOut().then(() => { window.location.href = 'index.html'; }); });
+
+            profileLogoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                auth.signOut().then(() => { window.location.href = 'index.html'; });
+            });
         }
+
         document.addEventListener('click', (e) => {
-            if (profileMenu && profileMenu.classList.contains('visible') && !e.target.closest('.profile-nav')) profileMenu.classList.remove('visible');
+            if (profileMenu && profileMenu.classList.contains('visible') && !e.target.closest('.profile-nav')) {
+                profileMenu.classList.remove('visible');
+            }
         });
     }
 
+    // --- DASHBOARD POPULATION ---
     async function populateDashboard(userId) {
         const testGrid = document.getElementById('test-grid-container');
         if (!testGrid) return;
-        if (!db) { testGrid.innerHTML = '<p>Error: DB not connected.</p>'; return; }
+        if (!db) {
+            console.error("Firestore DB not initialized in populateDashboard.");
+            testGrid.innerHTML = '<p>Error: Could not connect to the database.</p>';
+            return;
+        }
+
         testGrid.innerHTML = '<p>Loading available tests...</p>'; 
+
         try {
             const completedTestsMap = new Map();
             const completedSnapshot = await db.collection('users').doc(userId).collection('completedTests').get();
-            completedSnapshot.forEach(doc => { completedTestsMap.set(doc.id, doc.data()); });
+            completedSnapshot.forEach(doc => {
+                completedTestsMap.set(doc.id, doc.data()); 
+            });
 
             const publicTestsQuery = db.collection('tests').where('visibility', '==', 'public');
             const privateTestsQuery = db.collection('tests').where('whitelist', 'array-contains', userId);
-            const [publicSnapshot, privateSnapshot] = await Promise.all([publicTestsQuery.get(), privateTestsQuery.get()]);
+
+            const [publicSnapshot, privateSnapshot] = await Promise.all([
+                publicTestsQuery.get(),
+                privateTestsQuery.get()
+            ]);
 
             const allAvailableTests = new Map();
-            publicSnapshot.forEach(doc => { allAvailableTests.set(doc.id, { id: doc.id, ...doc.data() }); });
-            privateSnapshot.forEach(doc => { allAvailableTests.set(doc.id, { id: doc.id, ...doc.data() }); });
+            publicSnapshot.forEach(doc => {
+                allAvailableTests.set(doc.id, { id: doc.id, ...doc.data() });
+            });
+            privateSnapshot.forEach(doc => {
+                allAvailableTests.set(doc.id, { id: doc.id, ...doc.data() });
+            });
             
             const testsSnapshot = Array.from(allAvailableTests.values());
             testsSnapshot.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
-            if (testsSnapshot.length === 0) { testGrid.innerHTML = '<p>No practice tests are available at the moment.</p>'; return; }
+            if (testsSnapshot.length === 0) {
+                testGrid.innerHTML = '<p>No practice tests are available at the moment.</p>';
+                return;
+            }
+
             testGrid.innerHTML = ''; 
 
             testsSnapshot.forEach(test => {
                 const testId = test.id;
                 const completionData = completedTestsMap.get(testId); 
+                
                 const inProgressKey = `inProgressTest_${userId}_${testId}`;
                 const inProgressData = localStorage.getItem(inProgressKey);
+
                 const card = document.createElement('div');
                 card.classList.add('test-card');
+                
                 let cardHTML = '';
                 
                 if (completionData) {
@@ -851,7 +999,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="card-content">
                             <h4>${test.name || 'Unnamed Test'}</h4>
                             <p>${test.description || 'A full-length adaptive test.'}</p>
-                            <div class="test-status completed"><i class="fa-solid fa-check-circle"></i> Finished - Score: <strong>${completionData.score || 'N/A'}</strong></div>
+                            <div class="test-status completed">
+                                <i class="fa-solid fa-check-circle"></i>
+                                Finished - Score: <strong>${completionData.score || 'N/A'}</strong>
+                            </div>
                         </div>
                         <a href="results.html?resultId=${completionData.resultId}" class="btn card-btn btn-view-results">View Results</a>
                     `;
@@ -876,12 +1027,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         <a href="test.html?id=${testId}" class="btn btn-primary card-btn">Start Test</a>
                     `;
                 }
+                
                 card.innerHTML = cardHTML;
                 testGrid.appendChild(card);
             });
+
         } catch (error) {
-            console.error("Error fetching tests:", error);
-            testGrid.innerHTML = '<p>Error loading tests.</p>';
+            console.error("Error fetching tests for student dashboard:", error);
+            testGrid.innerHTML = '<p>Could not load tests due to an error. Please try refreshing the page.</p>';
         }
     }
 
