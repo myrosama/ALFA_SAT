@@ -1,7 +1,7 @@
 // js/main.js - Core Logic & AI Agent for PDF Import
 // FIXED: Strict rules for Question Ordering ( Page N = Question N ).
 // FIXED: Strict rules for EBRW (No Math) vs Math (KaTeX).
-// FIXED: Ensures admin test list only loads after user is authenticated.
+// FIXED: Added Custom Prompt support.
 
 let auth;
 let db;
@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- ADMIN PANEL "CREATE TEST" MODAL LOGIC ---
+    // --- ADMIN PANEL "CREATE TEST" MODAL LOGIC (Manual/PDF Creation) ---
     const createTestBtn = document.getElementById('create-new-test-btn');
     const createTestForm = document.getElementById('create-test-form');
     const cancelCreateTestBtn = document.getElementById('cancel-create-test');
@@ -161,7 +161,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (startManualBtn) {
              startManualBtn.addEventListener('click', (e) => {
                 e.preventDefault(); 
-                // Manually trigger the form submit logic
                 createTestForm.dispatchEvent(new Event('submit'));
              });
         }
@@ -218,6 +217,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressTextLabel = document.getElementById('progress-text-label');
     const pdfErrorMsg = document.getElementById('pdf-error-msg');
     const progressLog = document.getElementById('progress-log');
+    // +++ NEW: Custom Prompt Input +++
+    const customPromptInput = document.getElementById('pdf-import-custom-prompt');
 
     let pdfFileBlob = null; 
 
@@ -270,7 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 pdfErrorMsg?.classList.remove('visible');
             } else {
                 pdfFileBlob = null;
-                if (pdfUploadLabel) pdfUploadLabel.textContent = "Select PDF File (Max 5 pages recommended)";
+                if (pdfUploadLabel) pdfUploadLabel.textContent = "Select PDF File (Max 100 pages)";
                 if (startAnalysisBtn) startAnalysisBtn.disabled = true;
                 showPdfError("Please select a valid PDF file.");
             }
@@ -316,6 +317,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const testName = pdfTestNameInput.value.trim();
             const testId = pdfTestIdInput.value.trim();
             
+            // +++ NEW: Capture Custom Prompt +++
+            const customInstructions = customPromptInput ? customPromptInput.value.trim() : "";
+            
             if (!testName || !testId || !/^[a-z0-9_]+$/.test(testId)) return showPdfError("Please provide a valid Test Name and ID.");
 
             updatePdfModalStep('progress');
@@ -349,15 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const BATCH_SIZE = 3; // Safe for free tier
                 const DELAY_MS = 5000; // 5s wait
                 let totalQuestionsSaved = 0;
-                
-                // GLOBAL QUESTION TRACKING
-                // We assume standard ordering:
-                // 1-27 = RW M1 (approx pages 1-14)
-                // 28-54 = RW M2 (approx pages 15-28)
-                // 55-76 = Math M1 (approx pages 29-39)
-                // 77-98 = Math M2 (approx pages 40+)
-                // The logic below tries to respect the PDF's explicit numbering first.
-                
+
                 for (let i = 0; i < images.length; i += BATCH_SIZE) {
                      const batchImages = images.slice(i, i + BATCH_SIZE);
                      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
@@ -377,7 +373,8 @@ document.addEventListener('DOMContentLoaded', () => {
                          if (startPage > 28) contextModule = "Math Module 1";
                          if (startPage > 40) contextModule = "Math Module 2";
 
-                         const questions = await callGeminiForBatch(batchImages, contextModule);
+                         // +++ Pass custom instructions to AI +++
+                         const questions = await callGeminiForBatch(batchImages, contextModule, customInstructions);
                          
                          if (questions && questions.length > 0) {
                              logProgress(`Batch ${batchNum}: Found ${questions.length} questions. Saving...`);
@@ -449,7 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- HELPER: Gemini API Call (STRICT FORMATTING PROMPT) ---
-    async function callGeminiForBatch(base64Images, contextModule) {
+    async function callGeminiForBatch(base64Images, contextModule, customInstructions) {
         const apiKey = AI_API_KEY;
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
@@ -464,11 +461,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         CONTEXT: You are analyzing pages from ${contextModule}.
         
+        USER INSTRUCTIONS: ${customInstructions}
+        
         STRICT FORMATTING RULES (MUST FOLLOW):
-        1. **QUESTION ORDER:** Look for question numbers in the image (e.g., "1", "2", "27"). These are the canonical 'questionNumber'.
+        1. **QUESTION ORDER:** Look for the *printed* question number on the page (e.g., "1", "2", "27"). Use this as the 'questionNumber'. This is the canonical source of truth.
         
         2. **EBRW (Reading/Writing) SECTIONS:**
-           - **PURE TEXT ONLY.**
+           - **PURE TEXT ONLY.** No exceptions.
            - **ABSOLUTELY NO LaTeX or KaTeX.** Do NOT use <span class="ql-formula">.
            - Do NOT use markdown like **bold**. Use HTML tags: <b>, <i>, <u>, <ul>, <li>.
            - For "blanks" in text, use "________" (8 underscores).
@@ -551,28 +550,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Saves the array of structured question data to Firestore.
-     * Uses explicit question numbering from AI if available, otherwise falls back to smart defaults.
+     * Uses explicit question numbering from AI if available.
      */
     async function saveParsedQuestions(testId, testName, questions) {
         const batch = db.batch();
         const testRef = db.collection('tests').doc(testId);
 
-        // We iterate through the AI's questions
         questions.forEach((q) => {
             // 1. Sanitize Module
-            // Default to 1 if missing.
             let mod = q.module || 1;
             if (mod < 1 || mod > 4) mod = 1;
 
-            // 2. Sanitize Question Number
-            // The AI *should* return the number printed on the page.
-            // If it misses it, we might overwrite, which is risky.
-            // Ideally, we trust the AI's "questionNumber" if present.
-            // We construct the ID based on THAT number.
-            
+            // 2. Use AI's Question Number if present
+            // This is the key to your "Strict Order" requirement.
             let num = q.questionNumber;
+            
+            // Fallback if AI missed it (rare with new prompt)
             if (!num) {
-                // Fallback: Use a random ID to prevent overwrites if AI fails numbering
                  num = `unknown_${Math.floor(Math.random() * 1000)}`;
             }
             
@@ -949,12 +943,14 @@ document.addEventListener('DOMContentLoaded', () => {
         testGrid.innerHTML = '<p>Loading available tests...</p>'; 
 
         try {
+            // 1. Get a map of completed test IDs and their results
             const completedTestsMap = new Map();
             const completedSnapshot = await db.collection('users').doc(userId).collection('completedTests').get();
             completedSnapshot.forEach(doc => {
                 completedTestsMap.set(doc.id, doc.data()); 
             });
 
+            // 2. Get all available tests (Public OR Whitelisted)
             const publicTestsQuery = db.collection('tests').where('visibility', '==', 'public');
             const privateTestsQuery = db.collection('tests').where('whitelist', 'array-contains', userId);
 
@@ -981,6 +977,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             testGrid.innerHTML = ''; 
 
+            // 3. Render cards
             testsSnapshot.forEach(test => {
                 const testId = test.id;
                 const completionData = completedTestsMap.get(testId); 
@@ -994,6 +991,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let cardHTML = '';
                 
                 if (completionData) {
+                    // --- Test is COMPLETED ---
                     card.classList.add('completed');
                     cardHTML = `
                         <div class="card-content">
@@ -1007,6 +1005,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <a href="results.html?resultId=${completionData.resultId}" class="btn card-btn btn-view-results">View Results</a>
                     `;
                 } else if (inProgressData) {
+                    // +++ Test is IN PROGRESS ---
                     card.classList.add('in-progress'); 
                     cardHTML = `
                         <div class="card-content">
@@ -1017,6 +1016,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <a href="test.html?id=${testId}" class="btn btn-primary card-btn">Continue Test</a>
                     `;
                 } else {
+                    // --- Test is NOT STARTED ---
                     card.classList.add('not-started');
                     cardHTML = `
                         <div class="card-content">
