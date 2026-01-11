@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const stimulusPanelContent = stimulusPanel.querySelector('.panel-content');
     const addImageBtn = document.getElementById('add-image-btn');
     const removeImageBtn = document.getElementById('remove-image-btn');
-    
+
     // --- Page State ---
     const urlParams = new URLSearchParams(window.location.search);
     const testId = urlParams.get('id');
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
             "Expression of Ideas": ["Rhetorical Synthesis", "Transitions"],
             "Standard English Conventions": ["Boundaries", "Form, Structure, and Sense"]
         },
-        "Math": { 
+        "Math": {
             "Algebra": ["Linear equations in one variable", "Linear functions", "Systems of two linear equations in two variables", "Linear inequalities in one or two variables"],
             "Advanced Math": ["Equivalent expressions", "Nonlinear equations in one variable and systems of equations in two variables", "Nonlinear functions"],
             "Problem-Solving and Data Analysis": ["Ratios, rates, proportional relationships, and units", "Percentages", "One-variable data: distributions and measures of center and spread", "Two-variable data: models and scatterplots", "Probability and conditional probability", "Inference from sample statistics and margin of error"],
@@ -81,9 +81,9 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function cleanupStimulusPanel() {
         if (editors.passage && typeof editors.passage.disable === 'function') {
-             editors.passage.disable(); 
+            editors.passage.disable();
         }
-        
+
         if (stimulusPanelContent) {
             stimulusPanelContent.innerHTML = `
                 <div id="stimulus-image-container" class="hidden">
@@ -91,9 +91,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="resize-handle"></div>
                 </div>
                 <div id="stimulus-editor"></div>`;
-            stimulusPanelContent.classList.remove('image-below'); 
+            stimulusPanelContent.classList.remove('image-below');
         }
-        
+
         editors = {
             passage: null,
             prompt: null,
@@ -102,12 +102,12 @@ document.addEventListener('DOMContentLoaded', () => {
             explanation: null // Keep explanation editor
         };
     }
-    
+
     /**
      * Placeholder function - we are not using Telegram for this.
      * We will use image-to-base64 conversion instead.
      */
-     async function uploadImageToTelegram(file) {
+    async function uploadImageToTelegram(file) {
         // This function seems to be defined in the original file, but was missing in the provided snippet.
         // Assuming it exists (e.g., from config.js or similar)
         if (typeof TELEGRAM_BOT_TOKEN === 'undefined' || typeof TELEGRAM_CHANNEL_ID === 'undefined') {
@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Error: Telegram configuration is missing. Cannot upload image.');
             return null;
         }
-        
+
         const formData = new FormData();
         formData.append('chat_id', TELEGRAM_CHANNEL_ID);
         formData.append('photo', file);
@@ -128,11 +128,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Get the file_id of the largest photo
                 const photoArray = data.result.photo;
                 const fileId = photoArray[photoArray.length - 1].file_id;
-                
+
                 // Use getFile to get the file_path
                 const fileUrlDataRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
                 const fileUrlData = await fileUrlDataRes.json();
-                
+
                 if (fileUrlData.ok) {
                     // Construct the permanent file URL
                     return `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${fileUrlData.result.file_path}`;
@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderStimulus(data = {}) {
         const imageContainer = document.getElementById('stimulus-image-container');
         const imagePreview = document.getElementById('stimulus-image-preview');
-        
+
         if (imageContainer && imagePreview) {
             if (data.imageUrl) {
                 imagePreview.src = data.imageUrl;
@@ -179,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!resizeHandle) return;
 
         let isResizing = false;
-        
+
         const doDrag = (dragEvent) => {
             if (!isResizing) return;
             const newWidth = Math.max(50, imageContainer.offsetWidth + (dragEvent.clientX - startX));
@@ -193,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.removeEventListener('mouseup', stopDrag);
             document.body.style.userSelect = ''; // Re-enable text selection
         };
-        
+
         let startX = 0;
         resizeHandle.addEventListener('mousedown', (e) => {
             e.preventDefault();
@@ -211,12 +211,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function initializeQuillEditors() {
         const toolbarOptions = [
             ['bold', 'italic', 'underline'],
-            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
             [{ 'align': [] }],
             ['formula'],
             ['clean']
         ];
-        
+
         const passageConfig = {
             modules: { toolbar: toolbarOptions },
             theme: 'snow',
@@ -242,12 +242,12 @@ document.addEventListener('DOMContentLoaded', () => {
             editors.fillIn = new Quill('#fill-in-answer', questionConfig);
             // This editor ID is from the GitHub version
             editors.explanation = new Quill('#explanation-editor', { ...questionConfig, placeholder: 'Type the explanation here...' });
-        } catch(e) {
+        } catch (e) {
             console.error("Quill initialization failed. Are the containers in the DOM?", e);
             alert("Error: Could not load text editors. Please refresh.");
         }
     }
-    
+
     /**
      * Generates navigation buttons for the given module.
      * @param {number} count - Number of questions in the module.
@@ -271,21 +271,21 @@ document.addEventListener('DOMContentLoaded', () => {
             questionNavigator.appendChild(button);
         }
     }
-    
+
     /**
      * Switches the editor view to a different module.
      * @param {number} moduleNum - The module number to switch to (1-4).
      */
     function switchModule(moduleNum) {
         if (currentModule === moduleNum && currentQuestion != null) return; // Avoid redundant switch
-        
+
         currentModule = parseInt(moduleNum); // Ensure it's a number
         currentQuestion = null; // Deselect question
-        
+
         cleanupStimulusPanel(); // Clear editors
 
-        if(editorContainer) editorContainer.innerHTML = `<div class="editor-placeholder"><i class="fa-solid fa-hand-pointer"></i><p>Select a question from the navigator below.</p></div>`;
-        
+        if (editorContainer) editorContainer.innerHTML = `<div class="editor-placeholder"><i class="fa-solid fa-hand-pointer"></i><p>Select a question from the navigator below.</p></div>`;
+
         // R&W modules have 27 questions, Math modules have 22
         const questionCount = (currentModule <= 2) ? 27 : 22;
         generateNavButtons(questionCount, currentModule);
@@ -301,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function showEditorForQuestion(module, qNumber) {
         currentModule = parseInt(module);
         currentQuestion = parseInt(qNumber);
-        
+
         document.querySelectorAll('.q-nav-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.qNumber == qNumber && btn.dataset.module == module);
         });
@@ -315,7 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
         editorContainer.innerHTML = ''; // Clear placeholder
         const formClone = editorTemplate.content.cloneNode(true);
         editorContainer.appendChild(formClone);
-        
+
         initializeQuillEditors();
 
         // --- Select form elements ---
@@ -324,20 +324,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const skillSelect = questionForm.querySelector('#q-skill');
         const formatSelect = questionForm.querySelector('#q-format');
         const imagePosSelect = questionForm.querySelector('#q-image-position');
-        
+
         document.getElementById('q-number-display').textContent = qNumber;
 
         const isMath = currentModule > 2;
         const domainSource = isMath ? QUESTION_DOMAINS.Math : QUESTION_DOMAINS["Reading & Writing"];
-        
+
         domainSelect.innerHTML = Object.keys(domainSource).map(d => `<option value="${d}">${d}</option>`).join('');
-        
+
         const populateSkills = () => {
             const skills = domainSource[domainSelect.value] || [];
             skillSelect.innerHTML = skills.map(s => `<option value="${s}">${s}</option>`).join('');
         };
         domainSelect.addEventListener('change', populateSkills);
-        
+
         formatSelect.addEventListener('change', () => {
             questionForm.querySelector('#answer-options-container').classList.toggle('hidden', formatSelect.value !== 'mcq');
             questionForm.querySelector('#fill-in-answer-container').classList.toggle('hidden', formatSelect.value !== 'fill-in');
@@ -348,12 +348,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 stimulusPanelContent.classList.toggle('image-below', imagePosSelect.value === 'below');
             });
         }
-        
+
         // --- Fetch and Load Existing Question Data ---
         const questionId = `m${module}_q${qNumber}`;
         const docRef = testRef.collection('questions').doc(questionId);
         let data = {};
-        
+
         try {
             const doc = await docRef.get();
             if (doc.exists) {
@@ -363,11 +363,11 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error fetching question data:", err);
             alert("Error loading question data. See console.");
         }
-        
-        renderStimulus(data);
-        if(editors.passage) editors.passage.root.innerHTML = data.passage || '';
 
-        if(editors.prompt) editors.prompt.root.innerHTML = data.prompt || '';
+        renderStimulus(data);
+        if (editors.passage) editors.passage.root.innerHTML = data.passage || '';
+
+        if (editors.prompt) editors.prompt.root.innerHTML = data.prompt || '';
         if (data.options && editors.options) {
             ['A', 'B', 'C', 'D'].forEach(opt => {
                 if (editors.options[opt]) {
@@ -375,20 +375,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
-        if(editors.fillIn) editors.fillIn.root.innerHTML = data.fillInAnswer || '';
-        if(editors.explanation) editors.explanation.root.innerHTML = data.explanation || '';
-        
+        if (editors.fillIn) editors.fillIn.root.innerHTML = data.fillInAnswer || '';
+        if (editors.explanation) editors.explanation.root.innerHTML = data.explanation || '';
+
         formatSelect.value = data.format || 'mcq';
         const radio = questionForm.querySelector(`input[name="correct-answer"][value="${data.correctAnswer}"]`);
         if (radio) radio.checked = true;
-        
+
         domainSelect.value = data.domain || Object.keys(domainSource)[0];
-        populateSkills(); 
+        populateSkills();
         skillSelect.value = data.skill || '';
 
         imagePosSelect.value = data.imagePosition || 'above';
-        imagePosSelect.dispatchEvent(new Event('change')); 
-        
+        imagePosSelect.dispatchEvent(new Event('change'));
+
         formatSelect.dispatchEvent(new Event('change'));
 
         // --- Attach Event Listeners for the new form ---
@@ -396,7 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
         questionForm.querySelector('#delete-question-btn').addEventListener('click', handleDeleteQuestion);
         setupImageResizing(); // Setup resizing for the loaded image container
     }
-    
+
     /**
      * Handles the save button click for a question.
      */
@@ -446,8 +446,8 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(() => {
                 if (saveBtn) {
                     saveBtn.textContent = 'Saved!';
-                    setTimeout(() => { 
-                        saveBtn.textContent = 'Save Question'; 
+                    setTimeout(() => {
+                        saveBtn.textContent = 'Save Question';
                         saveBtn.disabled = false;
                     }, 2000);
                 }
@@ -469,7 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function handleDeleteQuestion() {
         if (!currentQuestion) return;
-        
+
         const questionId = `m${currentModule}_q${currentQuestion}`;
         if (!savedQuestions[questionId]) {
             alert("This question hasn't been saved yet, so there's nothing to delete.");
@@ -484,7 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     currentQuestion = null; // Deselect
                     editorContainer.innerHTML = `<div class="editor-placeholder"><i class="fa-solid fa-hand-pointer"></i><p>Question deleted. Select another question.</p></div>`;
                     cleanupStimulusPanel(); // Clear stimulus
-                    
+
                     alert('Question deleted successfully.');
                 })
                 .catch(error => {
@@ -500,18 +500,18 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleNavClick(e) {
         const btn = e.target.closest('.q-nav-btn');
         if (!btn) return;
-        
+
         const module = btn.dataset.module;
         const qNumber = btn.dataset.qNumber;
-        
+
         if (module != currentModule) {
             switchModule(module);
         }
         showEditorForQuestion(module, qNumber);
     }
-    
+
     // --- Global Event Listeners ---
-    
+
     // Module switcher buttons
     if (moduleSwitcher) {
         moduleSwitcher.addEventListener('click', (e) => {
@@ -526,24 +526,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (addImageBtn) {
         addImageBtn.addEventListener('click', async () => {
             if (!currentQuestion) return alert("Please select a question first!");
-            
+
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = 'image/*';
-            
+
             input.onchange = async e => {
                 const file = e.target.files[0];
                 if (!file) return;
-                
+
                 const imagePreview = document.getElementById('stimulus-image-preview');
                 const imageContainer = document.getElementById('stimulus-image-container');
-                
+
                 // Show a loading state
                 imagePreview.src = "https://i.gifer.com/ZZ5H.gif"; // Simple loading GIF
                 imageContainer.classList.remove('hidden');
 
                 const imageUrl = await uploadImageToTelegram(file);
-                
+
                 if (imageUrl) {
                     renderStimulus({ imageUrl: imageUrl, imageWidth: '100%' });
                 } else {
@@ -628,7 +628,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Image Upload Logic ---
     if (aiUploadContainer) aiUploadContainer.addEventListener('click', () => aiUploadInput.click());
-    
+
     if (aiUploadInput) aiUploadInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -641,7 +641,7 @@ document.addEventListener('DOMContentLoaded', () => {
             reader.onload = (readerEvent) => {
                 const base64String = readerEvent.target.result.split(',')[1]; // Get just the base64 data
                 aiImageBase64 = base64String;
-                
+
                 aiImagePreview.src = readerEvent.target.result; // Show preview
                 aiUploadContainer.classList.add('hidden');
                 aiPreviewContainer.classList.remove('hidden');
@@ -668,17 +668,17 @@ document.addEventListener('DOMContentLoaded', () => {
             showAiError("No question slot selected. Please close this and select a question.");
             return;
         }
-        
+
         // Check if config.js was loaded correctly
         if (typeof AI_API_KEY === 'undefined' || AI_API_KEY === "PASTE_YOUR_GOOGLE_AI_API_KEY_HERE" || AI_API_KEY === "") {
-             showAiError("API Key is missing. Please add it to js/config.js");
-             return;
+            showAiError("API Key is missing. Please add it to js/config.js");
+            return;
         }
 
         const isMath = currentModule > 2;
         const subject = isMath ? "Math" : "Reading & Writing";
         const domainList = Object.keys(QUESTION_DOMAINS[subject]).join(', ');
-        
+
         // This is the "Master Prompt"
         const textPrompt = `You are an expert SAT question parser. Analyze this image of an SAT question.
 The image may contain a reading passage, a question prompt, and multiple-choice options.
@@ -693,29 +693,29 @@ Extract the following information:
 
 Return *only* a single, valid JSON object with these fields.
 `;
-        
+
         // This is the JSON structure we demand from the AI
         const jsonSchema = {
-          "type": "OBJECT",
-          "properties": {
-            "passage": { "type": "STRING" },
-            "prompt": { "type": "STRING" },
-            "options": {
-              "type": "OBJECT",
-              "properties": {
-                "A": { "type": "STRING" },
-                "B": { "type": "STRING" },
-                "C": { "type": "STRING" },
-                "D": { "type": "STRING" }
-              },
-              "required": ["A", "B", "C", "D"]
+            "type": "OBJECT",
+            "properties": {
+                "passage": { "type": "STRING" },
+                "prompt": { "type": "STRING" },
+                "options": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "A": { "type": "STRING" },
+                        "B": { "type": "STRING" },
+                        "C": { "type": "STRING" },
+                        "D": { "type": "STRING" }
+                    },
+                    "required": ["A", "B", "C", "D"]
+                },
+                "correctAnswer": { "type": "STRING", "enum": ["A", "B", "C", "D"] },
+                "domain": { "type": "STRING" },
+                "skill": { "type": "STRING" },
+                "explanation": { "type": "STRING" }
             },
-            "correctAnswer": { "type": "STRING", "enum": ["A", "B", "C", "D"] },
-            "domain": { "type": "STRING" },
-            "skill": { "type": "STRING" },
-            "explanation": { "type": "STRING" }
-          },
-          "required": ["prompt", "options", "correctAnswer", "explanation", "domain", "skill"]
+            "required": ["prompt", "options", "correctAnswer", "explanation", "domain", "skill"]
         };
 
         callGeminiToParseQuestion(textPrompt, jsonSchema, aiImageBase64);
@@ -743,8 +743,8 @@ Return *only* a single, valid JSON object with these fields.
             return;
         }
         // +++ END OF FIX +++
-        
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
         const payload = {
             contents: [
@@ -779,7 +779,7 @@ Return *only* a single, valid JSON object with these fields.
                 let errorBody;
                 try {
                     errorBody = await response.json();
-                } catch(e) {
+                } catch (e) {
                     throw new Error(`API Error ${response.status}: ${response.statusText}`);
                 }
                 console.error("API Error Body:", errorBody);
@@ -787,11 +787,11 @@ Return *only* a single, valid JSON object with these fields.
             }
 
             const result = await response.json();
-            
+
             if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts[0].text) {
                 const jsonText = result.candidates[0].content.parts[0].text;
                 const parsedData = JSON.parse(jsonText);
-                
+
                 // Success! Fill the form.
                 fillEditorForm(parsedData);
                 closeAiModal();
@@ -856,27 +856,27 @@ Return *only* a single, valid JSON object with these fields.
             const radio = questionForm.querySelector(`input[name="correct-answer"][value="${data.correctAnswer}"]`);
             if (radio) radio.checked = true;
         }
-        
+
         // 3. Set Dropdowns (Domain & Skill)
         // This logic finds the *closest* match from the AI in the dropdown.
         if (data.domain && domainSelect) {
             const bestDomain = findBestOption(domainSelect, data.domain);
             domainSelect.value = bestDomain;
             domainSelect.dispatchEvent(new Event('change')); // Trigger skill populate
-            
+
             if (data.skill && skillSelect) {
                 // We must wait for the skill dropdown to populate
                 setTimeout(() => {
-                     const bestSkill = findBestOption(skillSelect, data.skill);
-                     skillSelect.value = bestSkill;
+                    const bestSkill = findBestOption(skillSelect, data.skill);
+                    skillSelect.value = bestSkill;
                 }, 100); // 100ms delay to allow skills to populate
             }
         }
-        
+
         // 4. Set Format (Assume MCQ for now, as that's what we asked for)
         formatSelect.value = 'mcq';
         formatSelect.dispatchEvent(new Event('change'));
-        
+
         // 5. Auto-save the form
         // We wrap this in a timeout to be 100% sure the skill dropdown has populated
         setTimeout(() => {
@@ -892,14 +892,14 @@ Return *only* a single, valid JSON object with these fields.
     function findBestOption(select, aiText) {
         let bestMatch = select.options[0].value;
         let bestScore = 0;
-        
+
         if (!aiText) return bestMatch;
         aiText = aiText.toLowerCase().trim();
 
         for (const option of select.options) {
             const optionText = option.text.toLowerCase().trim();
             if (optionText === aiText) return option.value; // Perfect match
-            
+
             // Check for partial match (e.g., AI says "Words in Context", option is "Words in Context")
             if (aiText.includes(optionText) || optionText.includes(aiText)) {
                 // Simple scoring: prioritize longer matches
