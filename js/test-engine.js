@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isHighlighterActive = false;
     let isCalculatorVisible = false;
     let calculatorInitialized = false;
-   // ++ Drag State ++
+    // ++ Drag State ++
     let isDraggingCalc = false;
     let calcOffsetX = 0;
     let calcOffsetY = 0;
@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) { console.warn("Could not read initial calc size from CSS vars."); }
     let currentCalcLeft = 10; // Initial position
     let currentCalcTop = 10; // Initial position
-    
+
     // +++ State for Custom Selection Toolbar +++
     let selectionRange = null; // Stores the last selected text Range object
     // --- Page Element References ---
@@ -116,44 +116,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 testName = testDoc.data().name || "Practice Test";
             }
             console.log(`Fetching questions for test ID: ${id}`);
-            
+
             const questionsSnapshot = await db.collection('tests').doc(id).collection('questions').get();
             console.log(`Fetched ${questionsSnapshot.size} questions.`);
             allQuestionsByModule = [[], [], [], []]; // Clear existing
             allQuestionsByModule = [[], [], [], []];
             if (questionsSnapshot.empty) {
                 console.warn("No questions found.");
-                if(questionPaneContent) questionPaneContent.innerHTML = "<p>No questions available for this test.</p>";
-                if(stimulusPaneContent) stimulusPaneContent.innerHTML = "";
-                if(nextBtn) nextBtn.disabled = true; if(backBtn) backBtn.disabled = true; return;
+                if (questionPaneContent) questionPaneContent.innerHTML = "<p>No questions available for this test.</p>";
+                if (stimulusPaneContent) stimulusPaneContent.innerHTML = "";
+                if (nextBtn) nextBtn.disabled = true; if (backBtn) backBtn.disabled = true; return;
             }
             questionsSnapshot.forEach(doc => {
                 const question = { id: doc.id, ...doc.data() };
                 if (question.module >= 1 && question.module <= 4) allQuestionsByModule[question.module - 1].push(question);
             });
             allQuestionsByModule.forEach(module => module.sort((a, b) => (a.questionNumber || 0) - (b.questionNumber || 0)));
-        } catch (error) { console.error("Error fetching/grouping questions: ", error); if(questionPaneContent) questionPaneContent.innerHTML = "<p>Error loading questions.</p>"; }
+        } catch (error) { console.error("Error fetching/grouping questions: ", error); if (questionPaneContent) questionPaneContent.innerHTML = "<p>Error loading questions.</p>"; }
     }
-     function startModule(moduleIndex) {
-         currentModuleIndex = moduleIndex; 
-         currentQuestionIndex = 0; // ALWAYS start a new module at Q 0
-         currentTimerSeconds = 0; // ALWAYS reset timer for a new module
-         
-         if (isCalculatorVisible) toggleCalculator(false);
-         const currentModuleQuestions = allQuestionsByModule[currentModuleIndex] || [];
-         if (currentModuleQuestions.length === 0) {
-             const nextNonEmpty = findNextNonEmptyModule(moduleIndex + 1);
-             if (nextNonEmpty !== -1) startModule(nextNonEmpty); else finishTest();
-             return;
-         }
-         const isMathModuleStart = moduleIndex >= 2;
-         if(testMain) testMain.classList.toggle('math-layout-active', isMathModuleStart);
-         populateModalGrid(); 
-         renderQuestion(currentQuestionIndex);
-         
-         const timerDuration = moduleTimers[currentModuleIndex] > 0 ? moduleTimers[currentModuleIndex] : 1800;
-         startTimer(timerDuration);
-     }
+    function startModule(moduleIndex) {
+        currentModuleIndex = moduleIndex;
+        currentQuestionIndex = 0; // ALWAYS start a new module at Q 0
+        currentTimerSeconds = 0; // ALWAYS reset timer for a new module
+
+        if (isCalculatorVisible) toggleCalculator(false);
+        const currentModuleQuestions = allQuestionsByModule[currentModuleIndex] || [];
+        if (currentModuleQuestions.length === 0) {
+            const nextNonEmpty = findNextNonEmptyModule(moduleIndex + 1);
+            if (nextNonEmpty !== -1) startModule(nextNonEmpty); else finishTest();
+            return;
+        }
+        const isMathModuleStart = moduleIndex >= 2;
+        if (testMain) testMain.classList.toggle('math-layout-active', isMathModuleStart);
+        populateModalGrid();
+        renderQuestion(currentQuestionIndex);
+
+        const timerDuration = moduleTimers[currentModuleIndex] > 0 ? moduleTimers[currentModuleIndex] : 1800;
+        startTimer(timerDuration);
+    }
     function renderAllMath() {
         try {
             document.querySelectorAll('.ql-formula').forEach(span => {
@@ -172,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const stimulusPane = document.querySelector('.stimulus-pane');
         const mathHeader = document.getElementById('math-question-header');
         const rwHeader = document.getElementById('rw-question-header');
-        if(testMain) testMain.classList.toggle('math-layout-active', isMath);
+        if (testMain) testMain.classList.toggle('math-layout-active', isMath);
         if (!isMath && isCalculatorVisible) toggleCalculator(false);
         if (mathHeader) mathHeader.classList.toggle('hidden', !isMath);
         if (rwHeader) rwHeader.classList.toggle('hidden', isMath);
@@ -260,30 +260,30 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function startTimer(duration) {
         if (typeof duration !== 'number' || duration <= 0) { if (timerDisplay) timerDisplay.textContent = "00:00"; return; }
-        
-        let timer = duration; 
-        
+
+        let timer = duration;
+
         // +++ THIS IS THE FIX +++
         // Always clear any existing timer before starting a new one.
         clearInterval(timerInterval);
         // +++ END OF FIX +++
-            
-        currentTimerSeconds = timer; 
+
+        currentTimerSeconds = timer;
 
         if (!timerDisplay) return;
 
         timerInterval = setInterval(() => {
-            let mins = Math.floor(timer / 60); 
+            let mins = Math.floor(timer / 60);
             let secs = timer % 60;
             timerDisplay.textContent = `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
-            
-            // This logic is correct. It updates the global var AND decrements the local one.
-            currentTimerSeconds = --timer; 
 
-            if (timer < 0) { 
-                clearInterval(timerInterval); 
-                alert("Time's up!"); 
-                showReviewScreen(true); 
+            // This logic is correct. It updates the global var AND decrements the local one.
+            currentTimerSeconds = --timer;
+
+            if (timer < 0) {
+                clearInterval(timerInterval);
+                alert("Time's up!");
+                showReviewScreen(true);
             }
         }, 1000);
     }
@@ -292,15 +292,15 @@ document.addEventListener('DOMContentLoaded', () => {
      * Finishes the current module, saves state, and shows the review screen.
      * @param {boolean} [isEndOfModule=false] - True if called automatically by timer.
      */
-     function showReviewScreen(isEndOfModule = false) {
-         clearInterval(timerInterval); if (timerDisplay) timerDisplay.textContent = "00:00";
-         if (modalProceedBtn) {
-             const nextNonEmpty = findNextNonEmptyModule(currentModuleIndex + 1);
-             modalProceedBtn.textContent = (nextNonEmpty === -1) ? `Finish Test and See Results` : `Continue to Next Module`;
-             modalProceedBtn.style.display = isEndOfModule ? 'inline-block' : 'none';
-         }
-         toggleModal(true);
-     }
+    function showReviewScreen(isEndOfModule = false) {
+        clearInterval(timerInterval); if (timerDisplay) timerDisplay.textContent = "00:00";
+        if (modalProceedBtn) {
+            const nextNonEmpty = findNextNonEmptyModule(currentModuleIndex + 1);
+            modalProceedBtn.textContent = (nextNonEmpty === -1) ? `Finish Test and See Results` : `Continue to Next Module`;
+            modalProceedBtn.style.display = isEndOfModule ? 'inline-block' : 'none';
+        }
+        toggleModal(true);
+    }
     function findNextNonEmptyModule(startIndex) {
         for (let i = startIndex; i < allQuestionsByModule.length; i++) { if (allQuestionsByModule[i]?.length > 0) return i; }
         return -1;
@@ -361,7 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function finishTest() {
         console.log("Finishing test...");
         clearInterval(timerInterval);
-        
+
         const user = auth.currentUser;
         if (!user) {
             alert("You are not logged in. Cannot save results.");
@@ -375,10 +375,10 @@ document.addEventListener('DOMContentLoaded', () => {
             nextBtn.textContent = "Saving...";
         }
         if (modalProceedBtn) {
-             modalProceedBtn.disabled = true;
-             modalProceedBtn.textContent = "Saving...";
+            modalProceedBtn.disabled = true;
+            modalProceedBtn.textContent = "Saving...";
         }
-        
+
         // Hide modal if it's open
         toggleModal(false);
 
@@ -386,7 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // +++ ADDED: Clear saved state on finish +++
             const key = `inProgressTest_${auth.currentUser.uid}_${testId}`;
             localStorage.removeItem(key);
-            
+
             // 2. Calculate score
             const scoreResult = calculateScore();
 
@@ -400,19 +400,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 testId: testId,
                 testName: testName, // We fetched this in initTest
                 completedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                
+
                 totalScore: scoreResult.totalScore,
                 rwScore: scoreResult.rwScore,
                 mathScore: scoreResult.mathScore,
-                
+
                 rwRaw: scoreResult.rwRaw,
                 mathRaw: scoreResult.mathRaw,
                 rwTotal: scoreResult.rwTotal,
                 mathTotal: scoreResult.mathTotal,
-                
-                userAnswers: userAnswers, // Save all user answers
-                // Save all questions for review page.
-                allQuestions: allQuestionsByModule.flat() // Flatten array for easier iteration
+
+                userAnswers: userAnswers // Save all user answers
+                // Note: Questions are NOT stored here to avoid exceeding Firestore's 1MB limit.
+                // The results page fetches questions directly from the test document.
             };
 
             // 5. Save to testResults collection
@@ -439,9 +439,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 nextBtn.disabled = false;
                 nextBtn.textContent = "Finish Module";
             }
-             if (modalProceedBtn) {
-                 modalProceedBtn.disabled = false;
-                 modalProceedBtn.textContent = "Finish Test and See Results";
+            if (modalProceedBtn) {
+                modalProceedBtn.disabled = false;
+                modalProceedBtn.textContent = "Finish Test and See Results";
             }
         }
     }
@@ -461,7 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else { if (modalProceedBtn) modalProceedBtn.style.display = 'none'; }
         modal.classList.toggle('visible', shouldShow);
         backdrop.classList.toggle('visible', shouldShow);
-        if(toggleBtn) toggleBtn.classList.toggle('open', shouldShow);
+        if (toggleBtn) toggleBtn.classList.toggle('open', shouldShow);
     }
 
 
@@ -473,7 +473,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const newState = typeof show === 'boolean' ? show : !isCalculatorVisible;
         if (newState === isCalculatorVisible) return;
         isCalculatorVisible = newState;
-        
+
         if (isCalculatorVisible) {
             if (isCalculatorMaximized) { toggleMaximizeCalculator(false); }
             else {
@@ -484,14 +484,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             // REMOVED: calculatorContainer.style.transition = '...';
             if (!calculatorInitialized) {
-                 console.log("Initializing Desmos iframe.");
-                 const iframe = document.createElement('iframe');
-                 iframe.src = 'https://www.desmos.com/calculator';
-                 iframe.title = "Desmos Scientific Calculator";
-                 let existingIframe = calculatorContainer.querySelector('iframe');
-                 if(existingIframe) calculatorContainer.removeChild(existingIframe);
-                 calculatorHeader?.insertAdjacentElement('afterend', iframe);
-                 calculatorInitialized = true;
+                console.log("Initializing Desmos iframe.");
+                const iframe = document.createElement('iframe');
+                iframe.src = 'https://www.desmos.com/calculator';
+                iframe.title = "Desmos Scientific Calculator";
+                let existingIframe = calculatorContainer.querySelector('iframe');
+                if (existingIframe) calculatorContainer.removeChild(existingIframe);
+                calculatorHeader?.insertAdjacentElement('afterend', iframe);
+                calculatorInitialized = true;
             }
             updateContentMargin(); // Set target margin
             requestAnimationFrame(() => { // Add active classes in next frame
@@ -500,68 +500,68 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } else {
             if (!isCalculatorMaximized) {
-                 currentCalcLeft = calculatorContainer.offsetLeft;
-                 currentCalcTop = calculatorContainer.offsetTop;
-                 currentCalcWidth = calculatorContainer.offsetWidth;
-                 currentCalcHeight = calculatorContainer.offsetHeight;
+                currentCalcLeft = calculatorContainer.offsetLeft;
+                currentCalcTop = calculatorContainer.offsetTop;
+                currentCalcWidth = calculatorContainer.offsetWidth;
+                currentCalcHeight = calculatorContainer.offsetHeight;
             }
             updateContentMargin(); // Reset margin to 0
             testMain.classList.remove('calculator-active');
             calculatorBtn.classList.remove('active');
             if (isCalculatorMaximized) {
-                 toggleMaximizeCalculator(false); 
+                toggleMaximizeCalculator(false);
             }
         }
     }
     function updateContentMargin() {
-         let marginSize = 0;
-         if (isCalculatorVisible) {
-             if (isCalculatorMaximized) { marginSize = '50%'; }
-             else if (calculatorContainer) { marginSize = `${calculatorContainer.offsetWidth + 20}px`; }
-         }
-         document.documentElement.style.setProperty('--content-margin-left', `${marginSize}`);
+        let marginSize = 0;
+        if (isCalculatorVisible) {
+            if (isCalculatorMaximized) { marginSize = '50%'; }
+            else if (calculatorContainer) { marginSize = `${calculatorContainer.offsetWidth + 20}px`; }
+        }
+        document.documentElement.style.setProperty('--content-margin-left', `${marginSize}`);
     }
-     function startDrag(e) {
-         if (!e.target.closest('.calculator-header') || e.target.closest('.close-calculator-btn, .calc-size-toggle-btn') || isCalculatorMaximized || isResizingCalc) return;
-         if (!calculatorContainer || !testMain) return;
-         isDraggingCalc = true;
-         calculatorContainer.classList.add('dragging'); // Disables iframe pointer-events via CSS
-         const rect = calculatorContainer.getBoundingClientRect();
-         const mainBounds = testMain.getBoundingClientRect();
-         calcOffsetX = e.clientX - rect.left;
-         calcOffsetY = e.clientY - rect.top;
-         currentCalcLeft = rect.left - mainBounds.left;
-         currentCalcTop = rect.top - mainBounds.top;
-         calculatorContainer.style.cursor = 'grabbing';
-         calculatorContainer.style.transition = 'none';
-         document.body.style.userSelect = 'none';
-         window.addEventListener('mousemove', dragMove);
-         window.addEventListener('mouseup', stopDrag, { once: true });
-         e.preventDefault();
-     }
-     function dragMove(e) {
-         if (!isDraggingCalc || !calculatorContainer) return; e.preventDefault();
-         const mainBounds = testMain.getBoundingClientRect();
-         let newViewportX = e.clientX - calcOffsetX; let newViewportY = e.clientY - calcOffsetY;
-         let newParentX = newViewportX - mainBounds.left; let newParentY = newViewportY - mainBounds.top;
-         const calcWidth = calculatorContainer.offsetWidth; const calcHeight = calculatorContainer.offsetHeight;
-         newParentX = Math.max(0, Math.min(newParentX, mainBounds.width - calcWidth));
-         newParentY = Math.max(0, Math.min(newParentY, mainBounds.height - calcHeight));
-         calculatorContainer.style.left = newParentX + 'px'; calculatorContainer.style.top = newParentY + 'px';
-          currentCalcLeft = newParentX; currentCalcTop = newParentY;
-     }
-     function stopDrag() {
-         isDraggingCalc = false;
-         if(calculatorContainer) {
-             calculatorContainer.classList.remove('dragging'); // Re-enable iframe events
-             calculatorContainer.style.cursor = 'move';
-             calculatorContainer.style.transition = ''; // Restore transitions from CSS
-         }
-         document.body.style.userSelect = '';
-         window.removeEventListener('mousemove', dragMove);
-     }
+    function startDrag(e) {
+        if (!e.target.closest('.calculator-header') || e.target.closest('.close-calculator-btn, .calc-size-toggle-btn') || isCalculatorMaximized || isResizingCalc) return;
+        if (!calculatorContainer || !testMain) return;
+        isDraggingCalc = true;
+        calculatorContainer.classList.add('dragging'); // Disables iframe pointer-events via CSS
+        const rect = calculatorContainer.getBoundingClientRect();
+        const mainBounds = testMain.getBoundingClientRect();
+        calcOffsetX = e.clientX - rect.left;
+        calcOffsetY = e.clientY - rect.top;
+        currentCalcLeft = rect.left - mainBounds.left;
+        currentCalcTop = rect.top - mainBounds.top;
+        calculatorContainer.style.cursor = 'grabbing';
+        calculatorContainer.style.transition = 'none';
+        document.body.style.userSelect = 'none';
+        window.addEventListener('mousemove', dragMove);
+        window.addEventListener('mouseup', stopDrag, { once: true });
+        e.preventDefault();
+    }
+    function dragMove(e) {
+        if (!isDraggingCalc || !calculatorContainer) return; e.preventDefault();
+        const mainBounds = testMain.getBoundingClientRect();
+        let newViewportX = e.clientX - calcOffsetX; let newViewportY = e.clientY - calcOffsetY;
+        let newParentX = newViewportX - mainBounds.left; let newParentY = newViewportY - mainBounds.top;
+        const calcWidth = calculatorContainer.offsetWidth; const calcHeight = calculatorContainer.offsetHeight;
+        newParentX = Math.max(0, Math.min(newParentX, mainBounds.width - calcWidth));
+        newParentY = Math.max(0, Math.min(newParentY, mainBounds.height - calcHeight));
+        calculatorContainer.style.left = newParentX + 'px'; calculatorContainer.style.top = newParentY + 'px';
+        currentCalcLeft = newParentX; currentCalcTop = newParentY;
+    }
+    function stopDrag() {
+        isDraggingCalc = false;
+        if (calculatorContainer) {
+            calculatorContainer.classList.remove('dragging'); // Re-enable iframe events
+            calculatorContainer.style.cursor = 'move';
+            calculatorContainer.style.transition = ''; // Restore transitions from CSS
+        }
+        document.body.style.userSelect = '';
+        window.removeEventListener('mousemove', dragMove);
+    }
     function startResize(e) {
-         if (isCalculatorMaximized || isDraggingCalc) return;
+        if (isCalculatorMaximized || isDraggingCalc) return;
         isResizingCalc = true;
         calculatorContainer.classList.add('resizing'); // Disables iframe pointer-events via CSS
         calcResizeStartX = e.clientX; calcResizeStartY = e.clientY;
@@ -590,51 +590,51 @@ document.addEventListener('DOMContentLoaded', () => {
         updateContentMargin();
     }
     function stopResize() {
-         isResizingCalc = false;
-         if(calculatorContainer) {
-             calculatorContainer.classList.remove('resizing'); // Re-enable iframe events
-             calculatorContainer.style.transition = ''; // Restore transitions from CSS
-         }
+        isResizingCalc = false;
+        if (calculatorContainer) {
+            calculatorContainer.classList.remove('resizing'); // Re-enable iframe events
+            calculatorContainer.style.transition = ''; // Restore transitions from CSS
+        }
         document.body.style.userSelect = '';
         window.removeEventListener('mousemove', resizeMove);
-         document.documentElement.style.setProperty('--calculator-width', `${currentCalcWidth}px`);
-         document.documentElement.style.setProperty('--calculator-height', `${currentCalcHeight}px`);
+        document.documentElement.style.setProperty('--calculator-width', `${currentCalcWidth}px`);
+        document.documentElement.style.setProperty('--calculator-height', `${currentCalcHeight}px`);
     }
     function toggleMaximizeCalculator() {
-         if (!calculatorContainer || !calcSizeToggleIcon || isDraggingCalc || isResizingCalc) return;
-         const newState = typeof forceState === 'boolean' ? forceState : !isCalculatorMaximized;
-         if (newState === isCalculatorMaximized) return;
-         console.log(`Toggling maximize. New state: ${newState}`);
-         calculatorContainer.style.transition = 'none'; // Disable transitions
-         if (newState) {
-             currentCalcWidth = calculatorContainer.offsetWidth;
-             currentCalcHeight = calculatorContainer.offsetHeight;
-             currentCalcLeft = calculatorContainer.offsetLeft;
-             currentCalcTop = calculatorContainer.offsetTop;
-             calculatorContainer.classList.add('maximized');
-         } else {
-             calculatorContainer.classList.remove('maximized');
-             calculatorContainer.style.width = `${currentCalcWidth}px`;
-             calculatorContainer.style.height = `${currentCalcHeight}px`;
-             calculatorContainer.style.left = `${currentCalcLeft}px`;
-             calculatorContainer.style.top = `${currentCalcTop}px`;
-             document.documentElement.style.setProperty('--calculator-width', `${currentCalcWidth}px`);
-             document.documentElement.style.setProperty('--calculator-height', `${currentCalcHeight}px`);
-         }
-         isCalculatorMaximized = newState;
-         updateContentMargin();
-         requestAnimationFrame(() => {
-             calculatorContainer.style.transition = ''; // Let CSS handle all transitions
-             calcSizeToggleIcon.classList.toggle('fa-expand', !isCalculatorMaximized);
-             calcSizeToggleIcon.classList.toggle('fa-compress', isCalculatorMaximized);
-             if(calcSizeToggleBtn) calcSizeToggleBtn.title = isCalculatorMaximized ? "Restore Calculator Size" : "Maximize Calculator";
-         });
+        if (!calculatorContainer || !calcSizeToggleIcon || isDraggingCalc || isResizingCalc) return;
+        const newState = typeof forceState === 'boolean' ? forceState : !isCalculatorMaximized;
+        if (newState === isCalculatorMaximized) return;
+        console.log(`Toggling maximize. New state: ${newState}`);
+        calculatorContainer.style.transition = 'none'; // Disable transitions
+        if (newState) {
+            currentCalcWidth = calculatorContainer.offsetWidth;
+            currentCalcHeight = calculatorContainer.offsetHeight;
+            currentCalcLeft = calculatorContainer.offsetLeft;
+            currentCalcTop = calculatorContainer.offsetTop;
+            calculatorContainer.classList.add('maximized');
+        } else {
+            calculatorContainer.classList.remove('maximized');
+            calculatorContainer.style.width = `${currentCalcWidth}px`;
+            calculatorContainer.style.height = `${currentCalcHeight}px`;
+            calculatorContainer.style.left = `${currentCalcLeft}px`;
+            calculatorContainer.style.top = `${currentCalcTop}px`;
+            document.documentElement.style.setProperty('--calculator-width', `${currentCalcWidth}px`);
+            document.documentElement.style.setProperty('--calculator-height', `${currentCalcHeight}px`);
+        }
+        isCalculatorMaximized = newState;
+        updateContentMargin();
+        requestAnimationFrame(() => {
+            calculatorContainer.style.transition = ''; // Let CSS handle all transitions
+            calcSizeToggleIcon.classList.toggle('fa-expand', !isCalculatorMaximized);
+            calcSizeToggleIcon.classList.toggle('fa-compress', isCalculatorMaximized);
+            if (calcSizeToggleBtn) calcSizeToggleBtn.title = isCalculatorMaximized ? "Restore Calculator Size" : "Maximize Calculator";
+        });
     }
 
 
     // --- Custom Selection Toolbar Functions ---
     // (showSelectionToolbar, hideSelectionToolbar, applyFormat)
-     function showSelectionToolbar() {
+    function showSelectionToolbar() {
         if (!selectionToolbar || !selectionRange) return;
 
         const rect = selectionRange.getBoundingClientRect();
@@ -657,13 +657,13 @@ document.addEventListener('DOMContentLoaded', () => {
         selectionRange = null;
     }
 
-     /**
-     * Wraps the current selectionRange with a new element (span)
-     * and applies the specified command (highlight, underline, etc.).
-     * @param {string} command - The command to apply (e.g., 'highlight', 'underline').
-     * @param {string} [value] - The value for the command (e.g., a color hex).
-     */
-     function applyFormat(command, value = null) {
+    /**
+    * Wraps the current selectionRange with a new element (span)
+    * and applies the specified command (highlight, underline, etc.).
+    * @param {string} command - The command to apply (e.g., 'highlight', 'underline').
+    * @param {string} [value] - The value for the command (e.g., a color hex).
+    */
+    function applyFormat(command, value = null) {
         if (!selectionRange) return;
 
         try {
@@ -679,15 +679,15 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (command === 'clearformat') {
                 // This is more complex: we need to unwrap
                 const content = selectionRange.extractContents(); // Pull content out of document
-                
+
                 // Find and remove our wrappers *inside* the pulled content
                 const wrappersToRemove = content.querySelectorAll('.custom-format-wrapper, .custom-underline');
                 wrappersToRemove.forEach(wrap => {
                     // Replace the wrapper (e.g., <span style="..."><node></span>)
                     // with just its contents (<node>)
-                    wrap.replaceWith(...wrap.childNodes); 
+                    wrap.replaceWith(...wrap.childNodes);
                 });
-                
+
                 // Put the "clean" content back
                 selectionRange.insertNode(content);
                 document.getSelection().removeAllRanges(); // Clear selection
@@ -698,7 +698,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // For highlight/underline, wrap the selected content
             wrapper.appendChild(selectionRange.extractContents());
             selectionRange.insertNode(wrapper);
-            
+
             // Clean up: un-nest identical wrappers (e.g., highlight inside highlight)
             // This is basic and can be expanded
             const parent = wrapper.parentNode;
@@ -707,7 +707,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 parent.replaceChild(wrapper.firstChild, wrapper); // Remove inner wrapper
             }
             if (parent.classList.contains('custom-underline') && command === 'underline') {
-                 parent.replaceChild(wrapper.firstChild, wrapper); // Just remove inner
+                parent.replaceChild(wrapper.firstChild, wrapper); // Just remove inner
             }
 
 
@@ -751,18 +751,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function isFullscreen() {
         return document.fullscreenElement ||
-               document.webkitFullscreenElement ||
-               document.mozFullScreenElement ||
-               document.msFullscreenElement;
+            document.webkitFullscreenElement ||
+            document.mozFullScreenElement ||
+            document.msFullscreenElement;
     }
 
     function startTest() {
         // This function now just shows the test, assuming fullscreen is handled.
-        if(fullscreenPrompt) fullscreenPrompt.style.display = 'none';
-        if(testWrapper) testWrapper.classList.remove('hidden');
-        if(backdrop) backdrop.classList.remove('visible'); // Hide backdrop if it was visible
-        
-        
+        if (fullscreenPrompt) fullscreenPrompt.style.display = 'none';
+        if (testWrapper) testWrapper.classList.remove('hidden');
+        if (backdrop) backdrop.classList.remove('visible'); // Hide backdrop if it was visible
+
+
         // +++ UPDATED: Smarter test start/resume logic +++
         if (timerInterval === null && currentTimerSeconds > 0) {
             // This is a RESUME from a pause (fullscreen or reload with time remaining)
@@ -780,13 +780,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleFullscreenChange() {
         if (!isFullscreen()) {
             // User exited fullscreen, show the prompt again
-            if(fullscreenPrompt) fullscreenPrompt.style.display = 'flex';
-            if(testWrapper) testWrapper.classList.add('hidden');
-            if(backdrop) backdrop.classList.add('visible'); // Show backdrop
-            if(fullscreenPromptTitle) fullscreenPromptTitle.textContent = 'Please Re-enter Fullscreen Mode';
-            
+            if (fullscreenPrompt) fullscreenPrompt.style.display = 'flex';
+            if (testWrapper) testWrapper.classList.add('hidden');
+            if (backdrop) backdrop.classList.add('visible'); // Show backdrop
+            if (fullscreenPromptTitle) fullscreenPromptTitle.textContent = 'Please Re-enter Fullscreen Mode';
+
             // Pause the timer
-            if(timerInterval) {
+            if (timerInterval) {
                 clearInterval(timerInterval);
                 timerInterval = null; // Clear interval
                 // currentTimerSeconds variable automatically holds the remaining time
@@ -795,7 +795,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             // User entered fullscreen, start the test (or resume it)
             // Note: startTest() also hides the prompt and shows the test
-            startTest(); 
+            startTest();
         }
     }
     // +++ End of Fullscreen Logic +++
@@ -817,7 +817,7 @@ document.addEventListener('DOMContentLoaded', () => {
             marked: markedQuestions,
             remainingTime: currentTimerSeconds
         };
-        
+
         // Use a key specific to the test and user
         const key = `inProgressTest_${auth.currentUser.uid}_${testId}`;
         localStorage.setItem(key, JSON.stringify(state));
@@ -831,10 +831,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!testId || !auth.currentUser) {
             return false;
         }
-        
+
         const key = `inProgressTest_${auth.currentUser.uid}_${testId}`;
         const savedState = localStorage.getItem(key);
-        
+
         if (savedState) {
             try {
                 const data = JSON.parse(savedState);
@@ -843,7 +843,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 userAnswers = data.answers || {};
                 markedQuestions = data.marked || {};
                 currentTimerSeconds = data.remainingTime || 0;
-                
+
                 console.log(`Resuming test "${testId}" at Module ${currentModuleIndex + 1}, Question ${currentQuestionIndex + 1} with ${currentTimerSeconds}s left.`);
                 return true;
             } catch (e) {
@@ -863,28 +863,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
         testId = urlParams.get('id');
         if (!testId) { console.error("No Test ID in URL."); document.body.innerHTML = '<h1>Error: No Test ID.</h1>'; return; }
-        
+
         // Wait for auth to be ready
         auth.onAuthStateChanged(async (user) => {
             if (user) {
                 if (userNameDisp) { userNameDisp.textContent = user.displayName || 'Student'; }
-                
+
                 // +++ UPDATED: Load state AFTER we have user and testId +++
                 loadTestState();
 
                 // Fetch questions but don't start the test yet
                 await fetchAndGroupQuestions(testId);
-                
+
                 // Show the fullscreen prompt instead of starting the test
-                if(fullscreenPrompt) fullscreenPrompt.style.display = 'flex';
-                if(backdrop) backdrop.classList.add('visible');
-                if(fullscreenPromptTitle) fullscreenPromptTitle.textContent = 'Please Enter Fullscreen Mode';
-                
+                if (fullscreenPrompt) fullscreenPrompt.style.display = 'flex';
+                if (backdrop) backdrop.classList.add('visible');
+                if (fullscreenPromptTitle) fullscreenPromptTitle.textContent = 'Please Enter Fullscreen Mode';
+
                 // Set up calculator defaults
                 updateContentMargin();
                 document.documentElement.style.setProperty('--calculator-width', `${currentCalcWidth}px`);
                 document.documentElement.style.setProperty('--calculator-height', `${currentCalcHeight}px`);
-                if(calculatorContainer) {
+                if (calculatorContainer) {
                     calculatorContainer.style.width = `${currentCalcWidth}px`;
                     calculatorContainer.style.height = `${currentCalcHeight}px`;
                     calculatorContainer.style.left = `${currentCalcLeft}px`;
@@ -902,51 +902,51 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Event Listeners ---
     if (toggleBtn) { toggleBtn.addEventListener('click', () => { if (modalProceedBtn) modalProceedBtn.style.display = 'none'; toggleModal(true); }); }
     if (closeModalBtn) { closeModalBtn.addEventListener('click', () => toggleModal(false)); }
-    if (backdrop) { 
+    if (backdrop) {
         backdrop.addEventListener('click', () => {
             // Only hide the question modal, not the fullscreen prompt
             if (modal.classList.contains('visible')) {
                 toggleModal(false);
             }
-        }); 
+        });
     }
-    if (nextBtn) { 
-        nextBtn.addEventListener('click', () => { 
-            const currentQs = allQuestionsByModule[currentModuleIndex] || []; 
-            if (currentQuestionIndex < currentQs.length - 1) { 
-                currentQuestionIndex++; 
-                renderQuestion(currentQuestionIndex); 
-            } else { 
-                showReviewScreen(true); 
-            } 
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            const currentQs = allQuestionsByModule[currentModuleIndex] || [];
+            if (currentQuestionIndex < currentQs.length - 1) {
+                currentQuestionIndex++;
+                renderQuestion(currentQuestionIndex);
+            } else {
+                showReviewScreen(true);
+            }
             saveTestState(); // +++ ADDED
-        }); 
+        });
     }
-    if (backBtn) { 
-        backBtn.addEventListener('click', () => { 
-            if (currentQuestionIndex > 0) { 
-                currentQuestionIndex--; 
-                renderQuestion(currentQuestionIndex); 
-            } 
+    if (backBtn) {
+        backBtn.addEventListener('click', () => {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderQuestion(currentQuestionIndex);
+            }
             saveTestState(); // +++ ADDED
-        }); 
+        });
     }
     if (questionPaneContent) {
         questionPaneContent.addEventListener('change', (e) => {
-            if (e.target.type === 'radio' && e.target.name) { 
-                userAnswers[e.target.name] = e.target.value; 
-                const wrapper = e.target.closest('.option-wrapper'); 
-                if (wrapper) { wrapper.classList.remove('stricken-through'); e.target.disabled = false; } 
-                updateModalGridHighlights(); 
+            if (e.target.type === 'radio' && e.target.name) {
+                userAnswers[e.target.name] = e.target.value;
+                const wrapper = e.target.closest('.option-wrapper');
+                if (wrapper) { wrapper.classList.remove('stricken-through'); e.target.disabled = false; }
+                updateModalGridHighlights();
                 saveTestState(); // +++ ADDED
             }
-            if (e.target.classList.contains('fill-in-input')) { 
-                const qId = e.target.dataset.questionId; 
-                if (qId) { 
-                    userAnswers[qId] = e.target.value.trim(); 
-                    updateModalGridHighlights(); 
+            if (e.target.classList.contains('fill-in-input')) {
+                const qId = e.target.dataset.questionId;
+                if (qId) {
+                    userAnswers[qId] = e.target.value.trim();
+                    updateModalGridHighlights();
                     saveTestState(); // +++ ADDED
-                } 
+                }
             }
         });
         questionPaneContent.addEventListener('click', (e) => {
@@ -954,28 +954,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     document.body.addEventListener('change', (e) => {
-        if (!e.target.classList.contains('mark-review-checkbox')) return; 
-        const qId = e.target.dataset.questionId; 
-        if (!qId) return; 
-        if (e.target.checked) markedQuestions[qId] = true; 
-        else delete markedQuestions[qId]; 
-        updateModalGridHighlights(); 
+        if (!e.target.classList.contains('mark-review-checkbox')) return;
+        const qId = e.target.dataset.questionId;
+        if (!qId) return;
+        if (e.target.checked) markedQuestions[qId] = true;
+        else delete markedQuestions[qId];
+        updateModalGridHighlights();
         saveTestState(); // +++ ADDED
     });
     if (modalProceedBtn) {
-        modalProceedBtn.addEventListener('click', () => { 
-            console.log("Modal Proceed clicked."); 
-            toggleModal(false); 
-            const nextIdx = findNextNonEmptyModule(currentModuleIndex + 1); 
+        modalProceedBtn.addEventListener('click', () => {
+            console.log("Modal Proceed clicked.");
+            toggleModal(false);
+            const nextIdx = findNextNonEmptyModule(currentModuleIndex + 1);
             if (nextIdx !== -1) {
-                startModule(nextIdx); 
+                startModule(nextIdx);
             } else {
-                finishTest(); 
+                finishTest();
             }
             // Save is not needed here, as startModule/finishTest handle it
         });
     } else { console.warn("Modal Proceed Button missing."); }
-    
+
     // OLD Highlighter button - now hidden by updateUI
     if (highlighterBtn) { highlighterBtn.style.display = 'none'; } // Explicitly hide old button
     if (calculatorBtn) { calculatorBtn.addEventListener('click', () => { isCalculatorVisible = !isCalculatorVisible; toggleCalculator(isCalculatorVisible); }); } else { console.warn("Calculator Button missing."); }
@@ -983,39 +983,39 @@ document.addEventListener('DOMContentLoaded', () => {
     if (calculatorHeader) { calculatorHeader.addEventListener('mousedown', startDrag); } else { console.warn("Calculator Header missing."); }
     if (calcResizeHandle) { calcResizeHandle.addEventListener('mousedown', startResize); } else { console.warn("Calculator Resize Handle missing."); }
     if (calcSizeToggleBtn) { calcSizeToggleBtn.addEventListener('click', () => toggleMaximizeCalculator()); } else { console.warn("Calculator Size Toggle Button missing."); }
-    
+
     // Custom Toolbar Listeners
-     document.body.addEventListener('mouseup', (e) => {
+    document.body.addEventListener('mouseup', (e) => {
         // Hide toolbar if clicking anywhere (will be re-shown if it's a new selection)
         // Check if click was *on* the toolbar itself first
         if (e.target.closest('#selection-toolbar')) {
             return; // Don't hide if clicking a toolbar button
         }
-        
+
         const selection = window.getSelection();
-        
+
         // Check if selection is valid, not empty, and inside a content area
         if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
-             const range = selection.getRangeAt(0);
-             const targetPane = range.commonAncestorContainer.parentNode.closest('.stimulus-pane .pane-content, .question-pane .pane-content');
-             
-             // Only show if selection is within a valid pane
-             if (targetPane) {
-                 selectionRange = range.cloneRange(); // Save the selection
-                 showSelectionToolbar(); // Position and show
-             } else {
-                 hideSelectionToolbar(); // Selection is outside valid area
-             }
+            const range = selection.getRangeAt(0);
+            const targetPane = range.commonAncestorContainer.parentNode.closest('.stimulus-pane .pane-content, .question-pane .pane-content');
+
+            // Only show if selection is within a valid pane
+            if (targetPane) {
+                selectionRange = range.cloneRange(); // Save the selection
+                showSelectionToolbar(); // Position and show
+            } else {
+                hideSelectionToolbar(); // Selection is outside valid area
+            }
         } else {
-             hideSelectionToolbar(); // No selection, hide
+            hideSelectionToolbar(); // No selection, hide
         }
-        
+
     }, { capture: true }); // <-- ADD THIS CAPTURE FLAG
 
     // 2. Hide toolbar on mousedown (clears old selection)
     document.body.addEventListener('mousedown', (e) => {
-         // Don't hide if clicking *on* the toolbar
-         if (e.target.closest('#selection-toolbar')) {
+        // Don't hide if clicking *on* the toolbar
+        if (e.target.closest('#selection-toolbar')) {
             e.preventDefault(); // Prevent mousedown from blurring selection
             return;
         }
@@ -1023,7 +1023,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, { capture: true }); // <-- ADD THIS CAPTURE FLAG
 
     // 3. Disable default context menu (right-click) in content panes
-     document.body.addEventListener('contextmenu', (e) => {
+    document.body.addEventListener('contextmenu', (e) => {
         const targetPane = e.target.closest('.stimulus-pane .pane-content, .question-pane .pane-content');
         if (targetPane) {
             e.preventDefault(); // Disable right-click menu
@@ -1032,37 +1032,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 4. Disable default copy action
     document.body.addEventListener('copy', (e) => {
-         const targetPane = e.target.closest('.stimulus-pane .pane-content, .question-pane .pane-content');
-         if (targetPane) {
-             e.preventDefault(); // Disable Ctrl+C / Cmd+C
-             console.log("Copying is disabled."); // Optional feedback
-         }
+        const targetPane = e.target.closest('.stimulus-pane .pane-content, .question-pane .pane-content');
+        if (targetPane) {
+            e.preventDefault(); // Disable Ctrl+C / Cmd+C
+            console.log("Copying is disabled."); // Optional feedback
+        }
     });
-     if (selectionToolbar) {
+    if (selectionToolbar) {
         selectionToolbar.addEventListener('mousedown', (e) => {
-             // Use mousedown so it fires before the mouseup that clears the selection
+            // Use mousedown so it fires before the mouseup that clears the selection
             const button = e.target.closest('button');
             if (button) {
-                 e.preventDefault(); // Prevent button click from hiding toolbar
-                 e.stopPropagation(); // <-- ADD THIS LINE
+                e.preventDefault(); // Prevent button click from hiding toolbar
+                e.stopPropagation(); // <-- ADD THIS LINE
                 const command = button.dataset.command;
                 const value = button.dataset.value || null;
-                
+
                 if (command && selectionRange) {
                     applyFormat(command, value);
                 }
             }
         });
     } else { console.warn("Selection Toolbar element not found."); }
-    
+
     // +++ ADDED: Fullscreen Event Listeners +++
     // This is where the fix is applied.
     // The variables 'fullscreenBtn' and 'proceedBtn' now correctly point
     // to the elements with IDs 'fullscreen-btn' and 'proceed-anyway-link'.
-    if(fullscreenBtn) {
+    if (fullscreenBtn) {
         fullscreenBtn.addEventListener('click', requestFullScreen);
     }
-    if(proceedBtn) {
+    if (proceedBtn) {
         proceedBtn.addEventListener('click', (e) => {
             e.preventDefault();
             // Just start the test without fullscreen
@@ -1076,10 +1076,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
     document.addEventListener('mozfullscreenchange', handleFullscreenChange);
     document.addEventListener('MSFullscreenChange', handleFullscreenChange);
-    
+
     // +++ ADDED: Save state on tab close/reload +++
     window.addEventListener('beforeunload', saveTestState);
-    
+
     // +++ END: Event Listeners +++
 
 

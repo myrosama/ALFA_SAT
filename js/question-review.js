@@ -10,21 +10,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingContainer = document.getElementById('review-loading-container');
     const contentBody = document.getElementById('review-content-body');
     const testMain = document.getElementById('review-main-content');
-    
+
     const headerTitle = document.getElementById('review-header-title');
     const headerSubtitle = document.getElementById('review-header-subtitle');
     const backToResultsBtn = document.getElementById('back-to-results-btn');
-    
+
     const stimulusPane = document.getElementById('review-stimulus-pane');
     const stimulusPaneContent = stimulusPane.querySelector('.pane-content');
-    
+
     const qNumberDisplay = document.getElementById('q-number-display');
     const qResultDisplay = document.getElementById('question-result-display');
     const qPromptContent = document.getElementById('review-question-content');
     const qOptionsContent = document.getElementById('review-options-content');
     const qExplanationContent = document.getElementById('explanation-content');
     const qExplanationContainer = document.getElementById('review-explanation-container');
-    
+
     const userNameDisp = document.getElementById('user-name-display');
 
     // --- State ---
@@ -88,16 +88,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Security check
             if (resultData.userId !== user.uid) {
-                 showError("Access Denied.");
-                 return;
-            }
-
-            // --- 2. Find the Specific Question ---
-            questionData = (resultData.allQuestions || []).find(q => q.id === questionId);
-            if (!questionData) {
-                showError("Question data could not be found within the test result.");
+                showError("Access Denied.");
                 return;
             }
+
+            // --- 2. Fetch the Specific Question from the Original Test Document ---
+            // Questions are NOT stored in testResults to avoid Firestore's 1MB limit.
+            const testId = resultData.testId;
+            if (!testId) {
+                showError("Test ID not found in result data.");
+                return;
+            }
+
+            const questionDoc = await db.collection('tests').doc(testId).collection('questions').doc(questionId).get();
+            if (!questionDoc.exists) {
+                showError("Question data could not be found in the test.");
+                return;
+            }
+            questionData = { id: questionDoc.id, ...questionDoc.data() };
 
             // --- 3. Render Content ---
             renderPageContent();
@@ -153,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 qResultDisplay.innerHTML = `<span class="incorrect"><i class="fa-solid fa-xmark"></i> Incorrect</span>`;
             }
         }
-        
+
         if (qPromptContent) {
             qPromptContent.innerHTML = `<div class="question-text">${questionData.prompt || ''}</div>`;
         }
@@ -166,12 +174,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 qOptionsContent.innerHTML = renderFillIn(questionData, userAnswer, correctAnswer);
             }
         }
-        
+
         // --- Explanation ---
         if (qExplanationContent) {
             const explanation = questionData.explanation || '<p><i>No explanation provided for this question.</i></p>';
             if (explanation === '<p><br></p>' || explanation.trim() === '') {
-                 qExplanationContent.innerHTML = '<p><i>No explanation provided for this question.</i></p>';
+                qExplanationContent.innerHTML = '<p><i>No explanation provided for this question.</i></p>';
             } else {
                 qExplanationContent.innerHTML = explanation;
             }
@@ -187,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ['A', 'B', 'C', 'D'].forEach(opt => {
             const optText = options[opt] || '';
             let classes = "option-wrapper";
-            
+
             if (opt === correctAns) {
                 classes += " correct-answer";
             } else if (opt === userAns) {
@@ -216,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="label">Your Answer</div>
                 <div class="user-answer correct">${userAns}</div>`;
         } else {
-             userAnswerHtml = `
+            userAnswerHtml = `
                 <div class="label">Your Answer</div>
                 <div class="user-answer incorrect">${userAns || '<i>(No answer)</i>'}</div>`;
         }
@@ -235,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function showError(message) {
         if (loadingContainer) loadingContainer.style.display = 'none';
         if (contentBody) contentBody.style.visibility = 'hidden';
-        
+
         // Re-use loading container for error message
         if (loadingContainer) {
             loadingContainer.style.display = 'flex';

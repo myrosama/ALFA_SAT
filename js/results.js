@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Page Elements ---
     const resultsContainer = document.getElementById('results-container');
     const loadingContainer = document.getElementById('loading-container');
-    
+
     // --- Templates ---
     const headerTemplate = document.getElementById('results-header-template');
     const sectionTemplate = document.getElementById('results-review-section-template');
@@ -61,46 +61,55 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // --- 1. Fetch Result Data ---
             const resultDoc = await db.collection('testResults').doc(currentResultId).get();
-            
+
             if (!resultDoc.exists) {
                 showError("Test result not found. It may have been deleted or the link is incorrect.");
                 return;
             }
 
             resultData = resultDoc.data();
-            
+
             // Security check: Ensure the logged-in user owns this result
             if (resultData.userId !== user.uid) {
-                 showError("Access Denied. You do not have permission to view this result.");
-                 return;
+                showError("Access Denied. You do not have permission to view this result.");
+                return;
             }
-            
+
             // --- 2. Render Header ---
             renderHeader(resultData);
 
-            // --- 3. Filter and Render ALL Questions ---
-            const allQuestions = resultData.allQuestions || [];
-            
-            // Get all R&W questions, not just incorrect ones
+            // --- 3. Fetch Questions from the Original Test Document ---
+            // Questions are NOT stored in testResults to avoid Firestore's 1MB limit.
+            const testId = resultData.testId;
+            if (!testId) {
+                showError("Test ID not found in result data.");
+                return;
+            }
+
+            const questionsSnapshot = await db.collection('tests').doc(testId).collection('questions').get();
+            const allQuestions = [];
+            questionsSnapshot.forEach(doc => {
+                allQuestions.push({ id: doc.id, ...doc.data() });
+            });
+
+            // Get all R&W questions
             const allRW = allQuestions
                 .filter(q => (q.module === 1 || q.module === 2));
-                // Sorting will be handled inside renderReviewSection
 
-            // Get all Math questions, not just incorrect ones
+            // Get all Math questions
             const allMath = allQuestions
                 .filter(q => (q.module === 3 || q.module === 4));
-                // Sorting will be handled inside renderReviewSection
 
             // Render the sections
             renderReviewSection("Reading & Writing", "rw-section", 1, 2, allRW, resultData);
             renderReviewSection("Math", "math-section", 3, 4, allMath, resultData);
-            
+
             // --- 4. Finalize ---
             loadingContainer.style.display = 'none'; // Hide loading spinner
             resultsContainer.classList.add('loaded'); // Fade in content
 
             // Render any math formulas in the dynamically added content
-            renderAllMath(); 
+            renderAllMath();
 
         } catch (error) {
             console.error("Error loading results:", error);
@@ -139,27 +148,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
         questions.forEach(q => {
             const isCorrect = userAnswers[q.id] === q.correctAnswer;
-            
+
             const qBtnClone = qNumTemplate.content.cloneNode(true);
             const qBtnEl = qBtnClone.querySelector('.q-number-btn');
-            
+
             // Add correct/incorrect class for styling
             qBtnEl.classList.add(isCorrect ? 'correct' : 'incorrect');
-            
+
             // Get the display module/section number
             const moduleNum = (q.module % 2) === 0 ? 2 : 1; // 1->1, 2->2, 3->1, 4->2
-            
+
             // UPDATED: Show only the question number
             qBtnClone.querySelector('.q-number').textContent = q.questionNumber;
-            
+
             // Store data on the button to find it later
-            qBtnEl.dataset.questionId = q.id; 
-            
+            qBtnEl.dataset.questionId = q.id;
+
             // UPDATED: Add event listener to link to the new review page
             qBtnEl.addEventListener('click', () => {
                 window.location.href = `question-review.html?resultId=${currentResultId}&questionId=${q.id}`;
             });
-            
+
             gridEl.appendChild(qBtnClone);
         });
     }
@@ -195,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const moduleA_Qs = allSectionQuestions
             .filter(q => q.module === moduleNumA)
             .sort((a, b) => a.questionNumber - b.questionNumber);
-        
+
         // Filter and sort questions for Module B
         const moduleB_Qs = allSectionQuestions
             .filter(q => q.module === moduleNumB)
@@ -204,35 +213,35 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- Create Module A Container ---
         const moduleA_Container = document.createElement('div');
         moduleA_Container.className = 'module-review-container';
-        
+
         const moduleA_Title = document.createElement('h4');
         moduleA_Title.className = 'module-title';
         moduleA_Title.textContent = `Module ${moduleNumA <= 2 ? 1 : 1}`; // 1->1, 3->1
         moduleA_Container.appendChild(moduleA_Title);
-        
+
         const moduleA_Grid = document.createElement('div');
         moduleA_Grid.className = 'review-grid';
         populateGrid(moduleA_Grid, moduleA_Qs, userAnswers);
         moduleA_Container.appendChild(moduleA_Grid);
-        
+
         sectionEl.appendChild(moduleA_Container);
 
         // --- Create Module B Container ---
         const moduleB_Container = document.createElement('div');
         moduleB_Container.className = 'module-review-container';
-        
+
         const moduleB_Title = document.createElement('h4');
         moduleB_Title.className = 'module-title';
         moduleB_Title.textContent = `Module ${moduleNumB <= 2 ? 2 : 2}`; // 2->2, 4->2
         moduleB_Container.appendChild(moduleB_Title);
-        
+
         const moduleB_Grid = document.createElement('div');
         moduleB_Grid.className = 'review-grid';
         populateGrid(moduleB_Grid, moduleB_Qs, userAnswers);
         moduleB_Container.appendChild(moduleB_Grid);
 
         sectionEl.appendChild(moduleB_Container);
-        
+
         // Append the whole section to the page
         resultsContainer.appendChild(sectionClone);
     }
