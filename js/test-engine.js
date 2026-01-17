@@ -978,7 +978,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // OLD Highlighter button - now hidden by updateUI
     if (highlighterBtn) { highlighterBtn.style.display = 'none'; } // Explicitly hide old button
-    if (calculatorBtn) { calculatorBtn.addEventListener('click', () => { isCalculatorVisible = !isCalculatorVisible; toggleCalculator(isCalculatorVisible); }); } else { console.warn("Calculator Button missing."); }
+    if (calculatorBtn) { calculatorBtn.addEventListener('click', () => toggleCalculator()); } else { console.warn("Calculator Button missing."); }
     if (closeCalculatorBtn) { closeCalculatorBtn.addEventListener('click', () => { isCalculatorVisible = false; toggleCalculator(false); }); } else { console.warn("Close Calculator Button missing."); }
     if (calculatorHeader) { calculatorHeader.addEventListener('mousedown', startDrag); } else { console.warn("Calculator Header missing."); }
     if (calcResizeHandle) { calcResizeHandle.addEventListener('mousedown', startResize); } else { console.warn("Calculator Resize Handle missing."); }
