@@ -126,7 +126,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const questionsSnapshot = await db.collection('tests').doc(id).collection('questions').get();
             console.log(`Fetched ${questionsSnapshot.size} questions.`);
-            allQuestionsByModule = [[], [], [], []]; // Clear existing
             allQuestionsByModule = [[], [], [], []];
             if (questionsSnapshot.empty) {
                 console.warn("No questions found.");
@@ -139,7 +138,148 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (question.module >= 1 && question.module <= 4) allQuestionsByModule[question.module - 1].push(question);
             });
             allQuestionsByModule.forEach(module => module.sort((a, b) => (a.questionNumber || 0) - (b.questionNumber || 0)));
+
+            // +++ IMAGE PRELOADING: Cache all images as blob URLs +++
+            await preloadAllImages();
+
         } catch (error) { console.error("Error fetching/grouping questions: ", error); if (questionPaneContent) questionPaneContent.innerHTML = "<p>Error loading questions.</p>"; }
+    }
+
+    /**
+     * Preloads all images from questions into blob URLs.
+     * Scans imageUrl, passage, prompt, and options for <img> tags.
+     * Downloads in batches to avoid Telegram API rate limits.
+     */
+    async function preloadAllImages() {
+        // Collect all unique image URLs from all questions
+        const imageUrlMap = new Map(); // originalUrl -> { questionRef, field }
+        const allQuestions = allQuestionsByModule.flat();
+
+        for (const question of allQuestions) {
+            // 1. Direct imageUrl field
+            if (question.imageUrl) {
+                imageUrlMap.set(question.imageUrl, true);
+            }
+
+            // 2. Scan HTML content for embedded <img> tags
+            const htmlFields = [question.passage, question.prompt];
+            const options = question.options || {};
+            Object.values(options).forEach(opt => { if (typeof opt === 'string') htmlFields.push(opt); });
+
+            for (const html of htmlFields) {
+                if (!html || typeof html !== 'string') continue;
+                const imgMatches = html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi);
+                for (const match of imgMatches) {
+                    if (match[1]) imageUrlMap.set(match[1], true);
+                }
+            }
+        }
+
+        const uniqueUrls = [...imageUrlMap.keys()];
+        if (uniqueUrls.length === 0) {
+            console.log('No images to preload.');
+            return;
+        }
+
+        console.log(`Preloading ${uniqueUrls.length} images...`);
+
+        // Update loading screen with image progress
+        if (fullscreenPromptTitle) fullscreenPromptTitle.textContent = 'Loading Test Resources...';
+        if (fullscreenPromptDesc) fullscreenPromptDesc.textContent = `Downloading images: 0 / ${uniqueUrls.length}`;
+
+        // Create a map of original URL -> blob URL
+        const blobUrlCache = new Map();
+        let loaded = 0;
+        let failed = 0;
+
+        // Download in batches of 3 to avoid rate limiting
+        const BATCH_SIZE = 3;
+        for (let i = 0; i < uniqueUrls.length; i += BATCH_SIZE) {
+            const batch = uniqueUrls.slice(i, i + BATCH_SIZE);
+            const batchPromises = batch.map(async (url) => {
+                try {
+                    // Try fetch with CORS for blob URL conversion
+                    const response = await fetch(url, { cache: 'force-cache' });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const blob = await response.blob();
+                    const blobUrl = URL.createObjectURL(blob);
+                    blobUrlCache.set(url, blobUrl);
+                    loaded++;
+                } catch (fetchErr) {
+                    // CORS blocked or network error — fallback to Image() preload
+                    // This caches the image in the browser cache
+                    try {
+                        await new Promise((resolve, reject) => {
+                            const img = new Image();
+                            img.onload = resolve;
+                            img.onerror = reject;
+                            img.crossOrigin = 'anonymous';
+                            img.src = url;
+                            // Timeout after 10 seconds
+                            setTimeout(reject, 10000);
+                        });
+                        // Image is now in browser cache, keep original URL
+                        blobUrlCache.set(url, url);
+                        loaded++;
+                    } catch (imgErr) {
+                        console.warn(`Failed to preload image: ${url}`);
+                        blobUrlCache.set(url, url); // Keep original as fallback
+                        loaded++;
+                        failed++;
+                    }
+                }
+                if (fullscreenPromptDesc) {
+                    fullscreenPromptDesc.textContent = `Downloading images: ${loaded} / ${uniqueUrls.length}`;
+                }
+            });
+            await Promise.all(batchPromises);
+
+            // Small delay between batches to be gentle on the API
+            if (i + BATCH_SIZE < uniqueUrls.length) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+
+        console.log(`Image preload complete: ${loaded - failed} success, ${failed} failed.`);
+
+        // Now replace all image URLs in questions with cached blob URLs
+        for (const question of allQuestions) {
+            // Replace direct imageUrl
+            if (question.imageUrl && blobUrlCache.has(question.imageUrl)) {
+                question.imageUrl = blobUrlCache.get(question.imageUrl);
+            }
+
+            // Replace URLs in HTML content fields
+            const fieldsToUpdate = ['passage', 'prompt'];
+            for (const field of fieldsToUpdate) {
+                if (question[field] && typeof question[field] === 'string') {
+                    question[field] = replaceImgSrcInHtml(question[field], blobUrlCache);
+                }
+            }
+
+            // Replace URLs in options
+            if (question.options) {
+                for (const key of Object.keys(question.options)) {
+                    if (typeof question.options[key] === 'string') {
+                        question.options[key] = replaceImgSrcInHtml(question.options[key], blobUrlCache);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Replaces all <img src="..."> URLs in an HTML string with cached blob URLs.
+     */
+    function replaceImgSrcInHtml(html, blobUrlCache) {
+        if (!html) return html;
+        return html.replace(/<img([^>]+)src=["']([^"']+)["']/gi, (fullMatch, attrs, originalUrl) => {
+            const cachedUrl = blobUrlCache.get(originalUrl);
+            if (cachedUrl) {
+                return `<img${attrs}src="${cachedUrl}"`;
+            }
+            return fullMatch;
+        });
     }
     function startModule(moduleIndex) {
         currentModuleIndex = moduleIndex;
@@ -202,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (stimulusPane) stimulusPane.classList.toggle('is-empty', isStimulusEmpty);
         if (stimulusPaneContent) {
             const imgPos = question.imagePosition || 'above';
-            const imgHTML = question.imageUrl ? `<img src="${question.imageUrl}" alt="Stimulus Image" style="width: ${question.imageWidth || '100%'};">` : '';
+            const imgHTML = question.imageUrl ? `<img src="${question.imageUrl}" alt="Stimulus Image" style="width: ${question.imageWidth || '100%'};" onerror="this.style.display='none'; this.insertAdjacentHTML('afterend','<p style=\\'color:#999;text-align:center;padding:20px;\\'>Image could not be loaded</p>');">` : '';
             const passageHTML = question.passage || '';
             stimulusPaneContent.innerHTML = (imgPos === 'below') ? (passageHTML + imgHTML) : (imgHTML + passageHTML);
         }

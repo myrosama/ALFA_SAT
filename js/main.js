@@ -884,7 +884,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- PROCTOR CODE HELPERS ---
     function generateProctorCode(length) {
-        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        const chars = '0123456789';
         let result = '';
         for (let i = 0; i < length; i++) {
             result += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -900,10 +900,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!input || !button) return;
 
-        const code = input.value.trim().toUpperCase().replace('-', '');
+        // Strip all non-digit characters (dashes, spaces, etc.)
+        const code = input.value.trim().replace(/\D/g, '');
 
         if (code.length !== 6) {
-            alert("Please enter a 6-letter code.");
+            alert("Please enter a 6-digit code.");
             return;
         }
 
