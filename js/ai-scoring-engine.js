@@ -1,6 +1,6 @@
 // js/ai-scoring-engine.js
-// AI-powered SAT Score Processing Engine for Proctored Tests
-// Uses Gemini 2.5 Pro for highest quality analysis
+// Score Processing Engine for ALFA SAT Proctored Tests
+// Uses Gemini 2.5 Pro for score estimation
 // Processes students one-by-one with IRT-inspired scoring prompts
 
 /**
@@ -21,11 +21,11 @@ async function processSessionScores(sessionCode, onProgress) {
     const sessionData = sessionDoc.data();
     const testId = sessionData.testId;
 
-    // 2. Mark session as processing
-    await sessionRef.update({
+    // 2. Mark session as processing (use set+merge for permissions compatibility)
+    await sessionRef.set({
         scoringStatus: 'processing',
         scoringStartedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    }, { merge: true });
 
     // 3. Fetch ALL questions for this test (for the prompt)
     const questionsSnap = await db.collection('tests').doc(testId).collection('questions').get();
@@ -44,7 +44,7 @@ async function processSessionScores(sessionCode, onProgress) {
     participantsSnap.forEach(d => participants.push({ id: d.id, ...d.data() }));
 
     if (participants.length === 0) {
-        await sessionRef.update({ scoringStatus: 'scored', scoredCount: 0 });
+        await sessionRef.set({ scoringStatus: 'scored', scoredCount: 0 }, { merge: true });
         return { success: true, scoredCount: 0, errors: [] };
     }
 
@@ -73,7 +73,6 @@ async function processSessionScores(sessionCode, onProgress) {
 
     for (let i = 0; i < resultDocs.length; i++) {
         const result = resultDocs[i];
-        const studentName = result.data.testName || 'Student';
 
         if (onProgress) onProgress(i, resultDocs.length, `Processing student ${i + 1}...`);
 
@@ -91,29 +90,29 @@ async function processSessionScores(sessionCode, onProgress) {
             );
 
             if (aiScore) {
-                await db.collection('testResults').doc(result.resultId).update({
+                await db.collection('testResults').doc(result.resultId).set({
                     aiEstimatedScore: aiScore,
                     scoringStatus: 'scored'
-                });
+                }, { merge: true });
                 scoredCount++;
             } else {
-                errors.push({ resultId: result.resultId, error: 'AI returned null' });
+                errors.push({ resultId: result.resultId, error: 'Scoring returned null' });
             }
 
             // Update session progress
-            await sessionRef.update({ scoredCount });
+            await sessionRef.set({ scoredCount }, { merge: true });
 
         } catch (err) {
             console.error(`Error scoring ${result.resultId}:`, err);
             errors.push({ resultId: result.resultId, error: err.message });
         }
 
-        if (onProgress) onProgress(i + 1, resultDocs.length, scoredCount === i + 1 ? 'Scored ✓' : 'Error');
+        if (onProgress) onProgress(i + 1, resultDocs.length, scoredCount === i + 1 ? 'Complete' : 'Error');
     }
 
     // 8. Second pass: comparison normalization (if all scored successfully)
     if (scoredCount === resultDocs.length && scoredCount > 1) {
-        if (onProgress) onProgress(scoredCount, resultDocs.length, 'Comparing scores across students...');
+        if (onProgress) onProgress(scoredCount, resultDocs.length, 'Normalizing scores...');
 
         try {
             await new Promise(r => setTimeout(r, 12000)); // Rate limit
@@ -127,15 +126,15 @@ async function processSessionScores(sessionCode, onProgress) {
     const testCreatedAt = sessionData.createdAt?.toDate?.() || new Date();
     const publishAfter = new Date(testCreatedAt.getTime() + 12 * 60 * 60 * 1000);
 
-    await sessionRef.update({
+    await sessionRef.set({
         scoringStatus: 'scored',
         scoredCount,
         totalParticipants: resultDocs.length,
         scoredAt: firebase.firestore.FieldValue.serverTimestamp(),
         publishAfter: firebase.firestore.Timestamp.fromDate(publishAfter)
-    });
+    }, { merge: true });
 
-    if (onProgress) onProgress(scoredCount, resultDocs.length, 'All students scored!');
+    if (onProgress) onProgress(scoredCount, resultDocs.length, 'Processing complete.');
 
     return { success: true, scoredCount, errors };
 }
@@ -199,8 +198,8 @@ The Digital SAT uses Item Response Theory (IRT) and equating:
 - The raw-to-scaled conversion is NOT linear — it's sigmoidal, with steeper jumps in the middle range.
 
 ## Official Score Ranges (Reference)
-- R&W: 54 questions total. Raw 54 = 800, Raw 51-52 ≈ 760-780, Raw 45-48 ≈ 660-700, Raw 35-40 ≈ 530-580
-- Math: 44 questions total. Raw 44 = 800, Raw 41-42 ≈ 780-800, Raw 35-38 ≈ 730-780, Raw 25-30 ≈ 590-660
+- R&W: 54 questions total. Raw 54 = 800, Raw 51-52 = 760-780, Raw 45-48 = 660-700, Raw 35-40 = 530-580
+- Math: 44 questions total. Raw 44 = 800, Raw 41-42 = 780-800, Raw 35-38 = 730-780, Raw 25-30 = 590-660
 
 ## This Student's Performance
 
@@ -209,8 +208,8 @@ The Digital SAT uses Item Response Theory (IRT) and equating:
 **Math Raw Score:** ${resultData.mathRaw}/${resultData.mathTotal || 44} correct
 **Static Lookup Score (for reference only):** R&W ${resultData.rwScore}, Math ${resultData.mathScore}, Total ${resultData.totalScore}
 
-**Module 1 (R&W) Performance:** ${m1Correct}/${m1Total} correct (${m1Pct}%) → ${Number(m1Pct) > 65 ? 'HARD Module 2 path' : 'EASY Module 2 path'}
-**Module 3 (Math) Performance:** ${m3Correct}/${m3Total} correct (${m3Pct}%) → ${Number(m3Pct) > 65 ? 'HARD Module 2 path' : 'EASY Module 2 path'}
+**Module 1 (R&W) Performance:** ${m1Correct}/${m1Total} correct (${m1Pct}%) — ${Number(m1Pct) > 65 ? 'HARD Module 2 path' : 'EASY Module 2 path'}
+**Module 3 (Math) Performance:** ${m3Correct}/${m3Total} correct (${m3Pct}%) — ${Number(m3Pct) > 65 ? 'HARD Module 2 path' : 'EASY Module 2 path'}
 
 **Questions WRONG (${wrongQuestions.length} total):**
 ${wrongQuestions.map(q => `- ${q.section} M${q.module} Q${q.number}: difficulty=${q.difficulty}, skill=${q.skill}, student="${q.studentAnswer}", correct="${q.correctAnswer}"`).join('\n') || 'None — perfect score!'}
@@ -256,7 +255,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
         body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
-                temperature: 0.2, // Low for consistency
+                temperature: 0.2,
                 maxOutputTokens: 1500
             }
         })
@@ -265,7 +264,6 @@ Return ONLY valid JSON (no markdown, no code blocks):
     if (!response.ok) {
         const errText = await response.text();
         console.error('Gemini 2.5 Pro error:', response.status, errText);
-        // Fallback to Flash if Pro fails
         return await scoreStudentWithFlash(prompt);
     }
 
@@ -276,7 +274,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
     try {
         return JSON.parse(jsonStr);
     } catch (e) {
-        console.error('Failed to parse AI score response:', e, rawText);
+        console.error('Failed to parse score response:', e, rawText);
         return null;
     }
 }
@@ -312,10 +310,8 @@ async function scoreStudentWithFlash(prompt) {
 
 /**
  * Second pass: compare all students' scores and normalize.
- * Sends all AI scores to Gemini for group calibration.
  */
 async function compareAndNormalizeScores(db, resultDocs, sessionCode, testId, allQuestions) {
-    // Fetch all AI scores
     const studentScores = [];
     for (const r of resultDocs) {
         const freshDoc = await db.collection('testResults').doc(r.resultId).get();
@@ -335,12 +331,12 @@ async function compareAndNormalizeScores(db, resultDocs, sessionCode, testId, al
         }
     }
 
-    if (studentScores.length < 2) return; // Need at least 2 students to compare
+    if (studentScores.length < 2) return;
 
-    const comparisonPrompt = `You are an SAT score normalization expert. Review these ${studentScores.length} students' AI-estimated scores and verify they are internally consistent.
+    const comparisonPrompt = `You are an SAT score normalization expert. Review these ${studentScores.length} students' estimated scores and verify they are internally consistent.
 
 Students:
-${studentScores.map((s, i) => `Student ${i + 1}: rwRaw=${s.rwRaw}, mathRaw=${s.mathRaw}, aiRW=${s.aiRW}, aiMath=${s.aiMath}, aiTotal=${s.aiTotal}, staticRW=${s.staticRW}, staticMath=${s.staticMath}`).join('\n')}
+${studentScores.map((s, i) => `Student ${i + 1}: rwRaw=${s.rwRaw}, mathRaw=${s.mathRaw}, estRW=${s.aiRW}, estMath=${s.aiMath}, estTotal=${s.aiTotal}, staticRW=${s.staticRW}, staticMath=${s.staticMath}`).join('\n')}
 
 Rules:
 - Higher raw scores MUST result in higher or equal scaled scores
@@ -379,27 +375,25 @@ If no adjustments needed, return: { "adjustments": [], "groupAnalysis": "..." }`
     try {
         const comparison = JSON.parse(jsonStr);
 
-        // Apply adjustments
         if (comparison.adjustments?.length > 0) {
             for (const adj of comparison.adjustments) {
                 const student = studentScores[adj.studentIndex];
                 if (student) {
-                    await db.collection('testResults').doc(student.resultId).update({
+                    await db.collection('testResults').doc(student.resultId).set({
                         'aiEstimatedScore.rwScore': adj.newRW,
                         'aiEstimatedScore.mathScore': adj.newMath,
                         'aiEstimatedScore.totalScore': adj.newTotal,
                         'aiEstimatedScore.adjustmentReason': adj.reason,
                         'aiEstimatedScore.groupAnalysis': comparison.groupAnalysis
-                    });
+                    }, { merge: true });
                 }
             }
         }
 
-        // Save group analysis to all results
         for (const s of studentScores) {
-            await db.collection('testResults').doc(s.resultId).update({
+            await db.collection('testResults').doc(s.resultId).set({
                 'aiEstimatedScore.groupAnalysis': comparison.groupAnalysis
-            });
+            }, { merge: true });
         }
     } catch (e) {
         console.warn('Score comparison parse error:', e);
@@ -423,23 +417,37 @@ async function publishSessionResults(sessionCode) {
     const participantsSnap = await sessionRef.collection('participants')
         .where('status', '==', 'completed').get();
 
-    const batch = db.batch();
     const publishedStudents = [];
 
     for (const pDoc of participantsSnap.docs) {
-        const resultId = `${pDoc.id}_${testId}_${sessionCode}`;
-        const resultRef = db.collection('testResults').doc(resultId);
-        batch.update(resultRef, { scoringStatus: 'published' });
-        publishedStudents.push(pDoc.id);
+        const userId = pDoc.id;
+        const resultId = `${userId}_${testId}_${sessionCode}`;
+
+        // Update testResults to published
+        await db.collection('testResults').doc(resultId).set(
+            { scoringStatus: 'published' }, { merge: true }
+        );
+
+        // Also update the user's completedTests for dashboard display
+        try {
+            const resultDoc = await db.collection('testResults').doc(resultId).get();
+            const resultData = resultDoc.data();
+            const finalScore = resultData?.aiEstimatedScore?.totalScore || resultData?.totalScore || 'N/A';
+            await db.collection('users').doc(userId).collection('completedTests').doc(testId).set(
+                { scoringStatus: 'published', score: finalScore }, { merge: true }
+            );
+        } catch (e) {
+            console.warn('Could not update completedTests for user:', userId, e);
+        }
+
+        publishedStudents.push(userId);
     }
 
-    await batch.commit();
-
     // 2. Update session status
-    await sessionRef.update({
+    await sessionRef.set({
         scoringStatus: 'published',
         publishedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    }, { merge: true });
 
     // 3. Send Telegram announcement
     await sendTelegramAnnouncement(sessionData.testName || 'SAT Practice Test', publishedStudents.length);
@@ -457,19 +465,17 @@ async function sendTelegramAnnouncement(testName, studentCount) {
         return;
     }
 
-    const message = `📊 *Results Released!*
+    const message = `*ALFA SAT — Score Report Release*
 
-🎯 *${testName}*
+*${testName}*
 
-Results for ${studentCount} student${studentCount !== 1 ? 's' : ''} are now available.
+Score reports for ${studentCount} student${studentCount !== 1 ? 's' : ''} are now available.
 
-Log in to your ALFA SAT account to view your score report, AI analysis, and personalized study recommendations.
+Please log in to your ALFA SAT account to access your official score report and detailed performance analysis.
 
-🔗 [View Results](https://alfasat.uz)
+[Access Your Results](https://alfasat.uz)
 
-_Scores were estimated using AI-powered IRT analysis for accuracy._
-
-© 2026 ALFA SAT`;
+ALFA SAT | 2026`;
 
     try {
         const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
@@ -485,7 +491,7 @@ _Scores were estimated using AI-powered IRT analysis for accuracy._
         });
         const data = await res.json();
         if (!data.ok) console.warn('Telegram send failed:', data);
-        else console.log('Telegram announcement sent!');
+        else console.log('Telegram announcement sent.');
     } catch (err) {
         console.error('Telegram API error:', err);
     }

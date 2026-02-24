@@ -670,9 +670,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const userTestRef = db.collection('users').doc(user.uid).collection('completedTests').doc(testId);
             await userTestRef.set({
                 score: scoreResult.totalScore,
-                completedAt: resultData.completedAt, // Use the same timestamp
-                resultId: resultId, // Link to the full result doc
-                proctorCode: proctorCode || null // For dashboard access control
+                completedAt: resultData.completedAt,
+                resultId: resultId,
+                proctorCode: proctorCode || null,
+                scoringStatus: proctorCode ? 'pending_review' : 'published'
             });
             console.log("User's completedTests subcollection updated.");
 

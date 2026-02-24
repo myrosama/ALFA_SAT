@@ -629,6 +629,15 @@ body {
     font-size: 0.7rem;
 }
 
+.test-status.pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.test-status.pending i {
+    font-size: 0.7rem;
+}
+
 .test-card.completed .card-btn.btn-view-results {
     background-color: var(--primary-blue);
     margin-top: 0;

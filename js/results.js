@@ -75,6 +75,117 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            // --- PROCTORED TEST CHECK (must be BEFORE renderHeader to prevent flash) ---
+            const isSubmitted = urlParams.get('submitted') === 'true';
+            const scoringStatus = resultData.scoringStatus || 'published';
+
+            // Fresh proctored submission — show animated upload experience
+            if (isSubmitted && resultData.proctorCode) {
+                loadingContainer.style.display = 'none';
+                resultsContainer.classList.add('loaded');
+
+                // Phase 1: Uploading animation (3.5 seconds)
+                resultsContainer.innerHTML = `
+                    <style>
+                        @keyframes uploadFill { from { width: 0%; } to { width: 100%; } }
+                        @keyframes fadeSlideUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
+                        @keyframes checkPop { 0% { transform:scale(0); opacity:0; } 60% { transform:scale(1.2); } 100% { transform:scale(1); opacity:1; } }
+                        .upload-stage { font-size:0.85rem; color:var(--dark-gray); transition: opacity 0.3s; }
+                    </style>
+                    <div id="upload-phase" style="text-align:center; padding:80px 20px; max-width:420px; margin:0 auto;">
+                        <div style="width:56px; height:56px; border-radius:50%; background:#f0f0f0; margin:0 auto 24px; display:flex; align-items:center; justify-content:center;">
+                            <i class="fa-solid fa-cloud-arrow-up" style="font-size:1.6rem; color:var(--primary-blue);"></i>
+                        </div>
+                        <h2 style="color:var(--primary-blue); margin:0 0 8px; font-size:1.25rem;">Submitting Your Test</h2>
+                        <p class="upload-stage" id="upload-stage-text">Saving responses...</p>
+                        <div style="width:100%; height:6px; background:#e9ecef; border-radius:8px; overflow:hidden; margin:20px 0;">
+                            <div id="upload-bar" style="height:100%; background:var(--primary-blue); border-radius:8px; animation:uploadFill 3.5s ease-out forwards;"></div>
+                        </div>
+                        <p style="font-size:0.75rem; color:#999;">Please wait</p>
+                    </div>
+                `;
+
+                // Animate stage text
+                const stages = ['Saving responses...', 'Verifying data...', 'Uploading to server...', 'Finalizing...'];
+                const stageEl = document.getElementById('upload-stage-text');
+                for (let s = 1; s < stages.length; s++) {
+                    setTimeout(() => { if (stageEl) stageEl.textContent = stages[s]; }, s * 900);
+                }
+
+                // Phase 2: Confirmation screen after 3.5s
+                setTimeout(() => {
+                    resultsContainer.innerHTML = `
+                        <style>
+                            @keyframes fadeSlideUp { from { opacity:0; transform:translateY(25px); } to { opacity:1; transform:translateY(0); } }
+                            @keyframes checkPop { 0% { transform:scale(0); opacity:0; } 60% { transform:scale(1.15); } 100% { transform:scale(1); opacity:1; } }
+                        </style>
+                        <div style="text-align:center; padding:60px 20px; max-width:520px; margin:0 auto; animation:fadeSlideUp 0.5s ease-out;">
+                            <div style="width:80px; height:80px; border-radius:50%; background:#e8f5e9; margin:0 auto 24px; display:flex; align-items:center; justify-content:center; animation:checkPop 0.4s ease-out 0.1s both;">
+                                <i class="fa-solid fa-check" style="font-size:2.5rem; color:#2e7d32;"></i>
+                            </div>
+                            <h2 style="color:var(--primary-blue); margin:0 0 14px; font-size:1.4rem;">Test Submitted Successfully</h2>
+                            <p style="color:var(--dark-gray); font-size:0.95rem; line-height:1.7; margin:0 0 10px;">
+                                Your test has been received and is currently being reviewed.
+                            </p>
+                            <p style="color:var(--text-color); font-size:1rem; font-weight:600; margin:0 0 20px;">
+                                Results will be available within 24 hours.
+                            </p>
+                            <p style="color:var(--dark-gray); font-size:0.85rem; margin:0 0 28px; line-height:1.5;">
+                                Score releases will be announced on our official Telegram channel.
+                            </p>
+                            <a href="https://t.me/SAT_ALFA" target="_blank" rel="noopener"
+                                style="display:inline-flex; align-items:center; gap:8px; background:var(--primary-blue); color:white; padding:14px 28px; border-radius:10px; text-decoration:none; font-weight:600; font-size:0.95rem;">
+                                <i class="fa-brands fa-telegram"></i> ALFA SAT Channel
+                            </a>
+                            <br><br>
+                            <a href="dashboard.html" style="color:var(--dark-gray); font-size:0.85rem; text-decoration:underline;">Back to Dashboard</a>
+                        </div>
+                    `;
+                }, 3500);
+
+                return;
+            }
+
+            // Returning student — proctored test not yet published
+            if (resultData.proctorCode && scoringStatus !== 'published') {
+                loadingContainer.style.display = 'none';
+                resultsContainer.classList.add('loaded');
+
+                let title, desc;
+                if (scoringStatus === 'scored') {
+                    title = 'Results Under Review';
+                    desc = 'Your scores have been calculated and are currently being finalized. They will be released shortly.';
+                } else {
+                    // pending_review or processing
+                    title = 'Results Pending';
+                    desc = 'Your test is currently being reviewed and scored. Please check back later for your results.';
+                }
+
+                resultsContainer.innerHTML = `
+                    <style>
+                        @keyframes fadeSlideUp { from { opacity:0; transform:translateY(25px); } to { opacity:1; transform:translateY(0); } }
+                        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+                    </style>
+                    <div style="text-align:center; padding:60px 20px; max-width:520px; margin:0 auto; animation:fadeSlideUp 0.5s ease-out;">
+                        <div style="width:80px; height:80px; border-radius:50%; background:linear-gradient(135deg,#fff3cd,#ffeeba); margin:0 auto 24px; display:flex; align-items:center; justify-content:center;">
+                            <i class="fa-solid fa-clock" style="font-size:2.2rem; color:#856404;"></i>
+                        </div>
+                        <h2 style="color:#856404; margin:0 0 14px; font-size:1.4rem;">${title}</h2>
+                        <p style="color:var(--dark-gray); font-size:0.95rem; line-height:1.7; margin:0 0 24px;">${desc}</p>
+                        <div style="width:180px; height:3px; margin:0 auto 28px; border-radius:3px; background:linear-gradient(90deg,#e0e0e0 25%,#c9a600 50%,#e0e0e0 75%); background-size:200% 100%; animation:shimmer 2s infinite linear;"></div>
+                        <a href="https://t.me/SAT_ALFA" target="_blank" rel="noopener"
+                            style="display:inline-flex; align-items:center; gap:8px; background:#856404; color:white; padding:14px 28px; border-radius:10px; text-decoration:none; font-weight:600; font-size:0.95rem;">
+                            <i class="fa-brands fa-telegram"></i> ALFA SAT Channel
+                        </a>
+                        <br><br>
+                        <a href="dashboard.html" style="color:var(--dark-gray); font-size:0.85rem; text-decoration:underline;">Back to Dashboard</a>
+                    </div>
+                `;
+                return;
+            }
+
+            // --- PUBLISHED OR NORMAL TEST: Render full results ---
+
             // --- 2. Render Header ---
             renderHeader(resultData);
 
@@ -150,119 +261,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // --- 7. Handle proctored test states ---
-            const isSubmitted = urlParams.get('submitted') === 'true';
-            const scoringStatus = resultData.scoringStatus || 'published';
-
-            // Fresh submission → animated upload experience
-            if (isSubmitted && resultData.proctorCode) {
-                loadingContainer.style.display = 'none';
-                resultsContainer.classList.add('loaded');
-
-                // Phase 1: Uploading animation (3.5 seconds)
-                resultsContainer.innerHTML = `
-                    <style>
-                        @keyframes uploadFill { from { width: 0%; } to { width: 100%; } }
-                        @keyframes fadeSlideUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
-                        @keyframes scaleIn { from { opacity:0; transform:scale(0.5); } to { opacity:1; transform:scale(1); } }
-                        @keyframes pulse { 0%,100% { opacity:0.6; } 50% { opacity:1; } }
-                        .upload-stage { font-size:0.85rem; color:var(--dark-gray); transition: opacity 0.3s; }
-                    </style>
-                    <div id="upload-phase" style="text-align:center; padding:80px 20px; max-width:400px; margin:0 auto;">
-                        <div style="width:60px; height:60px; border-radius:50%; background:linear-gradient(135deg,#6a0dad22,#8a2be222); margin:0 auto 24px; display:flex; align-items:center; justify-content:center;">
-                            <i class="fa-solid fa-cloud-arrow-up" style="font-size:1.8rem; color:#6a0dad; animation:pulse 1.2s infinite;"></i>
-                        </div>
-                        <h2 style="color:var(--primary-blue); margin:0 0 8px; font-size:1.3rem;">Uploading Your Test</h2>
-                        <p class="upload-stage" id="upload-stage-text">Saving answers...</p>
-                        <div style="width:100%; height:8px; background:#e9ecef; border-radius:8px; overflow:hidden; margin:20px 0;">
-                            <div id="upload-bar" style="height:100%; background:linear-gradient(90deg,#6a0dad,#8a2be2,#6a0dad); background-size:200% 100%; border-radius:8px; animation:uploadFill 3.5s ease-out forwards;"></div>
-                        </div>
-                        <p style="font-size:0.75rem; color:#aaa;">Please wait...</p>
-                    </div>
-                `;
-
-                // Animate stage text
-                const stages = ['Saving answers...', 'Encrypting data...', 'Uploading to server...', 'Almost done...'];
-                const stageEl = document.getElementById('upload-stage-text');
-                for (let s = 1; s < stages.length; s++) {
-                    setTimeout(() => { if (stageEl) stageEl.textContent = stages[s]; }, s * 900);
-                }
-
-                // Phase 2: Success reveal after 3.5s
-                setTimeout(() => {
-                    resultsContainer.innerHTML = `
-                        <div style="text-align:center; padding:50px 20px; max-width:520px; margin:0 auto; animation:fadeSlideUp 0.6s ease-out;">
-                            <style>@keyframes fadeSlideUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
-                            @keyframes checkPop { 0% { transform:scale(0); opacity:0; } 60% { transform:scale(1.2); } 100% { transform:scale(1); opacity:1; } }</style>
-                            <div style="width:90px; height:90px; border-radius:50%; background:linear-gradient(135deg,#e8f5e9,#c8e6c9); margin:0 auto 24px; display:flex; align-items:center; justify-content:center; animation:checkPop 0.5s ease-out 0.1s both;">
-                                <i class="fa-solid fa-check" style="font-size:2.8rem; color:#2e7d32;"></i>
-                            </div>
-                            <h2 style="color:var(--primary-blue); margin:0 0 14px; font-size:1.5rem;">Test Uploaded Successfully!</h2>
-                            <p style="color:var(--dark-gray); font-size:1rem; line-height:1.7; margin:0 0 10px;">
-                                Your test has been submitted and is being processed.
-                            </p>
-                            <p style="color:var(--text-color); font-size:1.05rem; font-weight:600; margin:0 0 20px;">
-                                📊 Results will be available within 1 day.
-                            </p>
-                            <p style="color:var(--dark-gray); font-size:0.85rem; margin:0 0 28px; line-height:1.5;">
-                                We will announce results on our Telegram channel. Stay tuned!
-                            </p>
-                            <a href="https://t.me/SAT_ALFA" target="_blank" rel="noopener"
-                                style="display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg,#6a0dad,#8a2be2); color:white; padding:14px 28px; border-radius:12px; text-decoration:none; font-weight:600; font-size:0.95rem; box-shadow:0 4px 15px rgba(106,13,173,0.3); transition:transform 0.2s, box-shadow 0.2s;"
-                                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(106,13,173,0.4)'"
-                                onmouseout="this.style.transform=''; this.style.boxShadow='0 4px 15px rgba(106,13,173,0.3)'">
-                                <i class="fa-brands fa-telegram"></i> Join @SAT_ALFA Channel
-                            </a>
-                            <br><br>
-                            <a href="dashboard.html" style="color:var(--primary-purple); font-size:0.85rem; text-decoration:underline; opacity:0.7;">← Back to Dashboard</a>
-                        </div>
-                    `;
-                }, 3500);
-
-                return;
-            }
-
-            // Returning student — proctored test not yet published (with animated feel)
-            if (resultData.proctorCode && scoringStatus !== 'published') {
-                loadingContainer.style.display = 'none';
-                resultsContainer.classList.add('loaded');
-
-                let icon, iconBg, title, desc;
-                if (scoringStatus === 'pending_review') {
-                    icon = 'fa-solid fa-clock';
-                    iconBg = 'linear-gradient(135deg,#fff3cd,#ffeeba)';
-                    title = 'Results Pending';
-                    desc = 'Your test is being processed by our AI scoring engine. <strong>Check back later!</strong>';
-                } else { // scored
-                    icon = 'fa-solid fa-hourglass-half';
-                    iconBg = 'linear-gradient(135deg,#d4edda,#c3e6cb)';
-                    title = 'Scores Ready — Releasing Soon';
-                    desc = 'Your score has been calculated! Results will be released once all students\' scores are finalized.';
-                }
-
-                resultsContainer.innerHTML = `
-                    <style>
-                        @keyframes fadeSlideUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
-                        @keyframes orbit { 0% { box-shadow: 0 0 0 0 rgba(106,13,173,0.3); } 50% { box-shadow: 0 0 0 16px rgba(106,13,173,0); } 100% { box-shadow: 0 0 0 0 rgba(106,13,173,0); } }
-                        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-                    </style>
-                    <div style="text-align:center; padding:60px 20px; max-width:520px; margin:0 auto; animation:fadeSlideUp 0.6s ease-out;">
-                        <div style="width:90px; height:90px; border-radius:50%; background:${iconBg}; margin:0 auto 24px; display:flex; align-items:center; justify-content:center; animation:orbit 2s ease-in-out infinite;">
-                            <i class="${icon}" style="font-size:2.5rem; color:#555;"></i>
-                        </div>
-                        <h2 style="color:var(--primary-blue); margin:0 0 14px; font-size:1.5rem;">${title}</h2>
-                        <p style="color:var(--dark-gray); font-size:1rem; line-height:1.7; margin:0 0 24px;">${desc}</p>
-                        <div style="width:200px; height:4px; margin:0 auto 28px; border-radius:4px; background:linear-gradient(90deg,#e0e0e0 25%,#6a0dad 50%,#e0e0e0 75%); background-size:200% 100%; animation:shimmer 2s infinite linear;"></div>
-                        <a href="https://t.me/SAT_ALFA" target="_blank" rel="noopener"
-                            style="display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg,#6a0dad,#8a2be2); color:white; padding:14px 28px; border-radius:12px; text-decoration:none; font-weight:600; font-size:0.95rem; box-shadow:0 4px 15px rgba(106,13,173,0.3);">
-                            <i class="fa-brands fa-telegram"></i> Follow @SAT_ALFA for updates
-                        </a>
-                        <br><br>
-                        <a href="dashboard.html" style="color:var(--primary-purple); font-size:0.85rem; text-decoration:underline; opacity:0.7;">← Back to Dashboard</a>
-                    </div>
-                `;
-                return;
-            }
 
             // --- 8. AI Score Analysis (Optional for Normal Tests) ---
             if (typeof renderAIAnalysis === 'function') {
@@ -363,12 +361,11 @@ document.addEventListener('DOMContentLoaded', () => {
             aiCard.innerHTML = `
                 <div class="ai-analysis-card" style="margin-bottom:20px;">
                     <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
-                        <i class="fa-solid fa-robot" style="color:#6a0dad; font-size:1.2rem;"></i>
-                        <h3 style="margin:0; color:#6a0dad;">AI Score Analysis</h3>
-                        <span style="background:#e8d5f5; color:#6a0dad; padding:2px 8px; border-radius:8px; font-size:0.7rem; font-weight:600;">${aiScore.confidence || 'N/A'} confidence</span>
+                        <i class="fa-solid fa-chart-line" style="color:var(--primary-blue); font-size:1.1rem;"></i>
+                        <h3 style="margin:0; color:var(--primary-blue);">Score Analysis</h3>
                     </div>
                     <p style="color:var(--dark-gray); margin:0 0 12px; font-size:0.9rem;">${aiScore.explanation || ''}</p>
-                    ${aiScore.studyRecommendation ? `<p style="background:#f0f0f0; padding:10px 14px; border-radius:8px; margin:0; font-size:0.85rem;"><i class="fa-solid fa-lightbulb" style="color:#e67e22;"></i> <strong>Study tip:</strong> ${aiScore.studyRecommendation}</p>` : ''}
+                    ${aiScore.studyRecommendation ? `<p style="background:#f0f0f0; padding:10px 14px; border-radius:8px; margin:0; font-size:0.85rem;"><i class="fa-solid fa-lightbulb" style="color:#e67e22;"></i> <strong>Recommendation:</strong> ${aiScore.studyRecommendation}</p>` : ''}
                 </div>
             `;
             resultsContainer.appendChild(aiCard);

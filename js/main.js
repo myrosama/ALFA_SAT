@@ -1193,7 +1193,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let cardHTML = '';
 
                 if (completionData) {
-                    // --- Test is COMPLETED ---
+                    // --- Test is COMPLETED (regular test grid — always show raw score) ---
                     card.classList.add('completed');
                     cardHTML = `
                         <div class="card-content">
@@ -1240,17 +1240,18 @@ document.addEventListener('DOMContentLoaded', () => {
             completedTestsMap.forEach((completionData, ctTestId) => {
                 if (!allAvailableTests.has(ctTestId)) {
                     const card = document.createElement('div');
+                    const isPending = completionData.proctorCode && completionData.scoringStatus !== 'published';
                     card.classList.add('test-card', 'completed');
                     card.innerHTML = `
                         <div class="card-content">
                             <h4>Proctored Test</h4>
                             <p>Completed via proctored session.</p>
-                            <div class="test-status completed">
-                                <i class="fa-solid fa-check-circle"></i>
-                                Finished - Score: <strong>${completionData.score || 'N/A'}</strong>
+                            <div class="test-status ${isPending ? 'pending' : 'completed'}">
+                                <i class="fa-solid ${isPending ? 'fa-clock' : 'fa-check-circle'}"></i>
+                                ${isPending ? 'Results Pending' : `Finished - Score: <strong>${completionData.score || 'N/A'}</strong>`}
                             </div>
                         </div>
-                        <a href="results.html?resultId=${completionData.resultId}" class="btn card-btn btn-view-results">View Results</a>
+                        <a href="results.html?resultId=${completionData.resultId}" class="btn card-btn btn-view-results">${isPending ? 'View Status' : 'View Results'}</a>
                     `;
                     testGrid.appendChild(card);
                 }
