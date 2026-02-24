@@ -654,42 +654,51 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                // 2. GENERATE CODE BUTTON
+                // 2. PROCTOR CODE BUTTON - Check for existing active session first
                 const generateCodeButton = e.target.closest('.generate-code-btn');
                 if (generateCodeButton && proctorCodeModal) {
                     const testIdForCode = generateCodeButton.dataset.testid;
+                    currentProctorTestId = testIdForCode;
 
-                    // Setup modal
-                    document.getElementById('proctor-code-display').innerHTML = '<span>Generating...</span>';
-                    document.getElementById('proctor-test-name').textContent = '...';
+                    // Show modal with loading state
+                    const activeSection = document.getElementById('proctor-active-section');
+                    const generateSection = document.getElementById('proctor-generate-section');
+                    const historyList = document.getElementById('proctor-history-list');
+
+                    if (activeSection) activeSection.style.display = 'none';
+                    if (generateSection) generateSection.style.display = 'none';
+                    if (historyList) historyList.innerHTML = '<p style="color: var(--dark-gray); font-size: 0.85rem;">Loading...</p>';
 
                     proctorCodeModal.classList.add('visible');
                     adminModalBackdrop.classList.add('visible');
 
                     try {
-                        // Generate code
-                        const code = generateProctorCode(6);
+                        // Check for an existing ACTIVE session for this test
+                        const activeSessionQuery = await db.collection('proctoredSessions')
+                            .where('testId', '==', testIdForCode)
+                            .where('status', '==', 'active')
+                            .limit(1)
+                            .get();
 
-                        // Get Test Name
-                        const testDoc = await db.collection('tests').doc(testIdForCode).get();
-                        const testName = testDoc.exists ? testDoc.data().name : "Unknown Test";
+                        if (!activeSessionQuery.empty) {
+                            // Active session exists — show it
+                            const sessionDoc = activeSessionQuery.docs[0];
+                            const code = sessionDoc.id;
+                            const data = sessionDoc.data();
+                            currentProctorCode = code;
+                            showActiveProctorSession(code, data.testName || 'Unknown Test', 'active');
+                        } else {
+                            // No active session — show generate button
+                            if (activeSection) activeSection.style.display = 'none';
+                            if (generateSection) generateSection.style.display = 'block';
+                        }
 
-                        // Save to Firestore
-                        await db.collection('proctoredSessions').doc(code).set({
-                            testId: testIdForCode,
-                            testName: testName,
-                            adminId: userId, // Use passed userId
-                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-
-                        // Display
-                        currentProctorCode = code;
-                        document.getElementById('proctor-code-display').innerHTML = `<span>${code.slice(0, 3)}-${code.slice(3)}</span>`;
-                        document.getElementById('proctor-test-name').textContent = testName;
+                        // Load past (revoked) sessions
+                        loadPastSessions(testIdForCode);
 
                     } catch (err) {
-                        console.error("Error generating proctor code:", err);
-                        document.getElementById('proctor-code-display').innerHTML = `<span style="font-size: 1rem; color: var(--error-red);">Error</span>`;
+                        console.error("Error checking proctor sessions:", err);
+                        if (generateSection) generateSection.style.display = 'block';
                     }
                 }
 
@@ -786,10 +795,89 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeProctorBtn = document.getElementById('close-proctor-modal');
     const copyProctorCodeBtn = document.getElementById('copy-proctor-code-btn');
     const viewSessionBtn = document.getElementById('view-session-btn');
+    const revokeProctorBtn = document.getElementById('revoke-proctor-btn');
+    const generateNewCodeBtn = document.getElementById('generate-new-code-btn');
 
-    // Track the current proctor code for button actions
+    // Track the current proctor code & test for button actions
     let currentProctorCode = null;
+    let currentProctorTestId = null;
 
+    /** Shows the active session UI with given code and test name */
+    function showActiveProctorSession(code, testNameStr, status) {
+        const activeSection = document.getElementById('proctor-active-section');
+        const generateSection = document.getElementById('proctor-generate-section');
+        const statusBadge = document.getElementById('proctor-status-badge');
+        const statusText = document.getElementById('proctor-status-text');
+
+        if (activeSection) activeSection.style.display = 'block';
+        if (generateSection) generateSection.style.display = 'none';
+
+        document.getElementById('proctor-code-display').innerHTML = `<span>${code.slice(0, 3)}-${code.slice(3)}</span>`;
+        document.getElementById('proctor-test-name').textContent = testNameStr;
+        currentProctorCode = code;
+
+        if (statusBadge) {
+            statusBadge.className = `proctor-status-badge ${status}`;
+        }
+        if (statusText) {
+            statusText.textContent = status === 'active' ? 'Active' : 'Revoked';
+        }
+        if (revokeProctorBtn) {
+            revokeProctorBtn.style.display = status === 'active' ? 'flex' : 'none';
+        }
+    }
+
+    /** Loads past (revoked) sessions for a test into the history list */
+    async function loadPastSessions(testIdForHistory) {
+        const historyList = document.getElementById('proctor-history-list');
+        if (!historyList) return;
+
+        try {
+            const sessionsQuery = await db.collection('proctoredSessions')
+                .where('testId', '==', testIdForHistory)
+                .where('status', '==', 'revoked')
+                .orderBy('createdAt', 'desc')
+                .limit(10)
+                .get();
+
+            if (sessionsQuery.empty) {
+                historyList.innerHTML = '<p style="color: var(--dark-gray); font-size: 0.85rem;">No past sessions yet.</p>';
+                return;
+            }
+
+            let html = '';
+            sessionsQuery.forEach(doc => {
+                const data = doc.data();
+                const code = doc.id;
+                const formattedCode = code.slice(0, 3) + '-' + code.slice(3);
+                const createdDate = data.createdAt?.toDate();
+                const dateStr = createdDate ? createdDate.toLocaleDateString() + ' ' + createdDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+
+                html += `
+                    <div class="past-session-item" data-code="${code}" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 6px; cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='var(--light-gray)'" onmouseout="this.style.background='white'">
+                        <div>
+                            <strong style="font-family: monospace; letter-spacing: 2px;">${formattedCode}</strong>
+                            <div style="font-size: 0.75rem; color: var(--dark-gray);">${dateStr}</div>
+                        </div>
+                        <i class="fa-solid fa-arrow-right" style="color: var(--dark-gray);"></i>
+                    </div>`;
+            });
+            historyList.innerHTML = html;
+
+            // Add click handlers for past sessions
+            historyList.querySelectorAll('.past-session-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const code = item.dataset.code;
+                    window.open(`proctor-session.html?code=${code}`, '_blank');
+                });
+            });
+        } catch (err) {
+            console.error('Error loading past sessions:', err);
+            historyList.innerHTML = '<p style="color: var(--error-red); font-size: 0.85rem;">Error loading history.</p>';
+        }
+    }
+
+    // Close modal
     if (closeProctorBtn) {
         closeProctorBtn.addEventListener('click', () => {
             proctorCodeModal.classList.remove('visible');
@@ -799,6 +887,70 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Generate New Code
+    if (generateNewCodeBtn) {
+        generateNewCodeBtn.addEventListener('click', async () => {
+            if (!currentProctorTestId) return;
+            generateNewCodeBtn.disabled = true;
+            generateNewCodeBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating...';
+
+            try {
+                const code = generateProctorCode(6);
+                const testDoc = await db.collection('tests').doc(currentProctorTestId).get();
+                const testNameStr = testDoc.exists ? testDoc.data().name : "Unknown Test";
+
+                await db.collection('proctoredSessions').doc(code).set({
+                    testId: currentProctorTestId,
+                    testName: testNameStr,
+                    adminId: auth.currentUser?.uid || '',
+                    status: 'active',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                showActiveProctorSession(code, testNameStr, 'active');
+            } catch (err) {
+                console.error("Error generating proctor code:", err);
+                alert("Error generating code: " + err.message);
+            }
+            generateNewCodeBtn.disabled = false;
+            generateNewCodeBtn.innerHTML = '<i class="fa-solid fa-plus"></i> Generate New Code';
+        });
+    }
+
+    // Revoke Code
+    if (revokeProctorBtn) {
+        revokeProctorBtn.addEventListener('click', async () => {
+            if (!currentProctorCode) return;
+            if (!confirm('Revoke this code? Students will no longer be able to use it.')) return;
+
+            revokeProctorBtn.disabled = true;
+            revokeProctorBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Revoking...';
+
+            try {
+                await db.collection('proctoredSessions').doc(currentProctorCode).update({
+                    status: 'revoked',
+                    revokedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Refresh the modal
+                const activeSection = document.getElementById('proctor-active-section');
+                const generateSection = document.getElementById('proctor-generate-section');
+                if (activeSection) activeSection.style.display = 'none';
+                if (generateSection) generateSection.style.display = 'block';
+                currentProctorCode = null;
+
+                // Reload history
+                if (currentProctorTestId) loadPastSessions(currentProctorTestId);
+            } catch (err) {
+                console.error("Error revoking code:", err);
+                alert("Error revoking code: " + err.message);
+            }
+            revokeProctorBtn.disabled = false;
+            revokeProctorBtn.innerHTML = '<i class="fa-solid fa-ban"></i> Revoke Code';
+        });
+    }
+
+    // Copy Code
     if (copyProctorCodeBtn) {
         copyProctorCodeBtn.addEventListener('click', () => {
             if (currentProctorCode) {
@@ -809,7 +961,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         copyProctorCodeBtn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy Code';
                     }, 2000);
                 }).catch(() => {
-                    // Fallback for older browsers
                     const temp = document.createElement('textarea');
                     temp.value = formattedCode;
                     document.body.appendChild(temp);
@@ -825,6 +976,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // View Session
     if (viewSessionBtn) {
         viewSessionBtn.addEventListener('click', () => {
             if (currentProctorCode) {
@@ -832,8 +984,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
-
     // --- LOGOUT & PAGE PROTECTION ---
     auth.onAuthStateChanged(async (user) => {
         const protectedPages = ['dashboard.html', 'admin.html', 'edit-test.html', 'test.html', 'review.html', 'results.html'];
@@ -916,7 +1066,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const doc = await sessionRef.get();
 
             if (doc.exists) {
-                const testId = doc.data().testId;
+                const sessionData = doc.data();
+                const testId = sessionData.testId;
+
+                // Check if session is active (not revoked)
+                if (sessionData.status === 'revoked') {
+                    alert("This session code has been revoked by the administrator.");
+                    button.disabled = false;
+                    button.textContent = "Start Proctored Test";
+                    return;
+                }
+
                 if (testId) {
                     window.location.href = `test.html?id=${testId}&proctorCode=${code}`;
                 } else {

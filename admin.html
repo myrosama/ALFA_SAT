@@ -155,22 +155,53 @@
     </div>
 
     <!-- +++ Proctored Code Modal +++ -->
-    <div class="admin-modal" id="proctor-code-modal">
-        <h3 id="proctor-modal-title">Proctored Session Code</h3>
-        <div class="proctor-code-display" id="proctor-code-display">Generating...</div>
-        <div class="proctor-code-info">Test: <strong id="proctor-test-name">...</strong></div>
-        <div class="form-actions" style="justify-content: center; gap: 12px; flex-wrap: wrap;">
-            <button type="button" class="btn btn-secondary" id="copy-proctor-code-btn"
-                style="display: flex; align-items: center; gap: 8px;">
-                <i class="fa-regular fa-copy"></i> Copy Code
+    <div class="admin-modal" id="proctor-code-modal" style="max-height: 80vh; overflow-y: auto;">
+        <h3 id="proctor-modal-title">Proctored Session</h3>
+
+        <!-- Active Session Section -->
+        <div id="proctor-active-section">
+            <div class="proctor-status-badge active" id="proctor-status-badge">
+                <i class="fa-solid fa-signal"></i> <span id="proctor-status-text">Active</span>
+            </div>
+            <div class="proctor-code-display" id="proctor-code-display">---</div>
+            <div class="proctor-code-info">Test: <strong id="proctor-test-name">...</strong></div>
+            <div class="form-actions" style="justify-content: center; gap: 10px; flex-wrap: wrap;">
+                <button type="button" class="btn btn-secondary" id="copy-proctor-code-btn"
+                    style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-regular fa-copy"></i> Copy Code
+                </button>
+                <button type="button" class="btn btn-primary" id="view-session-btn"
+                    style="display: flex; align-items: center; gap: 8px; margin-top: 0;">
+                    <i class="fa-solid fa-chart-line"></i> View Session
+                </button>
+            </div>
+            <button type="button" class="btn" id="revoke-proctor-btn"
+                style="width: 100%; margin-top: 10px; background-color: #e74c3c; color: white; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <i class="fa-solid fa-ban"></i> Revoke Code
             </button>
-            <button type="button" class="btn btn-primary" id="view-session-btn"
-                style="display: flex; align-items: center; gap: 8px; margin-top: 0;">
-                <i class="fa-solid fa-chart-line"></i> View Live Session
-            </button>
-            <button type="button" class="btn" id="close-proctor-modal"
-                style="background-color: var(--light-gray); color: var(--dark-gray); width: 100%;">Done</button>
         </div>
+
+        <!-- No Active Session - Generate New -->
+        <div id="proctor-generate-section" style="display: none; text-align: center;">
+            <p style="color: var(--dark-gray); margin-bottom: 15px;">No active proctored session for this test.</p>
+            <button type="button" class="btn btn-primary" id="generate-new-code-btn"
+                style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <i class="fa-solid fa-plus"></i> Generate New Code
+            </button>
+        </div>
+
+        <!-- Past Sessions List -->
+        <div id="proctor-history-section"
+            style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+            <h4 style="margin: 0 0 10px 0; font-size: 0.95rem; color: var(--dark-gray);"><i
+                    class="fa-solid fa-clock-rotate-left"></i> Past Sessions</h4>
+            <div id="proctor-history-list" style="max-height: 200px; overflow-y: auto;">
+                <p style="color: var(--dark-gray); font-size: 0.85rem;">Loading...</p>
+            </div>
+        </div>
+
+        <button type="button" class="btn" id="close-proctor-modal"
+            style="background-color: var(--light-gray); color: var(--dark-gray); width: 100%; margin-top: 15px;">Close</button>
     </div>
 
     <!-- Scripts -->

@@ -971,4 +971,27 @@ body {
     font-size: 0.95rem;
 }
 
+.proctor-status-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin: 0 auto 10px auto;
+    width: fit-content;
+}
+
+.proctor-status-badge.active {
+    background-color: #e6f7eb;
+    color: #0d6832;
+}
+
+.proctor-status-badge.revoked {
+    background-color: #f0f0f0;
+    color: var(--dark-gray);
+}
+
 /* +++ END Proctored Code Modal Styles +++ */
