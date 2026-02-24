@@ -192,41 +192,34 @@ document.addEventListener('DOMContentLoaded', () => {
         let loaded = 0;
         let failed = 0;
 
-        // Download in batches of 3 to avoid rate limiting
-        const BATCH_SIZE = 3;
+        // Preload using Image() elements — NO fetch, NO CORS issues
+        // Browser caches the image for subsequent <img> display
+        const BATCH_SIZE = 5;
         for (let i = 0; i < uniqueUrls.length; i += BATCH_SIZE) {
             const batch = uniqueUrls.slice(i, i + BATCH_SIZE);
             const batchPromises = batch.map(async (url) => {
                 try {
-                    // Try fetch with CORS for blob URL conversion
-                    const response = await fetch(url, { cache: 'force-cache' });
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    const blob = await response.blob();
-                    const blobUrl = URL.createObjectURL(blob);
-                    blobUrlCache.set(url, blobUrl);
+                    await new Promise((resolve, reject) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            loaded++;
+                            resolve();
+                        };
+                        img.onerror = () => {
+                            failed++;
+                            loaded++;
+                            resolve(); // Don't block on failed images
+                        };
+                        // Do NOT set crossOrigin — Telegram API doesn't support CORS
+                        // Images still load and cache fine without it
+                        img.src = url;
+                        setTimeout(() => { failed++; loaded++; resolve(); }, 15000);
+                    });
+                    blobUrlCache.set(url, url); // Keep original URL (browser cached)
+                } catch (err) {
+                    blobUrlCache.set(url, url);
                     loaded++;
-                } catch (fetchErr) {
-                    // CORS blocked or network error — fallback to Image() preload
-                    // This caches the image in the browser cache
-                    try {
-                        await new Promise((resolve, reject) => {
-                            const img = new Image();
-                            img.onload = resolve;
-                            img.onerror = reject;
-                            img.crossOrigin = 'anonymous';
-                            img.src = url;
-                            // Timeout after 10 seconds
-                            setTimeout(reject, 10000);
-                        });
-                        // Image is now in browser cache, keep original URL
-                        blobUrlCache.set(url, url);
-                        loaded++;
-                    } catch (imgErr) {
-                        console.warn(`Failed to preload image: ${url}`);
-                        blobUrlCache.set(url, url); // Keep original as fallback
-                        loaded++;
-                        failed++;
-                    }
+                    failed++;
                 }
                 if (fullscreenPromptDesc) {
                     fullscreenPromptDesc.textContent = `Downloading images: ${loaded} / ${uniqueUrls.length}`;
@@ -234,9 +227,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             await Promise.all(batchPromises);
 
-            // Small delay between batches to be gentle on the API
+            // Small delay between batches
             if (i + BATCH_SIZE < uniqueUrls.length) {
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise(resolve => setTimeout(resolve, 50));
             }
         }
 
@@ -663,7 +656,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 mathTotal: scoreResult.mathTotal,
 
                 userAnswers: userAnswers, // Save all user answers
-                proctorCode: proctorCode || null // Store proctor code for access control
+                proctorCode: proctorCode || null, // Store proctor code for access control
+                scoringStatus: proctorCode ? 'pending_review' : 'published'
                 // Note: Questions are NOT stored here to avoid exceeding Firestore's 1MB limit.
                 // The results page fetches questions directly from the test document.
             };

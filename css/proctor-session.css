@@ -188,10 +188,122 @@
     color: var(--primary-blue);
 }
 
+.ai-score-value {
+    font-weight: 700;
+    color: #6a0dad;
+    font-size: 1.05rem;
+}
+
 /* --- Exit Warning --- */
 .exit-warning {
     color: var(--error-red);
     font-weight: 700;
+}
+
+/* --- Scoring Section --- */
+.scoring-section {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 24px;
+}
+
+.scoring-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.scoring-header h3 {
+    margin: 0;
+    color: var(--primary-blue);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.2rem;
+}
+
+.scoring-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: #f0f0f0;
+    color: var(--dark-gray);
+}
+
+.scoring-status-badge.processing {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.scoring-status-badge.scored {
+    background: #d4edda;
+    color: #155724;
+}
+
+.scoring-status-badge.published {
+    background: #e8d5f5;
+    color: #6a0dad;
+}
+
+.scoring-progress {
+    margin-bottom: 16px;
+}
+
+.scoring-progress-bar {
+    width: 100%;
+    height: 10px;
+    background: #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.scoring-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #6a0dad, #8a2be2);
+    border-radius: 8px;
+    transition: width 0.5s ease;
+}
+
+.scoring-progress-text {
+    font-size: 0.8rem;
+    color: var(--dark-gray);
+    font-weight: 500;
+}
+
+.scoring-actions {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.scoring-note {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--dark-gray);
+    line-height: 1.5;
+}
+
+.scoring-note i {
+    color: var(--primary-blue);
+}
+
+/* Status badges for scoring */
+.status-badge.pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status-badge.scored {
+    background-color: #d4edda;
+    color: #155724;
 }
 
 /* --- Responsive --- */
@@ -207,5 +319,9 @@
 
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
+    }
+
+    .scoring-actions {
+        flex-direction: column;
     }
 }

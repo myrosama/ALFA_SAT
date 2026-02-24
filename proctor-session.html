@@ -59,6 +59,33 @@
             </div>
         </div>
 
+        <!-- SCORING CONTROLS -->
+        <div class="scoring-section" id="scoring-section">
+            <div class="scoring-header">
+                <h3><i class="fa-solid fa-robot"></i> AI Score Processing</h3>
+                <div class="scoring-status-badge" id="scoring-status-badge">Pending</div>
+            </div>
+            <div class="scoring-progress" id="scoring-progress" style="display:none;">
+                <div class="scoring-progress-bar">
+                    <div class="scoring-progress-fill" id="scoring-progress-fill" style="width:0%"></div>
+                </div>
+                <span class="scoring-progress-text" id="scoring-progress-text">0/0 students scored</span>
+            </div>
+            <div class="scoring-actions">
+                <button class="btn btn-primary" id="process-scores-btn">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Process Scores with AI
+                </button>
+                <button class="btn btn-secondary" id="publish-results-btn" disabled>
+                    <i class="fa-solid fa-bullhorn"></i> Publish Results Now
+                </button>
+            </div>
+            <p class="scoring-note" id="scoring-note">
+                <i class="fa-solid fa-info-circle"></i>
+                Click "Process Scores" to analyze each student's performance with AI. Results will auto-publish 12 hours
+                after the test.
+            </p>
+        </div>
+
         <div class="participants-section">
             <h3><i class="fa-solid fa-list-check"></i> Participants</h3>
             <div class="participants-table-wrapper">
@@ -69,13 +96,14 @@
                             <th>Name</th>
                             <th>Status</th>
                             <th>Module</th>
-                            <th>Score</th>
+                            <th>Raw Score</th>
+                            <th>AI Score</th>
                             <th><i class="fa-solid fa-display" title="Fullscreen Exits"></i> Exits</th>
                         </tr>
                     </thead>
                     <tbody id="participants-tbody">
                         <tr>
-                            <td colspan="6" style="text-align:center; color: var(--dark-gray);">Loading participants...
+                            <td colspan="7" style="text-align:center; color: var(--dark-gray);">Loading participants...
                             </td>
                         </tr>
                     </tbody>
@@ -89,6 +117,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
     <script src="js/firebase-init.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/ai-scoring-engine.js"></script>
     <script src="js/proctor-session.js"></script>
 </body>
 
