@@ -101,8 +101,8 @@ document.addEventListener('DOMContentLoaded', () => {
         10: 290, 11: 300, 12: 310, 13: 320, 14: 330, 15: 340, 16: 350, 17: 360, 18: 370,
         19: 380, 20: 390, 21: 400, 22: 410, 23: 420, 24: 430, 25: 440, 26: 450, 27: 460,
         28: 470, 29: 480, 30: 490, 31: 500, 32: 510, 33: 510, 34: 520, 35: 530, 36: 540,
-        37: 550, 38: 560, 39: 570, 40: 580, 41: 590, 42: 600, 43: 610, 44: 630, 45: 640,
-        46: 650, 47: 670, 48: 680, 49: 690, 50: 710, 51: 730, 52: 740, 53: 760, 54: 800
+        37: 550, 38: 560, 39: 570, 40: 580, 41: 590, 42: 600, 43: 620, 44: 640, 45: 660,
+        46: 670, 47: 690, 48: 700, 49: 720, 50: 740, 51: 760, 52: 770, 53: 790, 54: 800
     };
     // Table for Math (44 total questions)
     const mathScoreTable = {
@@ -411,18 +411,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Starts the timer for a given duration in seconds.
+     * Includes: persistent save every 10s, visual+audio warnings at 5min and 1min.
      * @param {number} duration - The total time for the timer.
      */
     function startTimer(duration) {
         if (typeof duration !== 'number' || duration <= 0) { if (timerDisplay) timerDisplay.textContent = "00:00"; return; }
 
         let timer = duration;
+        let warned5min = duration <= 300; // Don't re-warn if already under 5min
+        let warned1min = duration <= 60;
 
-        // +++ THIS IS THE FIX +++
-        // Always clear any existing timer before starting a new one.
         clearInterval(timerInterval);
-        // +++ END OF FIX +++
-
         currentTimerSeconds = timer;
 
         if (!timerDisplay) return;
@@ -432,15 +431,111 @@ document.addEventListener('DOMContentLoaded', () => {
             let secs = timer % 60;
             timerDisplay.textContent = `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
 
-            // This logic is correct. It updates the global var AND decrements the local one.
+            // Visual styling for low time
+            if (timer <= 60) {
+                timerDisplay.style.color = '#e74c3c';
+                timerDisplay.style.fontWeight = '700';
+                if (timer % 2 === 0) timerDisplay.style.opacity = '1';
+                else timerDisplay.style.opacity = '0.6'; // Pulse effect
+            } else if (timer <= 300) {
+                timerDisplay.style.color = '#f39c12';
+                timerDisplay.style.fontWeight = '600';
+                timerDisplay.style.opacity = '1';
+            } else {
+                timerDisplay.style.color = '';
+                timerDisplay.style.fontWeight = '';
+                timerDisplay.style.opacity = '1';
+            }
+
+            // 5-minute warning
+            if (!warned5min && timer === 300) {
+                warned5min = true;
+                showTimerWarning('5 minutes remaining!', '#f39c12');
+                playWarningBeep(2);
+            }
+
+            // 1-minute warning
+            if (!warned1min && timer === 60) {
+                warned1min = true;
+                showTimerWarning('1 minute remaining!', '#e74c3c');
+                playWarningBeep(3);
+            }
+
             currentTimerSeconds = --timer;
+
+            // Persist timer every 10 seconds
+            if (timer % 10 === 0) {
+                saveTestState();
+            }
 
             if (timer < 0) {
                 clearInterval(timerInterval);
+                timerDisplay.style.opacity = '1';
                 alert("Time's up!");
                 showReviewScreen(true);
             }
         }, 1000);
+    }
+
+    /** Shows a temporary warning banner at the top of the test area */
+    function showTimerWarning(message, color) {
+        const existing = document.getElementById('timer-warning-banner');
+        if (existing) existing.remove();
+
+        const banner = document.createElement('div');
+        banner.id = 'timer-warning-banner';
+        banner.innerHTML = `<i class="fa-solid fa-clock"></i> ${message}`;
+        banner.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; z-index: 10000;
+            background: ${color}; color: white; text-align: center;
+            padding: 10px 20px; font-weight: 700; font-size: 1rem;
+            font-family: 'Poppins', sans-serif;
+            animation: slideDown 0.3s ease;
+        `;
+
+        // Add animation keyframes if not already present
+        if (!document.getElementById('timer-warning-styles')) {
+            const style = document.createElement('style');
+            style.id = 'timer-warning-styles';
+            style.textContent = `
+                @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+            `;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(banner);
+
+        // Auto-dismiss after 4 seconds
+        setTimeout(() => {
+            if (banner.parentNode) {
+                banner.style.transition = 'opacity 0.5s';
+                banner.style.opacity = '0';
+                setTimeout(() => banner.remove(), 500);
+            }
+        }, 4000);
+    }
+
+    /** Plays a warning beep using Web Audio API (no external files needed) */
+    function playWarningBeep(count) {
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.frequency.value = 880; // A5 note
+                    osc.type = 'sine';
+                    gain.gain.value = 0.3;
+                    osc.start(audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                    osc.stop(audioCtx.currentTime + 0.3);
+                }, i * 400);
+            }
+        } catch (e) {
+            // Audio not available — visual warning still works
+        }
     }
 
     /**
@@ -545,8 +640,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // 2. Calculate score
             const scoreResult = calculateScore();
 
-            // 3. Create result ID (user UID + test ID)
-            const resultId = `${user.uid}_${testId}`;
+            // 3. Create result ID (user UID + test ID, with proctorCode for proctored sessions)
+            const resultId = proctorCode
+                ? `${user.uid}_${testId}_${proctorCode}`
+                : `${user.uid}_${testId}`;
             const resultRef = db.collection('testResults').doc(resultId);
 
             // 4. Create result data object
@@ -565,7 +662,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 rwTotal: scoreResult.rwTotal,
                 mathTotal: scoreResult.mathTotal,
 
-                userAnswers: userAnswers // Save all user answers
+                userAnswers: userAnswers, // Save all user answers
+                proctorCode: proctorCode || null // Store proctor code for access control
                 // Note: Questions are NOT stored here to avoid exceeding Firestore's 1MB limit.
                 // The results page fetches questions directly from the test document.
             };
@@ -579,7 +677,8 @@ document.addEventListener('DOMContentLoaded', () => {
             await userTestRef.set({
                 score: scoreResult.totalScore,
                 completedAt: resultData.completedAt, // Use the same timestamp
-                resultId: resultId // Link to the full result doc
+                resultId: resultId, // Link to the full result doc
+                proctorCode: proctorCode || null // For dashboard access control
             });
             console.log("User's completedTests subcollection updated.");
 
@@ -601,8 +700,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // 7. Redirect to the new results page
-            window.location.href = `results.html?resultId=${resultId}`;
+            // 7. Remove beforeunload to prevent "leave page" dialog
+            window.removeEventListener('beforeunload', saveTestState);
+
+            // 8. Redirect based on test type
+            if (proctorCode) {
+                // PROCTORED: Show submission complete page (results released later)
+                window.location.href = `results.html?resultId=${resultId}&submitted=true`;
+            } else {
+                // NORMAL: Show results immediately
+                window.location.href = `results.html?resultId=${resultId}`;
+            }
 
         } catch (error) {
             console.error("Error finishing test and saving results:", error);
@@ -1204,7 +1312,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // OLD Highlighter button - now hidden by updateUI
     if (highlighterBtn) { highlighterBtn.style.display = 'none'; } // Explicitly hide old button
     if (calculatorBtn) { calculatorBtn.addEventListener('click', () => toggleCalculator()); } else { console.warn("Calculator Button missing."); }
-    if (closeCalculatorBtn) { closeCalculatorBtn.addEventListener('click', () => { isCalculatorVisible = false; toggleCalculator(false); }); } else { console.warn("Close Calculator Button missing."); }
+    if (closeCalculatorBtn) { closeCalculatorBtn.addEventListener('click', () => { isCalculatorVisible = true; toggleCalculator(false); }); } else { console.warn("Close Calculator Button missing."); }
     if (calculatorHeader) { calculatorHeader.addEventListener('mousedown', startDrag); } else { console.warn("Calculator Header missing."); }
     if (calcResizeHandle) { calcResizeHandle.addEventListener('mousedown', startResize); } else { console.warn("Calculator Resize Handle missing."); }
     if (calcSizeToggleBtn) { calcSizeToggleBtn.addEventListener('click', () => toggleMaximizeCalculator()); } else { console.warn("Calculator Size Toggle Button missing."); }

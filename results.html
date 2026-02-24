@@ -49,7 +49,13 @@
     -->
     <template id="results-header-template">
         <div class="results-header">
-            <h2 id="test-name-display">Test Results: </h2>
+            <div class="results-header-title">
+                <h2 id="test-name-display">Test Results: </h2>
+                <button class="btn btn-primary" id="download-cert-btn"
+                    style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; font-size: 0.85rem;">
+                    <i class="fa-solid fa-file-pdf"></i> Download Certificate
+                </button>
+            </div>
             <div class="score-summary-grid">
                 <!-- Total Score -->
                 <div class="score-card total-score-card">
@@ -108,6 +114,12 @@
     <script src="js/firebase-init.js"></script>
     <!-- New results page script -->
     <script src="js/results.js"></script>
+    <!-- Certificate PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="js/certificate.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/ai-analysis.js"></script>
     <!-- Main script for auth state / logout button -->
     <script src="js/main.js"></script>
 

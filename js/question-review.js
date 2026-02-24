@@ -92,6 +92,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            // --- Proctored Review Access Control ---
+            if (resultData.proctorCode) {
+                try {
+                    const sessionDoc = await db.collection('proctoredSessions').doc(resultData.proctorCode).get();
+                    if (sessionDoc.exists && sessionDoc.data().status === 'revoked') {
+                        showError("Question review is not available. This proctored session has been closed by the administrator.");
+                        return;
+                    }
+                } catch (err) {
+                    console.warn('Could not check proctored session status:', err);
+                }
+            }
+
             // --- 2. Fetch the Specific Question from the Original Test Document ---
             // Questions are NOT stored in testResults to avoid Firestore's 1MB limit.
             const testId = resultData.testId;
@@ -110,7 +123,42 @@ document.addEventListener('DOMContentLoaded', () => {
             // --- 3. Render Content ---
             renderPageContent();
 
-            // --- 4. Finalize ---
+            // --- 4. Build question navigation (prev/next) ---
+            const allQDocs = await db.collection('tests').doc(testId).collection('questions').get();
+            const orderedQuestions = [];
+            allQDocs.forEach(d => orderedQuestions.push({ id: d.id, ...d.data() }));
+            orderedQuestions.sort((a, b) => {
+                if (a.module !== b.module) return a.module - b.module;
+                return (a.questionNumber || 0) - (b.questionNumber || 0);
+            });
+
+            const qIds = orderedQuestions.map(q => q.id);
+            const currentIdx = qIds.indexOf(questionId);
+
+            const prevBtn = document.getElementById('review-prev-btn');
+            const nextBtnNav = document.getElementById('review-next-btn');
+            const counterEl = document.getElementById('review-question-counter');
+
+            if (counterEl && currentIdx >= 0) {
+                counterEl.textContent = `Question ${currentIdx + 1} of ${qIds.length}`;
+            }
+
+            function navigateToQuestion(idx) {
+                const newQId = qIds[idx];
+                const newUrl = `question-review.html?resultId=${resultId}&questionId=${newQId}`;
+                window.location.href = newUrl;
+            }
+
+            if (prevBtn && currentIdx > 0) {
+                prevBtn.disabled = false;
+                prevBtn.addEventListener('click', () => navigateToQuestion(currentIdx - 1));
+            }
+            if (nextBtnNav && currentIdx < qIds.length - 1) {
+                nextBtnNav.disabled = false;
+                nextBtnNav.addEventListener('click', () => navigateToQuestion(currentIdx + 1));
+            }
+
+            // --- 5. Finalize ---
             if (loadingContainer) loadingContainer.style.display = 'none';
             if (contentBody) contentBody.style.visibility = 'visible';
             renderAllMath();

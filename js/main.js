@@ -1234,6 +1234,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 testGrid.appendChild(card);
             });
 
+            // --- Render orphaned proctored test results ---
+            // These are tests the student completed via proctored code
+            // but they don't appear in the visible tests list
+            completedTestsMap.forEach((completionData, ctTestId) => {
+                if (!allAvailableTests.has(ctTestId)) {
+                    const card = document.createElement('div');
+                    card.classList.add('test-card', 'completed');
+                    card.innerHTML = `
+                        <div class="card-content">
+                            <h4>Proctored Test</h4>
+                            <p>Completed via proctored session.</p>
+                            <div class="test-status completed">
+                                <i class="fa-solid fa-check-circle"></i>
+                                Finished - Score: <strong>${completionData.score || 'N/A'}</strong>
+                            </div>
+                        </div>
+                        <a href="results.html?resultId=${completionData.resultId}" class="btn card-btn btn-view-results">View Results</a>
+                    `;
+                    testGrid.appendChild(card);
+                }
+            });
+
         } catch (error) {
             console.error("Error fetching tests for student dashboard:", error);
             testGrid.innerHTML = '<p>Could not load tests due to an error. Please try refreshing the page.</p>';

@@ -111,6 +111,134 @@ document.addEventListener('DOMContentLoaded', () => {
             // Render any math formulas in the dynamically added content
             renderAllMath();
 
+            // --- 5. Wire Certificate Download Button ---
+            const certBtn = document.getElementById('download-cert-btn');
+            if (certBtn && typeof generateCertificatePDF === 'function') {
+                certBtn.addEventListener('click', async () => {
+                    certBtn.disabled = true;
+                    certBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating PDF...';
+                    try {
+                        const userName = auth.currentUser?.displayName || 'Student';
+                        await generateCertificatePDF(resultData, userName);
+                    } catch (err) {
+                        console.error('Certificate generation error:', err);
+                        alert('Error generating certificate. Please try again.');
+                    }
+                    certBtn.disabled = false;
+                    certBtn.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Download Score Certificate';
+                });
+            }
+
+            // --- 6. Proctored Review Access Control ---
+            if (resultData.proctorCode) {
+                try {
+                    const sessionDoc = await db.collection('proctoredSessions').doc(resultData.proctorCode).get();
+                    if (sessionDoc.exists && sessionDoc.data().status === 'revoked') {
+                        // Hide all review sections (question grids)
+                        document.querySelectorAll('.review-section').forEach(section => {
+                            section.innerHTML = `
+                                <div style="text-align: center; padding: 30px; color: var(--dark-gray);">
+                                    <i class="fa-solid fa-lock" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
+                                    <p><strong>Question review is not available.</strong></p>
+                                    <p style="font-size: 0.85rem;">This proctored session has been closed by the administrator.</p>
+                                </div>
+                            `;
+                        });
+                    }
+                } catch (err) {
+                    console.warn('Could not check proctored session status:', err);
+                }
+            }
+
+            // --- 7. Check if this is a fresh proctored submission ---
+            const isSubmitted = urlParams.get('submitted') === 'true';
+            if (isSubmitted && resultData.proctorCode) {
+                // Show submission complete screen instead of results
+                resultsContainer.innerHTML = `
+                    <div style="text-align:center; padding:50px 20px; max-width:520px; margin:0 auto;">
+                        <div style="width:80px; height:80px; border-radius:50%; background:#e8f5e9; margin:0 auto 20px; display:flex; align-items:center; justify-content:center;">
+                            <i class="fa-solid fa-check" style="font-size:2.5rem; color:#2e7d32;"></i>
+                        </div>
+                        <h2 style="color:var(--primary-blue); margin:0 0 12px;">Test Uploaded Successfully!</h2>
+                        <p style="color:var(--dark-gray); font-size:1rem; line-height:1.6; margin:0 0 20px;">
+                            Your test has been submitted and is being processed. <strong>Results will be available within 1 day.</strong>
+                        </p>
+                        <p style="color:var(--dark-gray); font-size:0.9rem; margin:0 0 25px;">
+                            You will receive an email with your score report once results are released. We will also announce the release on our Telegram channel.
+                        </p>
+                        <a href="https://t.me/SAT_ALFA" target="_blank" rel="noopener"
+                            style="display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg,#6a0dad,#8a2be2); color:white; padding:12px 24px; border-radius:10px; text-decoration:none; font-weight:600; font-size:0.95rem; transition:transform 0.2s;">
+                            <i class="fa-brands fa-telegram"></i> Join @SAT_ALFA Channel
+                        </a>
+                        <br><br>
+                        <a href="dashboard.html" style="color:var(--primary-purple); font-size:0.85rem; text-decoration:underline;">← Back to Dashboard</a>
+                    </div>
+                `;
+                loadingContainer.style.display = 'none';
+                resultsContainer.classList.add('loaded');
+                return; // Don't show results/grids
+            }
+
+            // --- 8. AI Score Analysis (Optional for Normal Tests) ---
+            if (typeof renderAIAnalysis === 'function') {
+                if (resultData.aiAnalysis) {
+                    // Already analyzed — render
+                    renderAIAnalysis(resultData.aiAnalysis, resultsContainer);
+                } else if (!resultData.proctorCode) {
+                    // Normal test: show optional "Analyze with AI" button
+                    const aiOptDiv = document.createElement('div');
+                    aiOptDiv.className = 'ai-analysis-section';
+                    aiOptDiv.innerHTML = `
+                        <div class="ai-analysis-card" style="text-align:center; padding:20px 30px;">
+                            <p style="margin:0 0 12px; color:var(--dark-gray);">Want personalized insights on your performance?</p>
+                            <button id="ai-analyze-btn" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:8px; padding:10px 22px;">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Analyze with AI
+                            </button>
+                        </div>
+                    `;
+                    resultsContainer.appendChild(aiOptDiv);
+
+                    document.getElementById('ai-analyze-btn')?.addEventListener('click', async function () {
+                        const btn = this;
+                        btn.disabled = true;
+                        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analyzing...';
+
+                        try {
+                            // Build question data for AI
+                            const allQ = [];
+                            questionsSnapshot.forEach(d => allQ.push({ id: d.id, ...d.data() }));
+                            const byModule = [[], [], [], []];
+                            allQ.forEach(q => { if (q.module >= 1 && q.module <= 4) byModule[q.module - 1].push(q); });
+
+                            const scoreResult = {
+                                totalScore: resultData.totalScore,
+                                rwScore: resultData.rwScore,
+                                mathScore: resultData.mathScore,
+                                rwRaw: resultData.rwRaw,
+                                mathRaw: resultData.mathRaw,
+                                rwTotal: resultData.rwTotal,
+                                mathTotal: resultData.mathTotal
+                            };
+
+                            const analysis = await runAIScoreAnalysis(scoreResult, resultData.userAnswers, byModule);
+                            if (analysis) {
+                                await db.collection('testResults').doc(currentResultId).update({ aiAnalysis: analysis });
+                                aiOptDiv.remove();
+                                renderAIAnalysis(analysis, resultsContainer);
+                            } else {
+                                btn.disabled = false;
+                                btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Analyze with AI';
+                                alert('AI analysis could not be completed. Please try again later.');
+                            }
+                        } catch (err) {
+                            console.error('AI analysis error:', err);
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Analyze with AI';
+                        }
+                    });
+                }
+            }
+
         } catch (error) {
             console.error("Error loading results:", error);
             showError("An error occurred while loading your results. Please try again.");
