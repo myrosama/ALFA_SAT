@@ -683,6 +683,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
 
                         // Display
+                        currentProctorCode = code;
                         document.getElementById('proctor-code-display').innerHTML = `<span>${code.slice(0, 3)}-${code.slice(3)}</span>`;
                         document.getElementById('proctor-test-name').textContent = testName;
 
@@ -781,13 +782,53 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- PROCTOR MODAL CLOSE HANDLER ---
+    // --- PROCTOR MODAL HANDLERS ---
     const closeProctorBtn = document.getElementById('close-proctor-modal');
+    const copyProctorCodeBtn = document.getElementById('copy-proctor-code-btn');
+    const viewSessionBtn = document.getElementById('view-session-btn');
+
+    // Track the current proctor code for button actions
+    let currentProctorCode = null;
+
     if (closeProctorBtn) {
         closeProctorBtn.addEventListener('click', () => {
             proctorCodeModal.classList.remove('visible');
             if (!createTestModal.classList.contains('visible') && !accessModal.classList.contains('visible')) {
                 adminModalBackdrop.classList.remove('visible');
+            }
+        });
+    }
+
+    if (copyProctorCodeBtn) {
+        copyProctorCodeBtn.addEventListener('click', () => {
+            if (currentProctorCode) {
+                const formattedCode = currentProctorCode.slice(0, 3) + '-' + currentProctorCode.slice(3);
+                navigator.clipboard.writeText(formattedCode).then(() => {
+                    copyProctorCodeBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+                    setTimeout(() => {
+                        copyProctorCodeBtn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy Code';
+                    }, 2000);
+                }).catch(() => {
+                    // Fallback for older browsers
+                    const temp = document.createElement('textarea');
+                    temp.value = formattedCode;
+                    document.body.appendChild(temp);
+                    temp.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(temp);
+                    copyProctorCodeBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+                    setTimeout(() => {
+                        copyProctorCodeBtn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy Code';
+                    }, 2000);
+                });
+            }
+        });
+    }
+
+    if (viewSessionBtn) {
+        viewSessionBtn.addEventListener('click', () => {
+            if (currentProctorCode) {
+                window.open(`proctor-session.html?code=${currentProctorCode}`, '_blank');
             }
         });
     }
@@ -876,7 +917,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (doc.exists) {
                 const testId = doc.data().testId;
                 if (testId) {
-                    window.location.href = `test.html?id=${testId}`;
+                    window.location.href = `test.html?id=${testId}&proctorCode=${code}`;
                 } else {
                     alert("Error: Test not found.");
                     button.disabled = false;

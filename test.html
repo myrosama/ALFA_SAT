@@ -1,40 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Practice Test - ALFA SAT</title>
-     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/test.css">
-    <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Math&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.css" />
     <!-- Removed duplicate Merriweather font link -->
 </head>
+
 <body class="test-body">
 
     <!-- The backdrop for the modal -->
     <div class="modal-backdrop" id="modal-backdrop"></div>
-    
+
     <!-- +++ ADDED: FULLSCREEN PROMPT MODAL +++ -->
     <div class="fullscreen-prompt-container" id="fullscreen-prompt">
         <div class="fullscreen-prompt-card">
-            <h3 id="fullscreen-prompt-title">Please Enter Fullscreen Mode</h3>
-            <p>To continue, please return to the fullscreen experience.</p>
-            <button classs="btn" id="enter-fullscreen-btn">
+            <div class="prompt-logo">
+                <img src="assets/logo.png" alt="ALFA SAT" class="prompt-logo-img">
+            </div>
+            <h3 id="fullscreen-prompt-title">Preparing Your Test...</h3>
+            <p id="fullscreen-prompt-desc">Loading questions, please wait.</p>
+            <div id="fullscreen-loading-spinner" class="fullscreen-spinner">
+                <i class="fa-solid fa-circle-notch fa-spin"></i>
+            </div>
+            <button class="btn" id="enter-fullscreen-btn" style="display:none;">
                 <i class="fa-solid fa-expand"></i> Enter Fullscreen
             </button>
-            <a href="#" id="proceed-without-fullscreen">Proceed without fullscreen mode</a>
+            <a href="#" id="proceed-without-fullscreen" style="display:none;">Proceed without fullscreen mode</a>
         </div>
     </div>
     <!-- +++ END OF FULLSCREEN MODAL +++ -->
     <!-- +++ ADD THIS CUSTOM SELECTION TOOLBAR +++ -->
     <div class="selection-toolbar" id="selection-toolbar">
-        <button data-command="highlight" data-value="#FFD700" title="Highlight Yellow"><i class="fa-solid fa-highlighter" style="color: #FFD700;"></i></button>
-        <button data-command="highlight" data-value="#a0e7fd" title="Highlight Blue"><i class="fa-solid fa-highlighter" style="color: #a0e7fd;"></i></button>
-        <button data-command="highlight" data-value="#90ee90" title="Highlight Green"><i class="fa-solid fa-highlighter" style="color: #90ee90;"></i></button>
+        <button data-command="highlight" data-value="#FFD700" title="Highlight Yellow"><i
+                class="fa-solid fa-highlighter" style="color: #FFD700;"></i></button>
+        <button data-command="highlight" data-value="#a0e7fd" title="Highlight Blue"><i class="fa-solid fa-highlighter"
+                style="color: #a0e7fd;"></i></button>
+        <button data-command="highlight" data-value="#90ee90" title="Highlight Green"><i class="fa-solid fa-highlighter"
+                style="color: #90ee90;"></i></button>
         <button data-command="underline" title="Underline"><i class="fa-solid fa-underline"></i></button>
         <button data-command="clearformat" title="Clear Formatting"><i class="fa-solid fa-eraser"></i></button>
     </div>
@@ -70,11 +82,12 @@
                 <div class="calculator-header" id="calculator-header">
                     <span>Calculator</span>
                     <div class="calc-header-buttons">
-                         <!-- ADD Maximize/Restore Button -->
+                        <!-- ADD Maximize/Restore Button -->
                         <button class="calc-size-toggle-btn" id="calc-size-toggle-btn" title="Maximize Calculator">
                             <i class="fa-solid fa-expand"></i> <!-- Initial icon -->
                         </button>
-                        <button class="close-calculator-btn" id="close-calculator-btn" title="Close Calculator">&times;</button>
+                        <button class="close-calculator-btn" id="close-calculator-btn"
+                            title="Close Calculator">&times;</button>
                     </div>
                 </div>
                 <!-- Iframe will be added here by JS -->
@@ -88,7 +101,8 @@
                 <div class="question-header-bar hidden" id="math-question-header">
                     <div class="q-number-display"></div>
                     <label class="mark-for-review">
-                        <input type="checkbox" class="mark-review-checkbox" data-question-id=""> <!-- data-question-id added dynamically -->
+                        <input type="checkbox" class="mark-review-checkbox" data-question-id="">
+                        <!-- data-question-id added dynamically -->
                         <i class="fa-regular fa-flag"></i>
                         <span>Mark for Review</span>
                     </label>
@@ -105,12 +119,13 @@
                 <div class="question-pane">
                     <!-- HEADER FOR R&W (Only visible in R&W Layout) -->
                     <div class="question-header-bar" id="rw-question-header">
-                         <div class="q-number-display"></div>
-                         <label class="mark-for-review">
-                            <input type="checkbox" class="mark-review-checkbox" data-question-id=""> <!-- data-question-id added dynamically -->
-                             <i class="fa-regular fa-flag"></i>
-                             <span>Mark for Review</span>
-                         </label>
+                        <div class="q-number-display"></div>
+                        <label class="mark-for-review">
+                            <input type="checkbox" class="mark-review-checkbox" data-question-id="">
+                            <!-- data-question-id added dynamically -->
+                            <i class="fa-regular fa-flag"></i>
+                            <span>Mark for Review</span>
+                        </label>
                     </div>
                     <div class="pane-content">
                         <!-- Question content loaded here -->
@@ -162,13 +177,12 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-functions-compat.js"></script>   
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-functions-compat.js"></script>
     <script src="js/firebase-init.js"></script>
     <script src="js/main.js"></script> <!-- General site logic -->
     <script src="js/test-engine.js"></script> <!-- Test page specific logic -->
     <!-- Inline script removed as modal logic is now in test-engine.js -->
 
 </body>
+
 </html>
-
-

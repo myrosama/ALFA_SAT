@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - ALFA SAT</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Merriweather&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700&display=swap" rel="stylesheet">
     <!-- +++ ADDED: Font Awesome for icons +++ -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
 </head>
+
 <body class="dashboard-body">
 
     <header class="main-header">
@@ -24,7 +26,7 @@
                     <button class="btn-icon" id="profile-btn" title="Profile">
                         <i class="fa-solid fa-user-circle"></i>
                     </button>
-                    
+
                     <div class="profile-menu" id="profile-menu">
                         <div class="user-id-display-container">
                             <label for="user-id-display">Your User ID</label>
@@ -51,7 +53,7 @@
             <h2>Welcome back, Student!</h2>
             <p>Ready to ace your test? Pick a practice test below to get started.</p>
         </div>
-        
+
         <div class="test-code-section">
             <form id="test-code-form">
                 <input type="text" placeholder="Enter 6-letter test code" maxlength="6" class="test-code-input">
@@ -62,8 +64,8 @@
         <div class="test-list-container">
             <h3>Full-Length Practice Tests</h3>
             <div class="test-grid" id="test-grid-container">
-            <!-- Test cards will be dynamically inserted here by main.js -->
-            <p>Loading available tests...</p>
+                <!-- Test cards will be dynamically inserted here by main.js -->
+                <p>Loading available tests...</p>
             </div>
         </div>
     </main>
@@ -78,4 +80,5 @@
     <!-- Our main script (must be last) -->
     <script src="js/main.js"></script>
 </body>
+
 </html>

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,8 +8,9 @@
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Merriweather&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700&display=swap" rel="stylesheet">
 </head>
+
 <body class="dashboard-body">
 
     <header class="main-header">
@@ -32,9 +34,10 @@
         <div class="admin-section">
             <div class="section-header">
                 <h3>All Practice Tests</h3>
-                <button class="btn btn-primary" id="create-new-test-btn"><i class="fa-solid fa-plus"></i> Create New Test</button>
+                <button class="btn btn-primary" id="create-new-test-btn"><i class="fa-solid fa-plus"></i> Create New
+                    Test</button>
             </div>
-            
+
             <div class="test-list-admin" id="admin-test-list">
                 <!-- Test items will be loaded here by JavaScript -->
             </div>
@@ -47,7 +50,7 @@
     <!-- 1. Create Test Modal (Selection) -->
     <div class="admin-modal" id="create-test-modal">
         <h3>Create a New Practice Test</h3>
-        
+
         <!-- Manual Form -->
         <form id="create-test-form">
             <div class="input-group">
@@ -60,25 +63,27 @@
                 <small>Lowercase letters, numbers, and underscores only.</small>
             </div>
             <div class="form-actions" style="justify-content: space-between; align-items: center;">
-                 <button type="button" class="btn btn-secondary" id="cancel-create-test">Cancel</button>
-                 <button type="submit" class="btn btn-primary" id="start-manual-btn">Create Manually</button>
+                <button type="button" class="btn btn-secondary" id="cancel-create-test">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="start-manual-btn">Create Manually</button>
             </div>
         </form>
-        
+
         <div style="text-align: center; margin: 15px 0; color: var(--dark-gray); font-size: 0.9rem;">— OR —</div>
-        
+
         <!-- AI Import Button -->
-        <button class="btn" id="open-pdf-import-modal" style="width: 100%; background-color: #27ae60; color: white; display: flex; justify-content: center; gap: 10px;">
-             <i class="fa-solid fa-robot"></i> Import from PDF (AI Agent)
+        <button class="btn" id="open-pdf-import-modal"
+            style="width: 100%; background-color: #27ae60; color: white; display: flex; justify-content: center; gap: 10px;">
+            <i class="fa-solid fa-robot"></i> Import from PDF (AI Agent)
         </button>
     </div>
-    
+
     <!-- 2. AI PDF Import Modal (Upload and Progress) -->
     <div class="admin-modal" id="pdf-import-modal" style="display: none;">
         <h3><i class="fa-solid fa-file-pdf"></i> AI Test Import</h3>
-        
+
         <div id="pdf-upload-step">
-            <p style="margin: -15px 0 20px 0; color: var(--dark-gray);">Upload a PDF to automatically extract and structure all questions.</p>
+            <p style="margin: -15px 0 20px 0; color: var(--dark-gray);">Upload a PDF to automatically extract and
+                structure all questions.</p>
 
             <div class="input-group">
                 <label for="pdf-import-test-name">New Test Name</label>
@@ -92,7 +97,8 @@
             <!-- +++ NEW: Custom Prompt Input +++ -->
             <div class="input-group">
                 <label for="pdf-import-custom-prompt">Custom AI Instructions (Optional)</label>
-                <textarea id="pdf-import-custom-prompt" rows="3" placeholder="e.g., 'This is a pure Math test', 'Pay attention to underlined vocabulary words'"></textarea>
+                <textarea id="pdf-import-custom-prompt" rows="3"
+                    placeholder="e.g., 'This is a pure Math test', 'Pay attention to underlined vocabulary words'"></textarea>
             </div>
             <!-- +++ END Custom Prompt +++ -->
 
@@ -104,12 +110,15 @@
         </div>
 
         <div id="pdf-progress-step" class="hidden">
-            <p id="progress-text-label" style="font-weight: 600; text-align: center; color: var(--primary-purple);">Processing PDF...</p>
+            <p id="progress-text-label" style="font-weight: 600; text-align: center; color: var(--primary-purple);">
+                Processing PDF...</p>
             <div class="progress-container">
                 <div class="progress-bar" id="import-progress-bar"></div>
             </div>
-             <!-- Added a scrollable log area for better feedback -->
-            <div id="progress-log" style="height: 150px; overflow-y: auto; background: #f8f9fa; border: 1px solid #e8e8e8; padding: 10px; margin-top: 15px; font-family: monospace; font-size: 0.8rem; color: #555; border-radius: 6px;"></div>
+            <!-- Added a scrollable log area for better feedback -->
+            <div id="progress-log"
+                style="height: 150px; overflow-y: auto; background: #f8f9fa; border: 1px solid #e8e8e8; padding: 10px; margin-top: 15px; font-family: monospace; font-size: 0.8rem; color: #555; border-radius: 6px;">
+            </div>
         </div>
 
         <div class="form-actions">
@@ -120,7 +129,7 @@
             </button>
         </div>
     </div>
-    
+
     <!-- 3. Access Modal -->
     <div class="admin-modal" id="access-modal">
         <h3 id="access-modal-title">Manage Access</h3>
@@ -150,8 +159,17 @@
         <h3 id="proctor-modal-title">Proctored Session Code</h3>
         <div class="proctor-code-display" id="proctor-code-display">Generating...</div>
         <div class="proctor-code-info">Test: <strong id="proctor-test-name">...</strong></div>
-        <div class="form-actions">
-            <button type="button" class="btn btn-primary" id="close-proctor-modal">Done</button>
+        <div class="form-actions" style="justify-content: center; gap: 12px; flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary" id="copy-proctor-code-btn"
+                style="display: flex; align-items: center; gap: 8px;">
+                <i class="fa-regular fa-copy"></i> Copy Code
+            </button>
+            <button type="button" class="btn btn-primary" id="view-session-btn"
+                style="display: flex; align-items: center; gap: 8px; margin-top: 0;">
+                <i class="fa-solid fa-chart-line"></i> View Live Session
+            </button>
+            <button type="button" class="btn" id="close-proctor-modal"
+                style="background-color: var(--light-gray); color: var(--dark-gray); width: 100%;">Done</button>
         </div>
     </div>
 
@@ -159,7 +177,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
-    
+
     <!-- +++ PDF.js LIBRARY (Required for PDF rendering) +++ -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>
@@ -170,4 +188,5 @@
     <script src="js/config.js"></script> <!-- Load Config -->
     <script src="js/main.js"></script>
 </body>
+
 </html>

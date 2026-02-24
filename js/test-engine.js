@@ -38,6 +38,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // ++ Maximize State ++
     let isCalculatorMaximized = false;
 
+    // +++ Proctored Mode State +++
+    let proctorCode = null; // Set from URL param if present
+    let fullscreenExitCount = 0;
+    let testReady = false; // Flag: true once questions are loaded
+
     let currentCalcWidth = 360;
     let currentCalcHeight = 500;
 
@@ -77,12 +82,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeModalBtn = document.getElementById('close-modal-btn');
     const selectionToolbar = document.getElementById('selection-toolbar');
 
-    // +++ ADDED: Fullscreen Modal Elements (WITH CORRECT IDs) +++
+    // +++ ADDED: Fullscreen Modal Elements +++
     const fullscreenPrompt = document.getElementById('fullscreen-prompt');
-    const fullscreenBtn = document.getElementById('enter-fullscreen-btn'); // <-- FIX: Was 'enter-fullscreen-btn'
-    const proceedBtn = document.getElementById('proceed-without-fullscreen'); // <-- FIX: Was 'proceed-without-fullscreen'
+    const fullscreenBtn = document.getElementById('enter-fullscreen-btn');
+    const proceedBtn = document.getElementById('proceed-without-fullscreen');
     const testWrapper = document.getElementById('test-wrapper');
     const fullscreenPromptTitle = document.getElementById('fullscreen-prompt-title');
+    const fullscreenPromptDesc = document.getElementById('fullscreen-prompt-desc');
+    const fullscreenLoadingSpinner = document.getElementById('fullscreen-loading-spinner');
     // +++ END of Fullscreen Elements +++
 
 
@@ -150,6 +157,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (testMain) testMain.classList.toggle('math-layout-active', isMathModuleStart);
         populateModalGrid();
         renderQuestion(currentQuestionIndex);
+
+        // +++ Proctored: Track module change +++
+        if (proctorCode && auth.currentUser) {
+            db.collection('proctoredSessions').doc(proctorCode)
+                .collection('participants').doc(auth.currentUser.uid)
+                .update({ currentModule: moduleIndex + 1 })
+                .catch(err => console.warn('Could not update module:', err));
+        }
 
         const timerDuration = moduleTimers[currentModuleIndex] > 0 ? moduleTimers[currentModuleIndex] : 1800;
         startTimer(timerDuration);
@@ -427,6 +442,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 resultId: resultId // Link to the full result doc
             });
             console.log("User's completedTests subcollection updated.");
+
+            // +++ Proctored Mode: Mark participant as completed +++
+            if (proctorCode) {
+                try {
+                    await db.collection('proctoredSessions').doc(proctorCode)
+                        .collection('participants').doc(user.uid)
+                        .update({
+                            status: 'completed',
+                            score: scoreResult.totalScore,
+                            rwScore: scoreResult.rwScore,
+                            mathScore: scoreResult.mathScore,
+                            completedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    console.log('Proctored participant marked as completed.');
+                } catch (err) {
+                    console.warn('Could not update proctored participant completion:', err);
+                }
+            }
 
             // 7. Redirect to the new results page
             window.location.href = `results.html?resultId=${resultId}`;
@@ -758,22 +791,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function startTest() {
         // This function now just shows the test, assuming fullscreen is handled.
+        if (!testReady) return; // +++ FIX: Don't start if questions aren't loaded yet
         if (fullscreenPrompt) fullscreenPrompt.style.display = 'none';
         if (testWrapper) testWrapper.classList.remove('hidden');
-        if (backdrop) backdrop.classList.remove('visible'); // Hide backdrop if it was visible
+        if (backdrop) backdrop.classList.remove('visible');
 
+        // +++ Proctored: Update status to 'taking' +++
+        if (proctorCode && auth.currentUser) {
+            db.collection('proctoredSessions').doc(proctorCode)
+                .collection('participants').doc(auth.currentUser.uid)
+                .update({ status: 'taking', currentModule: currentModuleIndex + 1 })
+                .catch(err => console.warn('Could not update participant status:', err));
+        }
 
         // +++ UPDATED: Smarter test start/resume logic +++
         if (timerInterval === null && currentTimerSeconds > 0) {
-            // This is a RESUME from a pause (fullscreen or reload with time remaining)
-            // We need to render the correct question first!
-            renderQuestion(currentQuestionIndex); // <--- Renders the saved question
-            populateModalGrid(); // <--- Populates modal for the saved module
+            renderQuestion(currentQuestionIndex);
+            populateModalGrid();
             startTimer(currentTimerSeconds);
         } else if (allQuestionsByModule.flat().length > 0) {
-            // This is a fresh start OR a reload where timer was 0
-            // It will correctly start module 0, or module 1/2/3 if we loaded that from state.
-            startModule(currentModuleIndex); // <-- This will start the correct module
+            startModule(currentModuleIndex);
         }
     }
 
@@ -782,20 +819,33 @@ document.addEventListener('DOMContentLoaded', () => {
             // User exited fullscreen, show the prompt again
             if (fullscreenPrompt) fullscreenPrompt.style.display = 'flex';
             if (testWrapper) testWrapper.classList.add('hidden');
-            if (backdrop) backdrop.classList.add('visible'); // Show backdrop
+            if (backdrop) backdrop.classList.add('visible');
             if (fullscreenPromptTitle) fullscreenPromptTitle.textContent = 'Please Re-enter Fullscreen Mode';
+            if (fullscreenPromptDesc) fullscreenPromptDesc.textContent = 'To continue your test, please return to fullscreen mode.';
+            if (fullscreenLoadingSpinner) fullscreenLoadingSpinner.style.display = 'none';
+            if (fullscreenBtn) fullscreenBtn.style.display = 'flex';
+            if (proceedBtn) proceedBtn.style.display = 'block';
+
+            // +++ Track fullscreen exit count for proctoring +++
+            fullscreenExitCount++;
+            if (proctorCode && auth.currentUser) {
+                db.collection('proctoredSessions').doc(proctorCode)
+                    .collection('participants').doc(auth.currentUser.uid)
+                    .update({ fullscreenExitCount: fullscreenExitCount })
+                    .catch(err => console.warn('Could not update exit count:', err));
+            }
 
             // Pause the timer
             if (timerInterval) {
                 clearInterval(timerInterval);
-                timerInterval = null; // Clear interval
-                // currentTimerSeconds variable automatically holds the remaining time
-                saveTestState(); // +++ ADDED: Save state on fullscreen exit
+                timerInterval = null;
+                saveTestState();
             }
         } else {
             // User entered fullscreen, start the test (or resume it)
-            // Note: startTest() also hides the prompt and shows the test
-            startTest();
+            if (testReady) {
+                startTest();
+            }
         }
     }
     // +++ End of Fullscreen Logic +++
@@ -862,7 +912,16 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Init test...");
         const urlParams = new URLSearchParams(window.location.search);
         testId = urlParams.get('id');
+        proctorCode = urlParams.get('proctorCode') || null;
         if (!testId) { console.error("No Test ID in URL."); document.body.innerHTML = '<h1>Error: No Test ID.</h1>'; return; }
+
+        // Show loading state immediately
+        if (fullscreenPrompt) fullscreenPrompt.style.display = 'flex';
+        if (fullscreenPromptTitle) fullscreenPromptTitle.textContent = 'Preparing Your Test...';
+        if (fullscreenPromptDesc) fullscreenPromptDesc.textContent = 'Loading questions, please wait.';
+        if (fullscreenLoadingSpinner) fullscreenLoadingSpinner.style.display = 'block';
+        if (fullscreenBtn) fullscreenBtn.style.display = 'none';
+        if (proceedBtn) proceedBtn.style.display = 'none';
 
         // Wait for auth to be ready
         auth.onAuthStateChanged(async (user) => {
@@ -875,10 +934,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Fetch questions but don't start the test yet
                 await fetchAndGroupQuestions(testId);
 
-                // Show the fullscreen prompt instead of starting the test
-                if (fullscreenPrompt) fullscreenPrompt.style.display = 'flex';
-                if (backdrop) backdrop.classList.add('visible');
-                if (fullscreenPromptTitle) fullscreenPromptTitle.textContent = 'Please Enter Fullscreen Mode';
+                // +++ Mark test as ready to prevent race condition +++
+                testReady = true;
+
+                // Switch from loading to ready state
+                if (fullscreenPromptTitle) fullscreenPromptTitle.textContent = 'Ready to Begin';
+                if (fullscreenPromptDesc) fullscreenPromptDesc.textContent = 'Enter fullscreen mode for the best test experience.';
+                if (fullscreenLoadingSpinner) fullscreenLoadingSpinner.style.display = 'none';
+                if (fullscreenBtn) fullscreenBtn.style.display = 'flex';
+                if (proceedBtn) proceedBtn.style.display = 'block';
+
+                // +++ Proctored Mode: Register participant +++
+                if (proctorCode && user) {
+                    try {
+                        const participantRef = db.collection('proctoredSessions').doc(proctorCode)
+                            .collection('participants').doc(user.uid);
+                        await participantRef.set({
+                            userName: user.displayName || 'Student',
+                            email: user.email || '',
+                            status: 'waiting',
+                            startedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            currentModule: 0,
+                            fullscreenExitCount: 0,
+                            score: null,
+                            completedAt: null
+                        }, { merge: true });
+                        console.log('Proctored participant registered.');
+                    } catch (err) {
+                        console.warn('Could not register proctored participant:', err);
+                    }
+                }
 
                 // Set up calculator defaults
                 updateContentMargin();

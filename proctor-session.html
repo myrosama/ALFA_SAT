@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proctored Session - ALFA SAT</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/proctor-session.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+</head>
+
+<body class="dashboard-body">
+
+    <header class="main-header">
+        <div class="header-content">
+            <div class="brand">
+                <img src="assets/logo.png" alt="ALFA SAT Logo" class="logo-small">
+                <span>ALFA SAT Admin</span>
+            </div>
+            <nav>
+                <a href="admin.html"><i class="fa-solid fa-arrow-left"></i> Back to Admin</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="dashboard-main">
+        <div class="session-header">
+            <div class="session-info-card">
+                <div class="session-code-badge" id="session-code">---</div>
+                <div class="session-details">
+                    <h2 id="session-test-name">Loading...</h2>
+                    <p id="session-created-at">Created: ...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+                <div class="stat-value" id="stat-total">0</div>
+                <div class="stat-label">Total Participants</div>
+            </div>
+            <div class="stat-card taking">
+                <div class="stat-icon"><i class="fa-solid fa-pen-to-square"></i></div>
+                <div class="stat-value" id="stat-taking">0</div>
+                <div class="stat-label">Currently Taking</div>
+            </div>
+            <div class="stat-card completed">
+                <div class="stat-icon"><i class="fa-solid fa-check-circle"></i></div>
+                <div class="stat-value" id="stat-completed">0</div>
+                <div class="stat-label">Completed</div>
+            </div>
+            <div class="stat-card waiting">
+                <div class="stat-icon"><i class="fa-solid fa-clock"></i></div>
+                <div class="stat-value" id="stat-waiting">0</div>
+                <div class="stat-label">Waiting</div>
+            </div>
+        </div>
+
+        <div class="participants-section">
+            <h3><i class="fa-solid fa-list-check"></i> Participants</h3>
+            <div class="participants-table-wrapper">
+                <table class="participants-table" id="participants-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Status</th>
+                            <th>Module</th>
+                            <th>Score</th>
+                            <th><i class="fa-solid fa-display" title="Fullscreen Exits"></i> Exits</th>
+                        </tr>
+                    </thead>
+                    <tbody id="participants-tbody">
+                        <tr>
+                            <td colspan="6" style="text-align:center; color: var(--dark-gray);">Loading participants...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-init.js"></script>
+    <script src="js/proctor-session.js"></script>
+</body>
+
+</html>

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8"> <!-- Corrected charset -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,13 +9,14 @@
     <link rel="stylesheet" href="css/style.css">
     <!-- New, specific styles for this page -->
     <link rel="stylesheet" href="css/results.css">
-    
+
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Merriweather&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700&display=swap" rel="stylesheet">
     <!-- MathQuill CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.css" />
 </head>
+
 <body class="dashboard-body">
 
     <header class="main-header">
@@ -38,7 +40,7 @@
         </div>
 
         <!-- Content will be dynamically inserted here -->
-        
+
     </main>
 
     <!--
@@ -84,11 +86,11 @@
 
     <!-- UPDATED TEMPLATE: Added correct-icon and hid both by default -->
     <template id="question-number-template">
-         <button class="q-number-btn">
-             <span class="q-number">1</span>
-             <i class="fa-solid fa-check correct-icon"></i>
-             <i class="fa-solid fa-xmark incorrect-icon"></i>
-         </button>
+        <button class="q-number-btn">
+            <span class="q-number">1</span>
+            <i class="fa-solid fa-check correct-icon"></i>
+            <i class="fa-solid fa-xmark incorrect-icon"></i>
+        </button>
     </template>
 
 
@@ -101,7 +103,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
-    
+
     <!-- Our Scripts -->
     <script src="js/firebase-init.js"></script>
     <!-- New results page script -->
@@ -110,5 +112,5 @@
     <script src="js/main.js"></script>
 
 </body>
-</html>
 
+</html>

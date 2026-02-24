@@ -1,0 +1,211 @@
+/* ================================================================= */
+/* === ALFA SAT: Proctored Session Stats (proctor-session.css)   === */
+/* ================================================================= */
+
+/* --- Session Header --- */
+.session-header {
+    margin-bottom: 30px;
+}
+
+.session-info-card {
+    background: linear-gradient(135deg, var(--primary-blue), var(--primary-purple));
+    color: var(--white);
+    padding: 30px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 25px;
+    box-shadow: 0 8px 25px rgba(106, 13, 173, 0.2);
+}
+
+.session-code-badge {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: 4px;
+    font-family: monospace;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    flex-shrink: 0;
+}
+
+.session-details h2 {
+    margin: 0 0 5px 0;
+    font-size: 1.5rem;
+}
+
+.session-details p {
+    margin: 0;
+    opacity: 0.8;
+    font-size: 0.9rem;
+}
+
+/* --- Stats Grid --- */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 25px 20px;
+    text-align: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+}
+
+.stat-icon {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+    color: var(--primary-blue);
+}
+
+.stat-card.taking .stat-icon {
+    color: #e67e22;
+}
+
+.stat-card.completed .stat-icon {
+    color: #27ae60;
+}
+
+.stat-card.waiting .stat-icon {
+    color: var(--dark-gray);
+}
+
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-color);
+    line-height: 1;
+    margin-bottom: 8px;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--dark-gray);
+    font-weight: 500;
+}
+
+/* --- Participants Section --- */
+.participants-section {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 25px;
+}
+
+.participants-section h3 {
+    margin: 0 0 20px 0;
+    color: var(--primary-blue);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.2rem;
+}
+
+.participants-table-wrapper {
+    overflow-x: auto;
+}
+
+.participants-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.participants-table thead th {
+    background: var(--light-gray);
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--dark-gray);
+    border-bottom: 2px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.participants-table tbody td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.participants-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.participants-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.participant-name {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+/* --- Status Badges --- */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.status-badge.taking {
+    background-color: #fef3e2;
+    color: #e67e22;
+}
+
+.status-badge.completed {
+    background-color: #e6f7eb;
+    color: #0d6832;
+}
+
+.status-badge.waiting {
+    background-color: #f0f0f0;
+    color: var(--dark-gray);
+}
+
+.status-badge i {
+    font-size: 0.7rem;
+}
+
+/* --- Score Cell --- */
+.score-cell {
+    font-weight: 700;
+    color: var(--primary-blue);
+}
+
+/* --- Exit Warning --- */
+.exit-warning {
+    color: var(--error-red);
+    font-weight: 700;
+}
+
+/* --- Responsive --- */
+@media (max-width: 600px) {
+    .session-info-card {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .session-code-badge {
+        font-size: 1.5rem;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
