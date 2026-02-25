@@ -1241,11 +1241,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!allAvailableTests.has(ctTestId)) {
                     const card = document.createElement('div');
                     const isPending = completionData.proctorCode && completionData.scoringStatus !== 'published';
+                    const testTitle = completionData.testName || 'Practice Test';
+                    let dateStr = '';
+                    if (completionData.completedAt) {
+                        const d = completionData.completedAt.toDate ? completionData.completedAt.toDate() : new Date(completionData.completedAt);
+                        dateStr = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                    }
                     card.classList.add('test-card', 'completed');
                     card.innerHTML = `
                         <div class="card-content">
-                            <h4>Proctored Test</h4>
-                            <p>Completed via proctored session.</p>
+                            <h4>${testTitle}</h4>
+                            <p>${dateStr ? `Completed on ${dateStr}` : 'Completed via proctored session.'}</p>
                             <div class="test-status ${isPending ? 'pending' : 'completed'}">
                                 <i class="fa-solid ${isPending ? 'fa-clock' : 'fa-check-circle'}"></i>
                                 ${isPending ? 'Results Pending' : `Finished - Score: <strong>${completionData.score || 'N/A'}</strong>`}

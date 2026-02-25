@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let sessionCode = null;
     let sessionData = null;
     let isProcessing = false;
+    let liveCompletedCount = 0;
 
     // Get code from URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -92,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Update scoring UI based on session status
-            updateScoringUI(sessionData);
+            updateScoringUI(sessionData, liveCompletedCount);
 
         } catch (err) {
             console.error('Error loading session info:', err);
@@ -100,8 +101,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function updateScoringUI(data) {
+    function updateScoringUI(data, liveCompletedCount) {
         const status = data?.scoringStatus || 'pending';
+        const scored = data?.scoredCount || 0;
+        const total = data?.totalParticipants || 0;
+
+        // Detect new unscored students (completed AFTER last scoring run)
+        const hasNewStudents = liveCompletedCount != null && liveCompletedCount > scored && (status === 'scored' || status === 'published');
 
         // Status badge
         if (scoringStatusBadge) {
@@ -111,41 +117,73 @@ document.addEventListener('DOMContentLoaded', () => {
                 'scored': '<i class="fa-solid fa-check"></i> Scored',
                 'published': '<i class="fa-solid fa-bullhorn"></i> Published'
             };
-            scoringStatusBadge.innerHTML = labels[status] || labels.pending;
-            scoringStatusBadge.className = 'scoring-status-badge ' + status;
+            if (hasNewStudents) {
+                scoringStatusBadge.innerHTML = '<i class="fa-solid fa-user-plus"></i> New Students';
+                scoringStatusBadge.className = 'scoring-status-badge pending';
+            } else {
+                scoringStatusBadge.innerHTML = labels[status] || labels.pending;
+                scoringStatusBadge.className = 'scoring-status-badge ' + status;
+            }
         }
 
         // Progress bar
         if (scoringProgress) {
-            if (status === 'processing' || status === 'scored') {
+            if (status === 'processing' || status === 'scored' || hasNewStudents) {
                 scoringProgress.style.display = 'block';
-                const scored = data.scoredCount || 0;
-                const total = data.totalParticipants || 0;
                 const pct = total > 0 ? (scored / total * 100) : 0;
                 if (scoringProgressFill) scoringProgressFill.style.width = pct + '%';
-                if (scoringProgressText) scoringProgressText.textContent = `${scored}/${total} students scored`;
+                if (scoringProgressText) {
+                    if (hasNewStudents) {
+                        scoringProgressText.textContent = `${scored} scored, ${liveCompletedCount - scored} new student(s) awaiting scoring`;
+                    } else {
+                        scoringProgressText.textContent = `${scored}/${total} students scored`;
+                    }
+                }
             } else {
                 scoringProgress.style.display = 'none';
             }
         }
 
-        // Buttons
+        // Buttons — re-enable if there are new unscored students
         if (processScoresBtn) {
-            processScoresBtn.disabled = status === 'processing' || status === 'scored' || status === 'published';
-            if (status === 'scored') processScoresBtn.innerHTML = '<i class="fa-solid fa-check"></i> Scores Processed';
-            if (status === 'published') processScoresBtn.innerHTML = '<i class="fa-solid fa-check-double"></i> Published';
+            if (hasNewStudents) {
+                processScoresBtn.disabled = false;
+                processScoresBtn.innerHTML = '<i class="fa-solid fa-rotate"></i> Process New Scores';
+            } else if (status === 'processing') {
+                processScoresBtn.disabled = true;
+                processScoresBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+            } else if (status === 'scored') {
+                processScoresBtn.disabled = true;
+                processScoresBtn.innerHTML = '<i class="fa-solid fa-check"></i> Scores Processed';
+            } else if (status === 'published') {
+                processScoresBtn.disabled = true;
+                processScoresBtn.innerHTML = '<i class="fa-solid fa-check-double"></i> Published';
+            } else {
+                processScoresBtn.disabled = false;
+                processScoresBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Process Scores';
+            }
         }
         if (publishResultsBtn) {
-            publishResultsBtn.disabled = status !== 'scored';
-            if (status === 'published') {
+            if (hasNewStudents) {
+                // Must re-score first before publishing new students
+                publishResultsBtn.disabled = true;
+                publishResultsBtn.innerHTML = '<i class="fa-solid fa-bullhorn"></i> Publish Results Now';
+            } else if (status === 'scored') {
+                publishResultsBtn.disabled = false;
+                publishResultsBtn.innerHTML = '<i class="fa-solid fa-bullhorn"></i> Publish Results Now';
+            } else if (status === 'published') {
                 publishResultsBtn.innerHTML = '<i class="fa-solid fa-check"></i> Published';
+                publishResultsBtn.disabled = true;
+            } else {
                 publishResultsBtn.disabled = true;
             }
         }
 
         // Note
         if (scoringNote) {
-            if (status === 'scored' && data.publishAfter) {
+            if (hasNewStudents) {
+                scoringNote.innerHTML = `<i class="fa-solid fa-info-circle"></i> <strong>${liveCompletedCount - scored} new student(s)</strong> completed the test since the last scoring run. Click "Process New Scores" to score them.`;
+            } else if (status === 'scored' && data.publishAfter) {
                 const pubDate = data.publishAfter.toDate?.() || new Date(data.publishAfter);
                 scoringNote.innerHTML = `<i class="fa-solid fa-clock"></i> Auto-publish scheduled for: <strong>${pubDate.toLocaleString()}</strong>. You can publish early with "Publish Results Now".`;
             } else if (status === 'published') {
@@ -187,7 +225,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Refresh session data
                         try {
                             const freshSession = await db.collection('proctoredSessions').doc(sessionCode).get();
-                            updateScoringUI(freshSession.data());
+                            sessionData = freshSession.data();
+                            updateScoringUI(sessionData, liveCompletedCount);
                         } catch (e) { /* ignore refresh error */ }
                     } else {
                         // Function returned but with 0 scores or failure
@@ -226,7 +265,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // Refresh
                     const freshSession = await db.collection('proctoredSessions').doc(sessionCode).get();
-                    updateScoringUI(freshSession.data());
+                    sessionData = freshSession.data();
+                    updateScoringUI(sessionData, liveCompletedCount);
 
                 } catch (err) {
                     console.error('Publish error:', err);
@@ -257,6 +297,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (statTaking) statTaking.textContent = taking;
             if (statCompleted) statCompleted.textContent = completed;
             if (statWaiting) statWaiting.textContent = waiting;
+
+            // Track live completed count and refresh scoring UI
+            liveCompletedCount = completed;
+            if (sessionData) {
+                updateScoringUI(sessionData, liveCompletedCount);
+            }
 
             // Render table — also fetch AI scores from testResults
             renderParticipantsTableWithScores(participants, code);

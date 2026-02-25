@@ -673,7 +673,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 completedAt: resultData.completedAt,
                 resultId: resultId,
                 proctorCode: proctorCode || null,
-                scoringStatus: proctorCode ? 'pending_review' : 'published'
+                scoringStatus: proctorCode ? 'pending_review' : 'published',
+                testName: testName || 'Practice Test'
             });
             console.log("User's completedTests subcollection updated.");
 
