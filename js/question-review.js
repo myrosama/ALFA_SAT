@@ -6,6 +6,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const auth = firebase.auth();
     const MQ = MathQuill.getInterface(2); // For rendering math
 
+    // --- Fill-in answer helper (supports comma-separated answers and numeric equivalence) ---
+    function isFillinCorrect(userAns, fillInAnswer) {
+        if (!userAns || !fillInAnswer) return false;
+        const correct = fillInAnswer.replace(/<[^>]*>/g, '').trim();
+        if (!correct) return false;
+        const possibleAnswers = correct.split(',').map(a => a.trim()).filter(a => a);
+        const u = userAns.trim().toLowerCase();
+        for (const ans of possibleAnswers) {
+            const c = ans.toLowerCase();
+            if (u === c) return true;
+            const frMatch = s => { const m = s.match(/^(-?\d+)\s*\/\s*(\d+)$/); return m ? parseFloat(m[1]) / parseFloat(m[2]) : parseFloat(s); };
+            const uN = frMatch(u), cN = frMatch(c);
+            if (!isNaN(uN) && !isNaN(cN) && Math.abs(uN - cN) < 0.0001) return true;
+        }
+        return false;
+    }
+    function getFillinText(q) {
+        return q.fillInAnswer ? q.fillInAnswer.replace(/<[^>]*>/g, '').trim() : (q.correctAnswer || 'N/A');
+    }
+
     // --- Page Elements ---
     const loadingContainer = document.getElementById('review-loading-container');
     const contentBody = document.getElementById('review-content-body');
@@ -199,8 +219,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Question & Result ---
         const userAnswer = resultData.userAnswers[questionId];
-        const correctAnswer = questionData.correctAnswer;
-        const isCorrect = userAnswer === correctAnswer;
+        const correctAnswer = questionData.format === 'fill-in'
+            ? getFillinText(questionData)
+            : questionData.correctAnswer;
+        const isCorrect = questionData.format === 'fill-in'
+            ? isFillinCorrect(userAnswer, questionData.fillInAnswer)
+            : userAnswer === questionData.correctAnswer;
 
         if (qResultDisplay) {
             if (isCorrect) {
@@ -266,8 +290,10 @@ document.addEventListener('DOMContentLoaded', () => {
      * Generates HTML for Fill-in-the-Blank review
      */
     function renderFillIn(q, userAns, correctAns) {
+        const fillInText = getFillinText(q);
+        const correct = isFillinCorrect(userAns, q.fillInAnswer);
         let userAnswerHtml = '';
-        if (userAns === correctAns) {
+        if (correct) {
             userAnswerHtml = `
                 <div class="label">Your Answer</div>
                 <div class="user-answer correct">${userAns}</div>`;
@@ -281,7 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="fill-in-answer-review">
                 ${userAnswerHtml}
                 <div class="label">Correct Answer</div>
-                <div class="correct-answer">${q.correctAnswer || 'N/A'}</div>
+                <div class="correct-answer">${fillInText}</div>
             </div>`;
     }
 

@@ -28,7 +28,10 @@ async function runAIScoreAnalysis(scoreResult, userAnswers, allQuestionsByModule
             moduleQuestions.forEach(q => {
                 qNum++;
                 const studentAnswer = userAnswers[q.id] || 'No answer';
-                const isCorrect = studentAnswer === q.correctAnswer;
+                const effectiveCorrect = q.format === 'fill-in' && q.fillInAnswer
+                    ? q.fillInAnswer.replace(/<[^>]*>/g, '').trim()
+                    : q.correctAnswer;
+                const isCorrect = studentAnswer === effectiveCorrect;
 
                 questionSummary.push({
                     number: qNum,
@@ -36,7 +39,7 @@ async function runAIScoreAnalysis(scoreResult, userAnswers, allQuestionsByModule
                     module: moduleNum,
                     correct: isCorrect,
                     studentAnswer: studentAnswer,
-                    correctAnswer: q.correctAnswer,
+                    correctAnswer: effectiveCorrect,
                     // Include skill/domain if available
                     skill: q.skill || q.domain || 'Unknown',
                     difficulty: q.difficulty || 'Unknown'

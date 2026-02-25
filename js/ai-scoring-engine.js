@@ -226,14 +226,17 @@ async function scoreStudentWithAI(resultData, allQuestions, groupRawScores, test
 
     allQuestions.forEach(q => {
         const studentAns = userAnswers[q.id];
-        const correct = studentAns === q.correctAnswer;
+        const effectiveCorrect = q.format === 'fill-in' && q.fillInAnswer
+            ? q.fillInAnswer.replace(/<[^>]*>/g, '').trim()
+            : q.correctAnswer;
+        const correct = studentAns === effectiveCorrect;
         const info = {
             module: q.module,
             number: q.questionNumber,
             section: q.module <= 2 ? 'R&W' : 'Math',
             difficulty: q.difficulty || 'medium',
             skill: q.skill || q.domain || 'general',
-            correctAnswer: q.correctAnswer,
+            correctAnswer: effectiveCorrect,
             studentAnswer: studentAns || '(blank)'
         };
         if (correct) rightQuestions.push(info);
@@ -242,12 +245,18 @@ async function scoreStudentWithAI(resultData, allQuestions, groupRawScores, test
 
     // Determine module path (adaptive routing)
     const m1Questions = allQuestions.filter(q => q.module === 1);
-    const m1Correct = m1Questions.filter(q => userAnswers[q.id] === q.correctAnswer).length;
+    const m1Correct = m1Questions.filter(q => {
+        const ec = q.format === 'fill-in' && q.fillInAnswer ? q.fillInAnswer.replace(/<[^>]*>/g, '').trim() : q.correctAnswer;
+        return userAnswers[q.id] === ec;
+    }).length;
     const m1Total = m1Questions.length;
     const m1Pct = m1Total > 0 ? (m1Correct / m1Total * 100).toFixed(0) : 0;
 
     const m3Questions = allQuestions.filter(q => q.module === 3);
-    const m3Correct = m3Questions.filter(q => userAnswers[q.id] === q.correctAnswer).length;
+    const m3Correct = m3Questions.filter(q => {
+        const ec = q.format === 'fill-in' && q.fillInAnswer ? q.fillInAnswer.replace(/<[^>]*>/g, '').trim() : q.correctAnswer;
+        return userAnswers[q.id] === ec;
+    }).length;
     const m3Total = m3Questions.length;
     const m3Pct = m3Total > 0 ? (m3Correct / m3Total * 100).toFixed(0) : 0;
 

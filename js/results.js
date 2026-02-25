@@ -9,6 +9,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const auth = firebase.auth();
     const MQ = MathQuill.getInterface(2); // For rendering math
 
+    // --- Fill-in answer helper (supports comma-separated answers and numeric equivalence) ---
+    function isFillinCorrect(userAns, fillInAnswer) {
+        if (!userAns || !fillInAnswer) return false;
+        const correct = fillInAnswer.replace(/<[^>]*>/g, '').trim();
+        if (!correct) return false;
+        const possibleAnswers = correct.split(',').map(a => a.trim()).filter(a => a);
+        const u = userAns.trim().toLowerCase();
+        for (const ans of possibleAnswers) {
+            const c = ans.toLowerCase();
+            if (u === c) return true;
+            const frMatch = s => { const m = s.match(/^(-?\d+)\s*\/\s*(\d+)$/); return m ? parseFloat(m[1]) / parseFloat(m[2]) : parseFloat(s); };
+            const uN = frMatch(u), cN = frMatch(c);
+            if (!isNaN(uN) && !isNaN(cN) && Math.abs(uN - cN) < 0.0001) return true;
+        }
+        return false;
+    }
+
     // --- Page Elements ---
     const resultsContainer = document.getElementById('results-container');
     const loadingContainer = document.getElementById('loading-container');
@@ -385,7 +402,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         questions.forEach(q => {
-            const isCorrect = userAnswers[q.id] === q.correctAnswer;
+            const isCorrect = q.format === 'fill-in'
+                ? isFillinCorrect(userAnswers[q.id], q.fillInAnswer)
+                : userAnswers[q.id] === q.correctAnswer;
 
             const qBtnClone = qNumTemplate.content.cloneNode(true);
             const qBtnEl = qBtnClone.querySelector('.q-number-btn');
