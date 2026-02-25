@@ -601,8 +601,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const ua = userAnswers[question.id];
             if (question.format === 'fill-in') {
                 // Use smart equivalence check for fill-in (handles fractions, decimals, etc.)
-                const correctFillIn = question.fillInAnswer ? question.fillInAnswer.replace(/<[^>]*>/g, '').trim() : question.correctAnswer;
-                if (areAnswersEquivalent(ua, correctFillIn)) rwRaw++;
+                const correctFillIn = question.fillInAnswer ? question.fillInAnswer.replace(/<[^>]*>/g, '').trim() : null;
+                if (correctFillIn && areAnswersEquivalent(ua, correctFillIn)) rwRaw++;
             } else {
                 if (ua === question.correctAnswer) rwRaw++;
             }
@@ -614,8 +614,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!question || !question.id) return;
             const ua = userAnswers[question.id];
             if (question.format === 'fill-in') {
-                const correctFillIn = question.fillInAnswer ? question.fillInAnswer.replace(/<[^>]*>/g, '').trim() : question.correctAnswer;
-                if (areAnswersEquivalent(ua, correctFillIn)) mathRaw++;
+                const correctFillIn = question.fillInAnswer ? question.fillInAnswer.replace(/<[^>]*>/g, '').trim() : null;
+                if (correctFillIn && areAnswersEquivalent(ua, correctFillIn)) mathRaw++;
             } else {
                 if (ua === question.correctAnswer) mathRaw++;
             }

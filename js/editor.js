@@ -433,7 +433,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 D: editors.options.D.root.innerHTML,
             },
             fillInAnswer: editors.fillIn.root.innerHTML,
-            correctAnswer: questionForm.querySelector('input[name="correct-answer"]:checked')?.value || null,
+            correctAnswer: questionForm.querySelector('#q-format').value === 'fill-in'
+                ? editors.fillIn.root.innerHTML.replace(/<[^>]*>/g, '').trim()
+                : (questionForm.querySelector('input[name="correct-answer"]:checked')?.value || null),
             lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
         };
 
