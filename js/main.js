@@ -1172,11 +1172,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const testsSnapshot = Array.from(allAvailableTests.values());
             testsSnapshot.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
-            if (testsSnapshot.length === 0) {
-                testGrid.innerHTML = '<p>No practice tests are available at the moment.</p>';
-                return;
-            }
-
             testGrid.innerHTML = '';
 
             // 3. Render cards
@@ -1193,18 +1188,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 let cardHTML = '';
 
                 if (completionData) {
-                    // --- Test is COMPLETED (regular test grid — always show raw score) ---
+                    // --- Test is COMPLETED ---
                     card.classList.add('completed');
+                    const isPending = completionData.proctorCode && completionData.scoringStatus !== 'published';
+                    let dateStr = '';
+                    if (completionData.completedAt) {
+                        const d = completionData.completedAt.toDate ? completionData.completedAt.toDate() : new Date(completionData.completedAt);
+                        dateStr = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                    }
                     cardHTML = `
                         <div class="card-content">
                             <h4>${test.name || 'Unnamed Test'}</h4>
-                            <p>${test.description || 'A full-length adaptive test.'}</p>
-                            <div class="test-status completed">
-                                <i class="fa-solid fa-check-circle"></i>
-                                Finished - Score: <strong>${completionData.score || 'N/A'}</strong>
+                            <p>${dateStr ? `Completed on ${dateStr}` : (test.description || 'A full-length adaptive test.')}</p>
+                            <div class="test-status ${isPending ? 'pending' : 'completed'}">
+                                <i class="fa-solid ${isPending ? 'fa-clock' : 'fa-check-circle'}"></i>
+                                ${isPending ? 'Results Pending' : `Finished - Score: <strong>${completionData.score || 'N/A'}</strong>`}
                             </div>
                         </div>
-                        <a href="results.html?resultId=${completionData.resultId}" class="btn card-btn btn-view-results">View Results</a>
+                        <a href="results.html?resultId=${completionData.resultId}" class="btn card-btn btn-view-results">${isPending ? 'View Status' : 'View Results'}</a>
                     `;
                 } else if (inProgressData) {
                     // +++ Test is IN PROGRESS ---
@@ -1262,6 +1263,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     testGrid.appendChild(card);
                 }
             });
+
+            // If no cards were rendered at all, show empty message
+            if (testGrid.children.length === 0) {
+                testGrid.innerHTML = '<p>No practice tests are available at the moment.</p>';
+            }
 
         } catch (error) {
             console.error("Error fetching tests for student dashboard:", error);
