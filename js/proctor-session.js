@@ -159,42 +159,52 @@ document.addEventListener('DOMContentLoaded', () => {
         if (processScoresBtn) {
             processScoresBtn.addEventListener('click', async () => {
                 if (isProcessing) return;
-                if (!confirm('Start AI scoring for all completed students? This may take several minutes.')) return;
+                if (!confirm('Start score processing for all completed students? This may take several minutes.')) return;
 
                 isProcessing = true;
                 processScoresBtn.disabled = true;
                 processScoresBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
 
                 if (scoringProgress) scoringProgress.style.display = 'block';
-                if (scoringNote) scoringNote.innerHTML = '<i class="fa-solid fa-brain"></i> AI is analyzing each student\'s performance. This will take a few minutes per student. <strong>Do not close this page.</strong>';
+                if (scoringNote) scoringNote.innerHTML = '<i class="fa-solid fa-hourglass-half"></i> Analyzing each student\'s performance. This will take a few minutes per student. <strong>Do not close this page.</strong>';
 
                 try {
                     const result = await processSessionScores(sessionCode, (scored, total, message) => {
-                        // Progress callback
                         const pct = total > 0 ? (scored / total * 100) : 0;
                         if (scoringProgressFill) scoringProgressFill.style.width = pct + '%';
                         if (scoringProgressText) scoringProgressText.textContent = `${scored}/${total} — ${message}`;
                     });
 
-                    processScoresBtn.innerHTML = '<i class="fa-solid fa-check"></i> Scores Processed';
-                    publishResultsBtn.disabled = false;
+                    if (result.success && result.scoredCount > 0) {
+                        // Actual success — scores were written
+                        processScoresBtn.innerHTML = '<i class="fa-solid fa-check"></i> Scores Processed';
+                        if (publishResultsBtn) publishResultsBtn.disabled = false;
 
-                    if (scoringNote) {
-                        scoringNote.innerHTML = `<i class="fa-solid fa-check-circle"></i> <strong>${result.scoredCount} students scored.</strong> ${result.errors.length > 0 ? result.errors.length + ' errors.' : 'No errors.'}`;
+                        if (scoringNote) {
+                            scoringNote.innerHTML = `<i class="fa-solid fa-check-circle"></i> <strong>${result.scoredCount} students scored.</strong> ${result.errors.length > 0 ? result.errors.length + ' error(s).' : 'No errors.'}`;
+                        }
+
+                        // Refresh session data
+                        try {
+                            const freshSession = await db.collection('proctoredSessions').doc(sessionCode).get();
+                            updateScoringUI(freshSession.data());
+                        } catch (e) { /* ignore refresh error */ }
+                    } else {
+                        // Function returned but with 0 scores or failure
+                        processScoresBtn.innerHTML = '<i class="fa-solid fa-exclamation-triangle"></i> Error — Retry';
+                        processScoresBtn.disabled = false;
+                        const errMsg = result.errors?.length > 0 ? result.errors[0].error : 'No result documents could be read.';
+                        if (scoringNote) scoringNote.innerHTML = `<i class="fa-solid fa-exclamation-circle"></i> ${errMsg} Check console logs for details. You can retry.`;
                     }
-
-                    // Refresh session data
-                    const freshSession = await db.collection('proctoredSessions').doc(sessionCode).get();
-                    updateScoringUI(freshSession.data());
 
                 } catch (err) {
                     console.error('Scoring error:', err);
                     processScoresBtn.innerHTML = '<i class="fa-solid fa-exclamation-triangle"></i> Error — Retry';
                     processScoresBtn.disabled = false;
                     if (scoringNote) scoringNote.innerHTML = `<i class="fa-solid fa-exclamation-circle"></i> Error: ${err.message}. You can retry.`;
+                } finally {
+                    isProcessing = false;
                 }
-
-                isProcessing = false;
             });
         }
 

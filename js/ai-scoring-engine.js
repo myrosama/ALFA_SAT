@@ -3,6 +3,37 @@
 // Uses Gemini 2.5 Pro for score estimation
 // Processes students one-by-one with IRT-inspired scoring prompts
 
+// === LOGGING UTILITY ===
+function scoringLog(level, ...args) {
+    const timestamp = new Date().toLocaleTimeString();
+    const prefix = `[SCORING ${timestamp}]`;
+    if (level === 'error') console.error(prefix, ...args);
+    else if (level === 'warn') console.warn(prefix, ...args);
+    else console.log(prefix, ...args);
+}
+
+/**
+ * Safely write to Firestore — tries set(merge), falls back to update, logs errors but doesn't throw.
+ * Returns true if write succeeded, false otherwise.
+ */
+async function safeFirestoreWrite(docRef, data, label) {
+    try {
+        await docRef.set(data, { merge: true });
+        scoringLog('info', `Write OK: ${label}`);
+        return true;
+    } catch (err1) {
+        scoringLog('warn', `set(merge) failed for ${label}: ${err1.message}. Trying update()...`);
+        try {
+            await docRef.update(data);
+            scoringLog('info', `Update OK: ${label}`);
+            return true;
+        } catch (err2) {
+            scoringLog('error', `All writes failed for ${label}: ${err2.message}`);
+            return false;
+        }
+    }
+}
+
 /**
  * Main queue processor: processes all students for a proctored session.
  * Called from admin panel.
@@ -14,20 +45,25 @@
 async function processSessionScores(sessionCode, onProgress) {
     const db = firebase.firestore();
 
+    scoringLog('info', '=== SCORING PIPELINE START ===');
+    scoringLog('info', 'Session code:', sessionCode);
+
     // 1. Get session info
     const sessionRef = db.collection('proctoredSessions').doc(sessionCode);
     const sessionDoc = await sessionRef.get();
     if (!sessionDoc.exists) throw new Error('Session not found');
     const sessionData = sessionDoc.data();
     const testId = sessionData.testId;
+    scoringLog('info', 'Session found. Test ID:', testId, '| Test name:', sessionData.testName);
 
-    // 2. Mark session as processing (use set+merge for permissions compatibility)
-    await sessionRef.set({
+    // 2. Mark session as processing (non-blocking — don't fail if permissions deny)
+    await safeFirestoreWrite(sessionRef, {
         scoringStatus: 'processing',
         scoringStartedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+    }, 'proctoredSessions/' + sessionCode + ' → processing');
 
-    // 3. Fetch ALL questions for this test (for the prompt)
+    // 3. Fetch ALL questions for this test
+    scoringLog('info', 'Fetching questions...');
     const questionsSnap = await db.collection('tests').doc(testId).collection('questions').get();
     const allQuestions = [];
     questionsSnap.forEach(d => allQuestions.push({ id: d.id, ...d.data() }));
@@ -35,6 +71,7 @@ async function processSessionScores(sessionCode, onProgress) {
         if (a.module !== b.module) return a.module - b.module;
         return (a.questionNumber || 0) - (b.questionNumber || 0);
     });
+    scoringLog('info', `Loaded ${allQuestions.length} questions`);
 
     // 4. Fetch all completed participants
     const participantsSnap = await sessionRef.collection('participants')
@@ -42,23 +79,39 @@ async function processSessionScores(sessionCode, onProgress) {
 
     const participants = [];
     participantsSnap.forEach(d => participants.push({ id: d.id, ...d.data() }));
+    scoringLog('info', `Found ${participants.length} completed participants`);
 
     if (participants.length === 0) {
-        await sessionRef.set({ scoringStatus: 'scored', scoredCount: 0 }, { merge: true });
+        await safeFirestoreWrite(sessionRef, { scoringStatus: 'scored', scoredCount: 0 },
+            'proctoredSessions/' + sessionCode + ' → scored (0 students)');
         return { success: true, scoredCount: 0, errors: [] };
     }
 
     // 5. Collect all result docs
+    scoringLog('info', 'Fetching result documents...');
     const resultDocs = [];
     for (const p of participants) {
         const resultId = `${p.id}_${testId}_${sessionCode}`;
-        const resultDoc = await db.collection('testResults').doc(resultId).get();
-        if (resultDoc.exists) {
-            resultDocs.push({ resultId, participantId: p.id, data: resultDoc.data() });
+        try {
+            const resultDoc = await db.collection('testResults').doc(resultId).get();
+            if (resultDoc.exists) {
+                resultDocs.push({ resultId, participantId: p.id, data: resultDoc.data() });
+                scoringLog('info', `  Result found: ${resultId}`);
+            } else {
+                scoringLog('warn', `  Result NOT found: ${resultId}`);
+            }
+        } catch (e) {
+            scoringLog('error', `  Error reading result ${resultId}:`, e.message);
         }
     }
+    scoringLog('info', `Collected ${resultDocs.length} result docs out of ${participants.length} participants`);
 
-    // 6. First, collect all raw scores for group comparison
+    if (resultDocs.length === 0) {
+        scoringLog('error', 'No result documents found. Cannot score.');
+        return { success: false, scoredCount: 0, errors: [{ resultId: 'N/A', error: 'No result documents found' }] };
+    }
+
+    // 6. Collect raw scores for group comparison
     const groupRawScores = resultDocs.map(r => ({
         name: r.data.userId,
         rwRaw: r.data.rwRaw || 0,
@@ -73,15 +126,18 @@ async function processSessionScores(sessionCode, onProgress) {
 
     for (let i = 0; i < resultDocs.length; i++) {
         const result = resultDocs[i];
+        scoringLog('info', `--- Student ${i + 1}/${resultDocs.length}: ${result.resultId} ---`);
 
         if (onProgress) onProgress(i, resultDocs.length, `Processing student ${i + 1}...`);
 
         try {
             // Rate limit: wait 12 seconds between calls (5 RPM = 1 per 12s)
             if (i > 0) {
+                scoringLog('info', 'Rate limit: waiting 12 seconds...');
                 await new Promise(r => setTimeout(r, 12000));
             }
 
+            scoringLog('info', 'Calling Gemini API...');
             const aiScore = await scoreStudentWithAI(
                 result.data,
                 allQuestions,
@@ -90,20 +146,31 @@ async function processSessionScores(sessionCode, onProgress) {
             );
 
             if (aiScore) {
-                await db.collection('testResults').doc(result.resultId).set({
-                    aiEstimatedScore: aiScore,
-                    scoringStatus: 'scored'
-                }, { merge: true });
-                scoredCount++;
+                scoringLog('info', `Score received: R&W=${aiScore.rwScore}, Math=${aiScore.mathScore}, Total=${aiScore.totalScore}`);
+
+                // Write AI score to testResults
+                const writeOk = await safeFirestoreWrite(
+                    db.collection('testResults').doc(result.resultId),
+                    { aiEstimatedScore: aiScore, scoringStatus: 'scored' },
+                    'testResults/' + result.resultId + ' → scored'
+                );
+
+                if (writeOk) {
+                    scoredCount++;
+                } else {
+                    errors.push({ resultId: result.resultId, error: 'Failed to save score to Firestore' });
+                }
             } else {
+                scoringLog('warn', 'Scoring returned null for', result.resultId);
                 errors.push({ resultId: result.resultId, error: 'Scoring returned null' });
             }
 
-            // Update session progress
-            await sessionRef.set({ scoredCount }, { merge: true });
+            // Update session progress (non-blocking)
+            await safeFirestoreWrite(sessionRef, { scoredCount },
+                'proctoredSessions/' + sessionCode + ' → progress ' + scoredCount);
 
         } catch (err) {
-            console.error(`Error scoring ${result.resultId}:`, err);
+            scoringLog('error', `Error scoring ${result.resultId}:`, err.message);
             errors.push({ resultId: result.resultId, error: err.message });
         }
 
@@ -112,28 +179,30 @@ async function processSessionScores(sessionCode, onProgress) {
 
     // 8. Second pass: comparison normalization (if all scored successfully)
     if (scoredCount === resultDocs.length && scoredCount > 1) {
+        scoringLog('info', '=== NORMALIZATION PASS ===');
         if (onProgress) onProgress(scoredCount, resultDocs.length, 'Normalizing scores...');
 
         try {
             await new Promise(r => setTimeout(r, 12000)); // Rate limit
             await compareAndNormalizeScores(db, resultDocs, sessionCode, testId, allQuestions);
         } catch (err) {
-            console.warn('Score comparison pass failed, individual scores still valid:', err);
+            scoringLog('warn', 'Score comparison pass failed (individual scores still valid):', err.message);
         }
     }
 
-    // 9. Mark session as scored, set publish time (12 hours from test creation)
+    // 9. Mark session as scored
     const testCreatedAt = sessionData.createdAt?.toDate?.() || new Date();
     const publishAfter = new Date(testCreatedAt.getTime() + 12 * 60 * 60 * 1000);
 
-    await sessionRef.set({
+    await safeFirestoreWrite(sessionRef, {
         scoringStatus: 'scored',
         scoredCount,
         totalParticipants: resultDocs.length,
         scoredAt: firebase.firestore.FieldValue.serverTimestamp(),
         publishAfter: firebase.firestore.Timestamp.fromDate(publishAfter)
-    }, { merge: true });
+    }, 'proctoredSessions/' + sessionCode + ' → scored (final)');
 
+    scoringLog('info', `=== SCORING COMPLETE: ${scoredCount}/${resultDocs.length} scored, ${errors.length} errors ===`);
     if (onProgress) onProgress(scoredCount, resultDocs.length, 'Processing complete.');
 
     return { success: true, scoredCount, errors };
@@ -145,7 +214,7 @@ async function processSessionScores(sessionCode, onProgress) {
  */
 async function scoreStudentWithAI(resultData, allQuestions, groupRawScores, testName) {
     if (typeof AI_API_KEY === 'undefined' || !AI_API_KEY) {
-        console.error('AI_API_KEY not found');
+        scoringLog('error', 'AI_API_KEY not found — cannot score');
         return null;
     }
 
@@ -185,6 +254,10 @@ async function scoreStudentWithAI(resultData, allQuestions, groupRawScores, test
     // Group stats for comparison
     const avgRwRaw = groupRawScores.reduce((s, g) => s + g.rwRaw, 0) / groupRawScores.length;
     const avgMathRaw = groupRawScores.reduce((s, g) => s + g.mathRaw, 0) / groupRawScores.length;
+
+    scoringLog('info', `Student stats: R&W ${resultData.rwRaw}/${resultData.rwTotal || 54}, Math ${resultData.mathRaw}/${resultData.mathTotal || 44}`);
+    scoringLog('info', `Module paths: M1=${m1Pct}% (${Number(m1Pct) > 65 ? 'HARD' : 'EASY'}), M3=${m3Pct}% (${Number(m3Pct) > 65 ? 'HARD' : 'EASY'})`);
+    scoringLog('info', `Wrong: ${wrongQuestions.length}, Right: ${rightQuestions.length}`);
 
     const prompt = `You are a College Board SAT scoring expert. You are tasked with estimating the ACCURATE scaled score for a student who took a Digital SAT practice test.
 
@@ -249,6 +322,8 @@ Return ONLY valid JSON (no markdown, no code blocks):
     // Call Gemini 2.5 Pro
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-preview-05-06:generateContent?key=${AI_API_KEY}`;
 
+    scoringLog('info', 'Sending request to Gemini 2.5 Pro...');
+
     const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -263,18 +338,24 @@ Return ONLY valid JSON (no markdown, no code blocks):
 
     if (!response.ok) {
         const errText = await response.text();
-        console.error('Gemini 2.5 Pro error:', response.status, errText);
+        scoringLog('error', 'Gemini 2.5 Pro HTTP error:', response.status, errText.substring(0, 200));
+        scoringLog('info', 'Falling back to Gemini 2.0 Flash...');
         return await scoreStudentWithFlash(prompt);
     }
 
     const result = await response.json();
     const rawText = result?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    scoringLog('info', 'Gemini response received. Length:', rawText.length, 'chars');
+
     const jsonStr = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
     try {
-        return JSON.parse(jsonStr);
+        const parsed = JSON.parse(jsonStr);
+        scoringLog('info', 'Parsed score:', JSON.stringify(parsed).substring(0, 150));
+        return parsed;
     } catch (e) {
-        console.error('Failed to parse score response:', e, rawText);
+        scoringLog('error', 'Failed to parse response:', e.message);
+        scoringLog('error', 'Raw response:', rawText.substring(0, 300));
         return null;
     }
 }
@@ -286,6 +367,8 @@ Return ONLY valid JSON (no markdown, no code blocks):
 async function scoreStudentWithFlash(prompt) {
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${AI_API_KEY}`;
 
+    scoringLog('info', 'Sending request to Gemini 2.0 Flash (fallback)...');
+
     try {
         const response = await fetch(apiUrl, {
             method: 'POST',
@@ -296,13 +379,19 @@ async function scoreStudentWithFlash(prompt) {
             })
         });
 
-        if (!response.ok) return null;
+        if (!response.ok) {
+            scoringLog('error', 'Flash HTTP error:', response.status);
+            return null;
+        }
         const result = await response.json();
         const rawText = result?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        scoringLog('info', 'Flash response received. Length:', rawText.length, 'chars');
         const jsonStr = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        return JSON.parse(jsonStr);
+        const parsed = JSON.parse(jsonStr);
+        scoringLog('info', 'Flash parsed score:', JSON.stringify(parsed).substring(0, 150));
+        return parsed;
     } catch (e) {
-        console.error('Flash fallback failed:', e);
+        scoringLog('error', 'Flash fallback failed:', e.message);
         return null;
     }
 }
@@ -312,6 +401,8 @@ async function scoreStudentWithFlash(prompt) {
  * Second pass: compare all students' scores and normalize.
  */
 async function compareAndNormalizeScores(db, resultDocs, sessionCode, testId, allQuestions) {
+    scoringLog('info', 'Starting normalization pass...');
+
     const studentScores = [];
     for (const r of resultDocs) {
         const freshDoc = await db.collection('testResults').doc(r.resultId).get();
@@ -331,7 +422,12 @@ async function compareAndNormalizeScores(db, resultDocs, sessionCode, testId, al
         }
     }
 
-    if (studentScores.length < 2) return;
+    if (studentScores.length < 2) {
+        scoringLog('info', 'Only 1 student scored, skipping normalization');
+        return;
+    }
+
+    scoringLog('info', `Normalizing ${studentScores.length} students...`);
 
     const comparisonPrompt = `You are an SAT score normalization expert. Review these ${studentScores.length} students' estimated scores and verify they are internally consistent.
 
@@ -366,7 +462,10 @@ If no adjustments needed, return: { "adjustments": [], "groupAnalysis": "..." }`
         })
     });
 
-    if (!response.ok) return;
+    if (!response.ok) {
+        scoringLog('error', 'Normalization API error:', response.status);
+        return;
+    }
 
     const result = await response.json();
     const rawText = result?.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -374,29 +473,36 @@ If no adjustments needed, return: { "adjustments": [], "groupAnalysis": "..." }`
 
     try {
         const comparison = JSON.parse(jsonStr);
+        scoringLog('info', 'Normalization result:', comparison.adjustments?.length || 0, 'adjustments');
 
         if (comparison.adjustments?.length > 0) {
             for (const adj of comparison.adjustments) {
                 const student = studentScores[adj.studentIndex];
                 if (student) {
-                    await db.collection('testResults').doc(student.resultId).set({
-                        'aiEstimatedScore.rwScore': adj.newRW,
-                        'aiEstimatedScore.mathScore': adj.newMath,
-                        'aiEstimatedScore.totalScore': adj.newTotal,
-                        'aiEstimatedScore.adjustmentReason': adj.reason,
-                        'aiEstimatedScore.groupAnalysis': comparison.groupAnalysis
-                    }, { merge: true });
+                    await safeFirestoreWrite(
+                        db.collection('testResults').doc(student.resultId),
+                        {
+                            'aiEstimatedScore.rwScore': adj.newRW,
+                            'aiEstimatedScore.mathScore': adj.newMath,
+                            'aiEstimatedScore.totalScore': adj.newTotal,
+                            'aiEstimatedScore.adjustmentReason': adj.reason,
+                            'aiEstimatedScore.groupAnalysis': comparison.groupAnalysis
+                        },
+                        'testResults/' + student.resultId + ' → adjustment'
+                    );
                 }
             }
         }
 
         for (const s of studentScores) {
-            await db.collection('testResults').doc(s.resultId).set({
-                'aiEstimatedScore.groupAnalysis': comparison.groupAnalysis
-            }, { merge: true });
+            await safeFirestoreWrite(
+                db.collection('testResults').doc(s.resultId),
+                { 'aiEstimatedScore.groupAnalysis': comparison.groupAnalysis },
+                'testResults/' + s.resultId + ' → groupAnalysis'
+            );
         }
     } catch (e) {
-        console.warn('Score comparison parse error:', e);
+        scoringLog('error', 'Normalization parse error:', e.message);
     }
 }
 
@@ -413,6 +519,9 @@ async function publishSessionResults(sessionCode) {
     const sessionData = sessionDoc.data();
     const testId = sessionData.testId;
 
+    scoringLog('info', '=== PUBLISHING RESULTS ===');
+    scoringLog('info', 'Session:', sessionCode, '| Test:', testId);
+
     // 1. Update all test results to published
     const participantsSnap = await sessionRef.collection('participants')
         .where('status', '==', 'completed').get();
@@ -424,8 +533,10 @@ async function publishSessionResults(sessionCode) {
         const resultId = `${userId}_${testId}_${sessionCode}`;
 
         // Update testResults to published
-        await db.collection('testResults').doc(resultId).set(
-            { scoringStatus: 'published' }, { merge: true }
+        await safeFirestoreWrite(
+            db.collection('testResults').doc(resultId),
+            { scoringStatus: 'published' },
+            'testResults/' + resultId + ' → published'
         );
 
         // Also update the user's completedTests for dashboard display
@@ -433,25 +544,29 @@ async function publishSessionResults(sessionCode) {
             const resultDoc = await db.collection('testResults').doc(resultId).get();
             const resultData = resultDoc.data();
             const finalScore = resultData?.aiEstimatedScore?.totalScore || resultData?.totalScore || 'N/A';
-            await db.collection('users').doc(userId).collection('completedTests').doc(testId).set(
-                { scoringStatus: 'published', score: finalScore }, { merge: true }
+            await safeFirestoreWrite(
+                db.collection('users').doc(userId).collection('completedTests').doc(testId),
+                { scoringStatus: 'published', score: finalScore },
+                'users/' + userId + '/completedTests/' + testId + ' → published'
             );
         } catch (e) {
-            console.warn('Could not update completedTests for user:', userId, e);
+            scoringLog('warn', 'Could not update completedTests for user:', userId, e.message);
         }
 
         publishedStudents.push(userId);
     }
 
     // 2. Update session status
-    await sessionRef.set({
+    await safeFirestoreWrite(sessionRef, {
         scoringStatus: 'published',
         publishedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+    }, 'proctoredSessions/' + sessionCode + ' → published');
 
     // 3. Send Telegram announcement
+    scoringLog('info', 'Sending Telegram announcement...');
     await sendTelegramAnnouncement(sessionData.testName || 'SAT Practice Test', publishedStudents.length);
 
+    scoringLog('info', `=== PUBLISH COMPLETE: ${publishedStudents.length} students ===`);
     return { published: publishedStudents.length };
 }
 
@@ -461,7 +576,7 @@ async function publishSessionResults(sessionCode) {
  */
 async function sendTelegramAnnouncement(testName, studentCount) {
     if (typeof TELEGRAM_BOT_TOKEN === 'undefined' || typeof TELEGRAM_CHANNEL_ID === 'undefined') {
-        console.warn('Telegram bot config not found, skipping announcement');
+        scoringLog('warn', 'Telegram bot config not found, skipping announcement');
         return;
     }
 
@@ -490,10 +605,10 @@ ALFA SAT | 2026`;
             })
         });
         const data = await res.json();
-        if (!data.ok) console.warn('Telegram send failed:', data);
-        else console.log('Telegram announcement sent.');
+        if (!data.ok) scoringLog('warn', 'Telegram send failed:', data);
+        else scoringLog('info', 'Telegram announcement sent successfully');
     } catch (err) {
-        console.error('Telegram API error:', err);
+        scoringLog('error', 'Telegram API error:', err.message);
     }
 }
 
