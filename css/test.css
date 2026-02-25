@@ -208,8 +208,14 @@ body.test-body {
 
 .stimulus-pane p,
 .question-text p {
-    margin-bottom: 1em;
+    margin-bottom: 0;
     /* Standard paragraph spacing */
+}
+
+/* Empty paragraphs (Quill's <p><br></p>) act as visible spacing */
+.stimulus-pane p:has(> br:only-child),
+.question-text p:has(> br:only-child) {
+    margin-bottom: 1em;
 }
 
 
@@ -297,6 +303,10 @@ body.test-body {
 
 .tool-btn.active {
     background-color: rgba(255, 255, 255, 0.25);
+}
+
+.test-footer .btn {
+    margin-top: 0;
 }
 
 .test-footer .btn-secondary {

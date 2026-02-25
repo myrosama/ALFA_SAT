@@ -359,7 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return `<div class="option-wrapper"><label class="option"><input type="radio" name="${question.id}" value="${opt}"><span class="option-letter">${opt}</span><span class="option-text">${optText}</span></label><button class="strikethrough-btn" title="Eliminate choice"><i class="fa-solid fa-ban"></i></button></div>`;
             }).join('');
         }
-        if (question.format === 'fill-in') { const savedVal = userAnswers[question.id] || ''; return `<div><input type="text" class="fill-in-input" data-question-id="${question.id}" placeholder="Type your answer here" value="${savedVal}"></div>`; }
+        if (question.format === 'fill-in') { const savedVal = userAnswers[question.id] || ''; return `<div><input type="text" class="fill-in-input" data-question-id="${question.id}" placeholder="Type your answer here" value="${savedVal}" maxlength="6"></div>`; }
         return '<p>Format not supported.</p>';
     }
     function updateUI(question) {
@@ -464,8 +464,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (timer < 0) {
                 clearInterval(timerInterval);
                 timerDisplay.style.opacity = '1';
-                alert("Time's up!");
-                showReviewScreen(true);
+                // Auto-advance: silently move to next module or finish
+                saveTestState();
+                const nextIdx = findNextNonEmptyModule(currentModuleIndex + 1);
+                if (nextIdx !== -1) {
+                    startModule(nextIdx);
+                } else {
+                    finishTest();
+                }
             }
         }, 1000);
     }
@@ -549,6 +555,36 @@ document.addEventListener('DOMContentLoaded', () => {
         return -1;
     }
 
+    // --- Answer Equivalence Helpers (for free-response / fill-in questions) ---
+    function parseMathValue(str) {
+        // Handle fractions like "3/4" or "-1/2"
+        const fractionMatch = str.match(/^(-?\d+)\s*\/\s*(\d+)$/);
+        if (fractionMatch) {
+            const denom = parseFloat(fractionMatch[2]);
+            if (denom === 0) return null;
+            return parseFloat(fractionMatch[1]) / denom;
+        }
+        // Handle decimals like ".75", "0.75", "-3"
+        const num = parseFloat(str);
+        return isNaN(num) ? null : num;
+    }
+
+    function areAnswersEquivalent(userAns, correctAns) {
+        if (!userAns && !correctAns) return true;
+        if (!userAns || !correctAns) return false;
+        // 1. Exact match
+        if (userAns === correctAns) return true;
+        // 2. Case-insensitive trim
+        const u = userAns.trim().toLowerCase();
+        const c = correctAns.trim().toLowerCase();
+        if (u === c) return true;
+        // 3. Numeric equivalence (handles 3/4 vs 0.75, .5 vs 1/2, etc.)
+        const uNum = parseMathValue(u);
+        const cNum = parseMathValue(c);
+        if (uNum !== null && cNum !== null && Math.abs(uNum - cNum) < 0.0001) return true;
+        return false;
+    }
+
     /**
      * +++ MODIFIED FINISH TEST FUNCTION +++
      * Calculates the scaled SAT score based on raw scores from R&W and Math sections.
@@ -561,16 +597,27 @@ document.addEventListener('DOMContentLoaded', () => {
         // Calculate R&W Raw Score (Modules 1 & 2)
         const rwQuestions = [...allQuestionsByModule[0], ...allQuestionsByModule[1]];
         rwQuestions.forEach(question => {
-            if (question && question.id && userAnswers[question.id] === question.correctAnswer) {
-                rwRaw++;
+            if (!question || !question.id) return;
+            const ua = userAnswers[question.id];
+            if (question.format === 'fill-in') {
+                // Use smart equivalence check for fill-in (handles fractions, decimals, etc.)
+                const correctFillIn = question.fillInAnswer ? question.fillInAnswer.replace(/<[^>]*>/g, '').trim() : question.correctAnswer;
+                if (areAnswersEquivalent(ua, correctFillIn)) rwRaw++;
+            } else {
+                if (ua === question.correctAnswer) rwRaw++;
             }
         });
 
         // Calculate Math Raw Score (Modules 3 & 4)
         const mathQuestions = [...allQuestionsByModule[2], ...allQuestionsByModule[3]];
         mathQuestions.forEach(question => {
-            if (question && question.id && userAnswers[question.id] === question.correctAnswer) {
-                mathRaw++;
+            if (!question || !question.id) return;
+            const ua = userAnswers[question.id];
+            if (question.format === 'fill-in') {
+                const correctFillIn = question.fillInAnswer ? question.fillInAnswer.replace(/<[^>]*>/g, '').trim() : question.correctAnswer;
+                if (areAnswersEquivalent(ua, correctFillIn)) mathRaw++;
+            } else {
+                if (ua === question.correctAnswer) mathRaw++;
             }
         });
 
@@ -1275,6 +1322,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     userAnswers[qId] = e.target.value.trim();
                     updateModalGridHighlights();
                     saveTestState(); // +++ ADDED
+                }
+            }
+        });
+        // +++ Fill-in character cap: 5 chars max, 6 if starts with '-' +++
+        questionPaneContent.addEventListener('input', (e) => {
+            if (e.target.classList.contains('fill-in-input')) {
+                let val = e.target.value;
+                const maxLen = val.startsWith('-') ? 6 : 5;
+                if (val.length > maxLen) {
+                    e.target.value = val.substring(0, maxLen);
+                    val = e.target.value;
+                }
+                const qId = e.target.dataset.questionId;
+                if (qId) {
+                    userAnswers[qId] = val.trim();
+                    updateModalGridHighlights();
                 }
             }
         });

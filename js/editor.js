@@ -917,4 +917,90 @@ Return *only* a single, valid JSON object with these fields.
     }
     // +++ END AI HELPER LOGIC +++
 
+    // +++ QUESTION PREVIEW LOGIC +++
+    const previewModal = document.getElementById('preview-modal');
+    const previewBackdrop = document.getElementById('preview-modal-backdrop');
+    const closePreviewBtn = document.getElementById('close-preview-btn');
+
+    function openPreview() {
+        if (!currentQuestion || !editors.passage || !editors.prompt) {
+            alert("Please select a question first!");
+            return;
+        }
+
+        const questionForm = editorContainer.querySelector('#question-form');
+        if (!questionForm) return;
+
+        const format = questionForm.querySelector('#q-format').value;
+        const imageContainer = document.getElementById('stimulus-image-container');
+        const imagePreview = document.getElementById('stimulus-image-preview');
+        const imgPos = questionForm.querySelector('#q-image-position').value;
+
+        // Build passage content
+        const passageHTML = editors.passage.root.innerHTML;
+        let imageHTML = '';
+        if (imageContainer && !imageContainer.classList.contains('hidden') && imagePreview.src) {
+            const imgWidth = imageContainer.style.width || '100%';
+            imageHTML = `<img src="${imagePreview.src}" style="width: ${imgWidth};" alt="Stimulus Image">`;
+        }
+
+        const previewPassageEl = document.getElementById('preview-passage-content');
+        const previewStimulusPane = document.getElementById('preview-stimulus-pane');
+        const previewPromptEl = document.getElementById('preview-prompt-content');
+        const previewOptionsEl = document.getElementById('preview-options-content');
+        const previewBody = document.querySelector('.preview-modal-body');
+
+        // Check if stimulus is empty
+        const isPassageEmpty = (!passageHTML || passageHTML.trim() === '' || passageHTML === '<p><br></p>') && !imageHTML;
+        previewStimulusPane.classList.toggle('is-empty', isPassageEmpty);
+
+        // Math vs R&W layout
+        const isMath = currentModule > 2;
+        previewBody.classList.toggle('math-layout', isMath && isPassageEmpty);
+
+        // Set passage
+        if (imgPos === 'below') {
+            previewPassageEl.innerHTML = passageHTML + imageHTML;
+        } else {
+            previewPassageEl.innerHTML = imageHTML + passageHTML;
+        }
+
+        // Set prompt
+        previewPromptEl.innerHTML = editors.prompt.root.innerHTML;
+
+        // Set options
+        if (format === 'mcq') {
+            previewOptionsEl.innerHTML = ['A', 'B', 'C', 'D'].map(opt => {
+                const optText = editors.options[opt] ? editors.options[opt].root.innerHTML : '';
+                return `<div class="preview-option">
+                    <span class="preview-option-letter">${opt}</span>
+                    <span class="preview-option-text">${optText}</span>
+                </div>`;
+            }).join('');
+        } else {
+            previewOptionsEl.innerHTML = `<input type="text" class="preview-fill-in" placeholder="Type your answer here" disabled maxlength="6">`;
+        }
+
+        // Show modal
+        previewModal.classList.add('visible');
+        previewBackdrop.classList.add('visible');
+    }
+
+    function closePreview() {
+        previewModal.classList.remove('visible');
+        previewBackdrop.classList.remove('visible');
+    }
+
+    if (closePreviewBtn) closePreviewBtn.addEventListener('click', closePreview);
+    if (previewBackdrop) previewBackdrop.addEventListener('click', closePreview);
+
+    // Use event delegation for the dynamically-created preview button
+    document.body.addEventListener('click', (e) => {
+        if (e.target.closest('#preview-question-btn')) {
+            e.preventDefault();
+            openPreview();
+        }
+    });
+    // +++ END PREVIEW LOGIC +++
+
 }); // End of DOMContentLoaded
