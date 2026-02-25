@@ -41,25 +41,40 @@ async function generateCertificatePDF(data = {}, userName = 'Student Name') {
 
     // ──────── 1. HEADER SECTION ────────
 
-    // Logo block — purple rectangle with shield icon + text
+    // Logo block — purple background with actual logo + bold branding
+    const logoBlockW = 160;
+    const logoBlockH = 48;
+    const logoBlockY = 46;
     doc.setFillColor(...PURPLE);
-    doc.rect(M, 50, 115, 42, 'F');
+    doc.roundedRect(M, logoBlockY, logoBlockW, logoBlockH, 5, 5, 'F');
 
-    // Abstract shield icon lines
-    doc.setDrawColor(255, 255, 255);
-    doc.setLineWidth(1.2);
-    doc.roundedRect(M + 8, 56, 20, 30, 2, 2, 'S');
-    doc.line(M + 14, 56, M + 14, 86);
-    doc.line(M + 22, 56, M + 22, 86);
+    // Embed actual logo image
+    try {
+        const logoImg = await loadImageAsBase64('assets/logo.png');
+        if (logoImg) {
+            // White circle background for logo clarity
+            doc.setFillColor(255, 255, 255);
+            doc.circle(M + 28, logoBlockY + logoBlockH / 2, 17, 'F');
+            doc.addImage(logoImg, 'PNG', M + 11, logoBlockY + 7, 34, 34);
+        }
+    } catch (e) { /* logo load failed, text-only fallback */ }
 
-    // Logo text inside purple block
+    // Brand text: ALFA SAT — all bold, professional
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(20);
-    doc.text('SAT', M + 36, 68);
+    doc.setFontSize(22);
+    doc.text('ALFA', M + 52, logoBlockY + 22);
+    doc.setFontSize(22);
+    doc.text('SAT', M + 106, logoBlockY + 22);
+    // Thin divider line between ALFA and SAT
+    doc.setDrawColor(255, 255, 255, 0.4);
+    doc.setLineWidth(0.5);
+    doc.line(M + 102, logoBlockY + 10, M + 102, logoBlockY + 28);
+    // Subtitle
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(13);
-    doc.text('ALFA', M + 36, 84);
+    doc.setFontSize(7.5);
+    doc.setTextColor(220, 220, 230);
+    doc.text('Score Report', M + 52, logoBlockY + 34);
 
     // "Your Scores" title
     doc.setFont('helvetica', 'bold');
@@ -277,20 +292,32 @@ async function generateCertificatePDF(data = {}, userName = 'Student Name') {
     doc.setTextColor(...PURPLE);
     doc.text('QR code', textX + ftWidth, footerY + 45);
 
-    // QR code
+    // QR code — load from assets/bing_generated_qrcode.svg
     try {
-        const qrCanvas = document.createElement('canvas');
-        await QRCode.toCanvas(qrCanvas, 'https://t.me/SAT_ALFA', {
-            width: 140, margin: 0,
-            color: { dark: '#000000', light: '#ffffff' }
-        });
-        doc.addImage(qrCanvas.toDataURL('image/png'), 'PNG', PW - M - 120, footerY - 10, 100, 100);
+        const qrImg = await loadSvgAsBase64('assets/bing_generated_qrcode.svg', 200);
+        if (qrImg) {
+            doc.addImage(qrImg, 'PNG', PW - M - 120, footerY - 10, 100, 100);
+        } else {
+            throw new Error('SVG load failed');
+        }
     } catch (err) {
-        // Fallback: draw placeholder box
-        doc.setDrawColor(...G_LIGHT); doc.setFillColor(255, 255, 255);
-        doc.rect(PW - M - 120, footerY - 10, 100, 100, 'FD');
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...G_TXT);
-        doc.text('QR Code', PW - M - 90, footerY + 40);
+        // Fallback: try QRCode.js if available
+        try {
+            if (typeof QRCode !== 'undefined') {
+                const qrCanvas = document.createElement('canvas');
+                await QRCode.toCanvas(qrCanvas, 'https://t.me/SAT_ALFA', {
+                    width: 140, margin: 0,
+                    color: { dark: '#000000', light: '#ffffff' }
+                });
+                doc.addImage(qrCanvas.toDataURL('image/png'), 'PNG', PW - M - 120, footerY - 10, 100, 100);
+            }
+        } catch (e2) {
+            // Final fallback: placeholder box
+            doc.setDrawColor(...G_LIGHT); doc.setFillColor(255, 255, 255);
+            doc.rect(PW - M - 120, footerY - 10, 100, 100, 'FD');
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...G_TXT);
+            doc.text('QR Code', PW - M - 90, footerY + 40);
+        }
     }
 
     // Copyright
@@ -355,7 +382,7 @@ function sRange(score, min = 200, max = 800, delta = 30) {
 }
 
 
-// ─── Image loader (kept for compatibility) ───
+// ─── Image loader ───
 function loadImageAsBase64(src) {
     return new Promise((resolve) => {
         const img = new Image();
@@ -370,3 +397,36 @@ function loadImageAsBase64(src) {
         img.src = src;
     });
 }
+
+
+// ─── SVG loader (renders SVG to canvas → PNG base64) ───
+function loadSvgAsBase64(src, size = 200) {
+    return new Promise((resolve) => {
+        fetch(src)
+            .then(res => res.text())
+            .then(svgText => {
+                const blob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const img = new Image();
+                img.onload = () => {
+                    const c = document.createElement('canvas');
+                    c.width = size;
+                    c.height = size;
+                    const ctx = c.getContext('2d');
+                    // White background for QR readability
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, size, size);
+                    ctx.drawImage(img, 0, 0, size, size);
+                    URL.revokeObjectURL(url);
+                    resolve(c.toDataURL('image/png'));
+                };
+                img.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    resolve(null);
+                };
+                img.src = url;
+            })
+            .catch(() => resolve(null));
+    });
+}
+
