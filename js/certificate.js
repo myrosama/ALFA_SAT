@@ -41,40 +41,13 @@ async function generateCertificatePDF(data = {}, userName = 'Student Name') {
 
     // ──────── 1. HEADER SECTION ────────
 
-    // Logo block — purple background with actual logo + bold branding
-    const logoBlockW = 160;
-    const logoBlockH = 48;
-    const logoBlockY = 46;
-    doc.setFillColor(...PURPLE);
-    doc.roundedRect(M, logoBlockY, logoBlockW, logoBlockH, 5, 5, 'F');
-
-    // Embed actual logo image
+    // Logo — just the emblem, slightly bigger
     try {
         const logoImg = await loadImageAsBase64('assets/logo.png');
         if (logoImg) {
-            // White circle background for logo clarity
-            doc.setFillColor(255, 255, 255);
-            doc.circle(M + 28, logoBlockY + logoBlockH / 2, 17, 'F');
-            doc.addImage(logoImg, 'PNG', M + 11, logoBlockY + 7, 34, 34);
+            doc.addImage(logoImg, 'PNG', M, 44, 52, 52);
         }
-    } catch (e) { /* logo load failed, text-only fallback */ }
-
-    // Brand text: ALFA SAT — all bold, professional
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(22);
-    doc.text('ALFA', M + 52, logoBlockY + 22);
-    doc.setFontSize(22);
-    doc.text('SAT', M + 106, logoBlockY + 22);
-    // Thin divider line between ALFA and SAT
-    doc.setDrawColor(255, 255, 255, 0.4);
-    doc.setLineWidth(0.5);
-    doc.line(M + 102, logoBlockY + 10, M + 102, logoBlockY + 28);
-    // Subtitle
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(220, 220, 230);
-    doc.text('Score Report', M + 52, logoBlockY + 34);
+    } catch (e) { /* logo load failed */ }
 
     // "Your Scores" title
     doc.setFont('helvetica', 'bold');
