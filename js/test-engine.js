@@ -572,16 +572,21 @@ document.addEventListener('DOMContentLoaded', () => {
     function areAnswersEquivalent(userAns, correctAns) {
         if (!userAns && !correctAns) return true;
         if (!userAns || !correctAns) return false;
-        // 1. Exact match
-        if (userAns === correctAns) return true;
-        // 2. Case-insensitive trim
+
+        // Support multiple correct answers separated by commas (e.g. "-0.4, -2/5")
+        const possibleAnswers = correctAns.split(',').map(a => a.trim()).filter(a => a.length > 0);
+
         const u = userAns.trim().toLowerCase();
-        const c = correctAns.trim().toLowerCase();
-        if (u === c) return true;
-        // 3. Numeric equivalence (handles 3/4 vs 0.75, .5 vs 1/2, etc.)
-        const uNum = parseMathValue(u);
-        const cNum = parseMathValue(c);
-        if (uNum !== null && cNum !== null && Math.abs(uNum - cNum) < 0.0001) return true;
+
+        for (const ans of possibleAnswers) {
+            const c = ans.toLowerCase();
+            // 1. Exact match
+            if (u === c) return true;
+            // 2. Numeric equivalence (handles 3/4 vs 0.75, .5 vs 1/2, etc.)
+            const uNum = parseMathValue(u);
+            const cNum = parseMathValue(c);
+            if (uNum !== null && cNum !== null && Math.abs(uNum - cNum) < 0.0001) return true;
+        }
         return false;
     }
 
