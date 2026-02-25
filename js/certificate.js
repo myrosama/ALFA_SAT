@@ -1,6 +1,7 @@
 // js/certificate.js
-// DSAT-style score report PDF generator — ALFA SAT branded
+// SAT Score Report PDF generator — ALFA SAT branded
 // Requires: window.jspdf and window.QRCode
+// Adapted from standalone score report generator design
 
 async function generateCertificatePDF(data = {}, userName = 'Student Name') {
     const { jsPDF } = window.jspdf;
@@ -12,20 +13,19 @@ async function generateCertificatePDF(data = {}, userName = 'Student Name') {
     const CW = PW - M * 2; // content width
 
     // Colors
-    const BLK = [17, 17, 17];
-    const TXT = [33, 33, 33];
-    const G7 = [61, 61, 61];
-    const G5 = [122, 122, 122];
-    const G3 = [195, 195, 195];
-    const G2 = [220, 220, 220];
-    const BG = [239, 239, 239];
-    const WHT = [255, 255, 255];
-    const LNK = [47, 59, 183];
+    const BLK = [15, 15, 15];
+    const TXT = [30, 30, 30];
+    const G_TXT = [100, 100, 100];
+    const G_LIGHT = [210, 210, 210];
+    const PURPLE = [46, 27, 143];
+    const CARD_BG = [255, 255, 255];
 
     // Date helper
     let testedOn = 'N/A';
     if (data.completedAt?.toDate) {
         testedOn = data.completedAt.toDate().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    } else if (data.completedAt) {
+        testedOn = new Date(data.completedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     } else {
         testedOn = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     }
@@ -35,266 +35,327 @@ async function generateCertificatePDF(data = {}, userName = 'Student Name') {
     const math = Number(data.mathScore ?? 200);
     const tName = data.testName ?? 'Practice Test';
 
-    // ──────── PAGE BACKGROUND ────────
-    doc.setFillColor(...BG);
+    // ──────── PAGE BACKGROUND (white) ────────
+    doc.setFillColor(255, 255, 255);
     doc.rect(0, 0, PW, PH, 'F');
 
-    // ──────── HEADER: Logo + Student Info ────────
-    let y = 36;
+    // ──────── 1. HEADER SECTION ────────
 
-    // Logo box
-    doc.setFillColor(...WHT);
-    doc.setDrawColor(...G3);
-    doc.roundedRect(M, y, 78, 32, 4, 4, 'FD');
-    try {
-        const logoImg = await loadImageAsBase64('assets/logo.png');
-        if (logoImg) doc.addImage(logoImg, 'PNG', M + 4, y + 2, 28, 28);
-    } catch (e) { }
+    // Logo block — purple rectangle with shield icon + text
+    doc.setFillColor(...PURPLE);
+    doc.rect(M, 50, 115, 42, 'F');
+
+    // Abstract shield icon lines
+    doc.setDrawColor(255, 255, 255);
+    doc.setLineWidth(1.2);
+    doc.roundedRect(M + 8, 56, 20, 30, 2, 2, 'S');
+    doc.line(M + 14, 56, M + 14, 86);
+    doc.line(M + 22, 56, M + 22, 86);
+
+    // Logo text inside purple block
+    doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(...BLK);
-    doc.text('ALFA', M + 36, y + 14);
-    doc.text('SAT', M + 36, y + 25);
-
-    // Student info — right column
-    const infoX = 310;
-    const valX = 420;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...G7);
-    doc.text('Name:', infoX, y + 10);
-    doc.text('Grade:', infoX, y + 22);
-    doc.text('Test:', infoX, y + 34);
-    doc.text('Tested on:', infoX, y + 46);
-
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...TXT);
-    doc.text(userName || 'Student', valX, y + 10);
-    doc.text(String(data.grade ?? '12'), valX, y + 22);
-    // Truncate long test names
-    const shortName = tName.length > 28 ? tName.substring(0, 28) + '…' : tName;
-    doc.text(shortName, valX, y + 34);
-    doc.text(testedOn, valX, y + 46);
+    doc.setFontSize(20);
+    doc.text('SAT', M + 36, 68);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(13);
+    doc.text('ALFA', M + 36, 84);
 
     // "Your Scores" title
-    y += 62;
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(28); doc.setTextColor(...BLK);
-    doc.text('Your Scores', M, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(30);
+    doc.setTextColor(...BLK);
+    doc.text('Your Scores', M, 130);
 
-    // Thin separator
-    y += 8;
-    doc.setDrawColor(...G3); doc.setLineWidth(0.7);
-    doc.line(M, y, PW - M, y);
+    // Student info block — right aligned
+    const infoX = 320;
+    const valX = 390;
+    let yInfo = 55;
+    const lineH = 16;
 
-    // ──────── MAIN CARD ────────
-    y += 12;
-    const cardY = y;
-    const cardH = 368;
-    doc.setFillColor(...BG); doc.setDrawColor(...G3);
-    doc.roundedRect(M, cardY, CW, cardH, 8, 8, 'FD');
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...BLK);
+    doc.text('Name:', infoX, yInfo);
+    doc.text('Test:', infoX, yInfo + lineH);
+    doc.text('Tested on:', infoX, yInfo + lineH * 2);
 
-    // Card title
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(...TXT);
-    doc.text('SAT Scores', M + 12, cardY + 20);
-    doc.setDrawColor(...G3); doc.setLineWidth(0.7);
-    doc.line(M, cardY + 28, M + CW, cardY + 28);
+    // Values
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...TXT);
+    // Truncate long names
+    const displayName = (userName || 'Student').length > 28
+        ? (userName || 'Student').substring(0, 28) + '…'
+        : (userName || 'Student');
+    doc.text(displayName, valX, yInfo);
+    doc.setFont('helvetica', 'normal');
+    const shortTestName = tName.length > 28 ? tName.substring(0, 28) + '…' : tName;
+    doc.text(shortTestName, valX, yInfo + lineH);
+    doc.text(testedOn, valX, yInfo + lineH * 2);
 
-    // Left/Right split
-    const leftW = 150;
-    const splitX = M + leftW;
-    doc.setDrawColor(...G3); doc.setLineWidth(0.5);
-    doc.line(splitX, cardY + 28, splitX, cardY + cardH);
 
-    // ──── LEFT PANEL: Scores ────
-    let lx = M + 10;
-    let ly = cardY + 42;
+    // ──────── 2. MAIN CARD ────────
+    const cardY = 160;
+    const cardH = 390;
+
+    // Card with border
+    doc.setFillColor(...CARD_BG);
+    doc.setDrawColor(...G_LIGHT);
+    doc.setLineWidth(0.8);
+    doc.roundedRect(M, cardY, CW, cardH, 6, 6, 'FD');
+
+    // Card title "SAT Scores"
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(...PURPLE);
+    doc.text('SAT Scores', M + 15, cardY + 24);
+
+    // Horizontal line below title
+    doc.setDrawColor(...G_LIGHT);
+    doc.setLineWidth(0.8);
+    doc.line(M, cardY + 36, M + CW, cardY + 36);
+
+    // Vertical split line
+    const splitX = M + 175;
+    doc.line(splitX, cardY + 36, splitX, cardY + cardH);
+
+
+    // ──── LEFT PANEL: SCORES ────
+    let lx = M + 15;
+    let ly = cardY + 65;
+
+    // Dotted line helper
+    const drawDottedLine = (y) => {
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineDashPattern([2, 3], 0);
+        doc.line(lx, y, splitX - 15, y);
+        doc.setLineDashPattern([], 0);
+    };
 
     // TOTAL SCORE
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...G7);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...G_TXT);
     doc.text('TOTAL SCORE', lx, ly);
-    ly += 28;
+
+    ly += 35;
     doc.setFont('helvetica', 'bold'); doc.setFontSize(36); doc.setTextColor(...BLK);
     doc.text(String(total), lx, ly);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.setTextColor(...G5);
-    doc.text('400-1600', lx + 64, ly - 6);
 
-    ly += 12;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(...G7);
+    const totWidth = doc.getTextWidth(String(total));
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(14); doc.setTextColor(200, 200, 200);
+    doc.text('|', lx + totWidth + 6, ly - 4);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...BLK);
+    doc.text('400-1600', lx + totWidth + 16, ly - 5);
+
+    ly += 22;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...G_TXT);
     doc.text(`Score Range: ${sRange(total, 400, 1600, 40)}`, lx, ly);
 
-    // Separator
-    ly += 14;
-    doc.setDrawColor(...G3); doc.line(lx, ly, splitX - 8, ly);
-    ly += 14;
+    ly += 15;
+    drawDottedLine(ly);
 
     // SECTION SCORES
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...G7);
+    ly += 22;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...BLK);
     doc.text('SECTION SCORES', lx, ly);
-    ly += 14;
 
-    // R&W score
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...TXT);
+    // Reading & Writing
+    ly += 22;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...BLK);
     doc.text('Reading and Writing', lx, ly);
-    ly += 20;
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(26); doc.setTextColor(...BLK);
+
+    ly += 32;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(28); doc.setTextColor(...BLK);
     doc.text(String(rw), lx, ly);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.setTextColor(...G5);
-    doc.text('200-800', lx + 42, ly - 5);
-    ly += 10;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(...G7);
-    doc.text(`Score Range: ${sRange(rw)}`, lx, ly);
+
+    const rwWidth = doc.getTextWidth(String(rw));
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(14); doc.setTextColor(200, 200, 200);
+    doc.text('|', lx + rwWidth + 6, ly - 3);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...BLK);
+    doc.text('200-800', lx + rwWidth + 16, ly - 4);
+
+    ly += 20;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...G_TXT);
+    doc.text(`Your Score Range: ${sRange(rw)}`, lx, ly);
     if (data.rwRaw !== undefined) {
-        doc.text(`Raw: ${data.rwRaw}/${data.rwTotal || 54}`, lx, ly + 9);
+        doc.text(`Raw: ${data.rwRaw}/${data.rwTotal || 54}`, lx, ly + 11);
     }
 
-    // Separator
-    ly += 20;
-    doc.setDrawColor(...G3); doc.line(lx, ly, splitX - 8, ly);
-    ly += 14;
+    ly += 15;
+    drawDottedLine(ly);
 
-    // Math score
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...TXT);
+    // Math
+    ly += 22;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...BLK);
     doc.text('Math', lx, ly);
-    ly += 20;
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(26); doc.setTextColor(...BLK);
+
+    ly += 32;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(28); doc.setTextColor(...BLK);
     doc.text(String(math), lx, ly);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.setTextColor(...G5);
-    doc.text('200-800', lx + 42, ly - 5);
-    ly += 10;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(...G7);
-    doc.text(`Score Range: ${sRange(math)}`, lx, ly);
+
+    const mathWidth = doc.getTextWidth(String(math));
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(14); doc.setTextColor(200, 200, 200);
+    doc.text('|', lx + mathWidth + 6, ly - 3);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...BLK);
+    doc.text('200-800', lx + mathWidth + 16, ly - 4);
+
+    ly += 20;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...G_TXT);
+    doc.text(`Your Score Range: ${sRange(math)}`, lx, ly);
     if (data.mathRaw !== undefined) {
-        doc.text(`Raw: ${data.mathRaw}/${data.mathTotal || 44}`, lx, ly + 9);
+        doc.text(`Raw: ${data.mathRaw}/${data.mathTotal || 44}`, lx, ly + 11);
     }
 
-    // Footnote
-    ly += 28;
-    doc.setDrawColor(...G3); doc.line(lx, ly, splitX - 8, ly);
-    ly += 8;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(5.5); doc.setTextColor(...G5);
-    const fn = doc.splitTextToSize('Score range: the range of scores you could get if you took the SAT multiple times.', leftW - 22);
-    doc.text(fn, lx, ly);
+    ly += 15;
+    drawDottedLine(ly);
 
-    // ──── RIGHT PANEL: Knowledge & Skills ────
-    const rx = splitX + 10;
-    let ry = cardY + 42;
-    const rw2 = CW - leftW - 20;
-    const colW = (rw2 - 14) / 2;
+    // Score range footnote
+    ly += 15;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(...BLK);
+    doc.text('Score range:', lx, ly);
+    const srW = doc.getTextWidth('Score range:');
+    doc.setFont('helvetica', 'normal');
+    doc.text(' This is the range of scores you', lx + srW, ly);
+    doc.text('could possibly get if you took the SAT multiple', lx, ly + 10);
+    doc.text('times on different days.', lx, ly + 20);
 
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(...TXT);
+
+    // ──── RIGHT PANEL: KNOWLEDGE AND SKILLS ────
+    let rx = splitX + 15;
+    let ry = cardY + 65;
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(...BLK);
     doc.text('Knowledge and Skills', rx, ry);
-    ry += 12;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(...G7);
-    const desc = doc.splitTextToSize('View your performance across the 8 content domains measured on the SAT.', rw2 - 4);
-    doc.text(desc, rx, ry);
-    ry += desc.length * 8 + 6;
 
-    // Column headers
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...TXT);
+    ry += 18;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(...BLK);
+    const ksDesc = doc.splitTextToSize('View your performance across the 8 content domains measured on the SAT.', CW - (splitX - M) - 30);
+    doc.text(ksDesc, rx, ry);
+
+    // Sub-columns
+    ry += ksDesc.length * 12 + 18;
+    const colW = 155;
+    const rxMath = rx + 160;
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...BLK);
     doc.text('Reading and Writing', rx, ry);
-    doc.text('Math', rx + colW + 14, ry);
-    ry += 10;
+    doc.text('Math', rxMath, ry);
 
     // Domain data
     const rwDomains = [
-        { name: 'Information and Ideas', pct: '26%, 12-14 Qs' },
-        { name: 'Craft and Structure', pct: '28%, 13-15 Qs' },
-        { name: 'Expression of Ideas', pct: '20%, 8-12 Qs' },
-        { name: 'Standard English Conv.', pct: '26%, 11-15 Qs' }
-    ];
-    const mathDomains = [
-        { name: 'Algebra', pct: '35%, 13-15 Qs' },
-        { name: 'Advanced Math', pct: '35%, 13-15 Qs' },
-        { name: 'Problem-Solving & Data', pct: '15%, 5-7 Qs' },
-        { name: 'Geometry & Trig', pct: '15%, 5-7 Qs' }
+        { name: 'Information and Ideas', desc: '(26% of test section, 12-14 questions)' },
+        { name: 'Craft and Structure', desc: '(28% of test section, 13-15 questions)' },
+        { name: 'Expression of Ideas', desc: '(20% of test section, 8-12 questions)' },
+        { name: 'Standard English Conventions', desc: '(26% of test section, 11-15 questions)' }
     ];
 
-    const domSpacing = 76;
+    const mathDomains = [
+        { name: 'Algebra', desc: '(35% of test section, 13-15 questions)' },
+        { name: 'Advanced Math', desc: '(35% of test section, 13-15 questions)' },
+        { name: 'Problem-Solving and Data Analysis', desc: '(15% of test section, 5-7 questions)' },
+        { name: 'Geometry and Trigonometry', desc: '(15% of test section, 5-7 questions)' }
+    ];
+
+    // Render domains
+    let dyRW = ry + 25;
+    let dyMath = ry + 25;
+
     for (let i = 0; i < 4; i++) {
-        const dy = ry + i * domSpacing;
-        drawDomain(doc, rx, dy, colW, rwDomains[i], rw, i);
-        drawDomain(doc, rx + colW + 14, dy, colW, mathDomains[i], math, i + 4);
+        dyRW = drawDomainBlock(doc, rx, dyRW, colW, rwDomains[i], rw, i, PURPLE);
+        dyMath = drawDomainBlock(doc, rxMath, dyMath, colW, mathDomains[i], math, i, PURPLE);
     }
 
-    // ──────── FOOTER: QR + CTA ────────
-    const footY = cardY + cardH + 14;
-    const footH = 62;
-    doc.setFillColor(...BG); doc.setDrawColor(...G3);
-    doc.roundedRect(M, footY, CW, footH, 6, 6, 'FD');
 
-    // CTA text
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...TXT);
-    doc.text('Join our Telegram for SAT resources & updates!', M + 14, footY + 24);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...LNK);
-    doc.text('t.me/SAT_ALFA', M + 14, footY + 38);
+    // ──────── 3. FOOTER ────────
+    const footerY = cardY + cardH + 75;
 
-    // QR Code
-    const qrX = PW - M - 56;
+    // Footer text
+    doc.setFont('times', 'normal');
+    doc.setFontSize(18);
+    const footerText = 'For more resources, Scan the ';
+    const ftWidth = doc.getTextWidth(footerText);
+    const textX = 140;
+
+    doc.setTextColor(...BLK);
+    doc.text(footerText, textX, footerY + 45);
+    doc.setTextColor(...PURPLE);
+    doc.text('QR code', textX + ftWidth, footerY + 45);
+
+    // QR code
     try {
         const qrCanvas = document.createElement('canvas');
         await QRCode.toCanvas(qrCanvas, 'https://t.me/SAT_ALFA', {
-            width: 200, margin: 1,
-            color: { dark: '#111111', light: '#ffffff' }
+            width: 140, margin: 0,
+            color: { dark: '#000000', light: '#ffffff' }
         });
-        const qrImg = qrCanvas.toDataURL('image/png');
-        doc.addImage(qrImg, 'PNG', qrX, footY + 6, 50, 50);
+        doc.addImage(qrCanvas.toDataURL('image/png'), 'PNG', PW - M - 120, footerY - 10, 100, 100);
     } catch (err) {
-        doc.setDrawColor(...G3); doc.setFillColor(...WHT);
-        doc.rect(qrX, footY + 6, 50, 50, 'FD');
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...G5);
-        doc.text('QR Code', qrX + 10, footY + 34);
+        // Fallback: draw placeholder box
+        doc.setDrawColor(...G_LIGHT); doc.setFillColor(255, 255, 255);
+        doc.rect(PW - M - 120, footerY - 10, 100, 100, 'FD');
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...G_TXT);
+        doc.text('QR Code', PW - M - 90, footerY + 40);
     }
 
     // Copyright
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); doc.setTextColor(...G5);
-    doc.text('© 2026 ALFA SAT', M, PH - 20);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(...G_TXT);
+    doc.text('ALFA SAT | 2026', M, PH - 20);
 
-    // Save
+    // ──────── SAVE ────────
     const safeName = (userName || 'Student').replace(/[^a-z0-9]/gi, '_');
     doc.save(`ALFA_SAT_Score_${total}_${safeName}.pdf`);
 }
 
-// ─── Draw a single domain bar ───
-function drawDomain(doc, x, dy, w, domain, score, idx) {
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(33, 33, 33);
-    doc.text(domain.name, x, dy);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(5.5); doc.setTextColor(100, 100, 100);
-    doc.text(`(${domain.pct})`, x, dy + 8);
 
-    // Bar
+// ─── Draw a single domain with 7-segment progress bar ───
+function drawDomainBlock(doc, x, y, colW, domainData, subjectScore, idx, accentColor) {
+    // Domain name
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(15, 15, 15);
+    const wrappedName = doc.splitTextToSize(domainData.name, colW);
+    doc.text(wrappedName, x, y);
+
+    let currentY = y + (wrappedName.length * 10);
+
+    // Domain description
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(100, 100, 100);
+    const wrappedDesc = doc.splitTextToSize(domainData.desc, colW);
+    doc.text(wrappedDesc, x, currentY);
+
+    currentY += (wrappedDesc.length * 9) + 4;
+
+    // 7-Segment progress bar
     const segments = 7;
+    const segW = 20;
+    const segH = 6;
     const gap = 1.5;
-    const barY = dy + 12;
-    const segW = (w - gap * (segments - 1)) / segments;
-    const segH = 7;
 
-    const base = (score - 200) / 600;
-    const v = [0.12, 0.02, -0.12, -0.25, 0.04, -0.10, 0.16, 0.06];
-    const perf = Math.max(0.12, Math.min(1, base + v[idx % v.length]));
-    const filled = Math.max(1, Math.round(perf * segments));
+    const basePerf = (subjectScore - 200) / 600;
+    const variation = [0.1, -0.05, 0.15, -0.1][idx % 4];
+    const perfLevel = Math.max(0.1, Math.min(1.0, basePerf + variation));
+    const filledCount = Math.max(1, Math.round(perfLevel * segments));
 
     for (let i = 0; i < segments; i++) {
-        const sx = x + i * (segW + gap);
-        if (i < filled) {
-            doc.setFillColor(17, 17, 17);
-            doc.rect(sx, barY, segW, segH, 'F');
+        const sx = x + (i * (segW + gap));
+        if (i < filledCount) {
+            doc.setFillColor(...accentColor);
+            doc.setDrawColor(...accentColor);
+            doc.setLineWidth(0.5);
+            doc.rect(sx, currentY, segW, segH, 'FD');
         } else {
             doc.setFillColor(255, 255, 255);
-            doc.setDrawColor(140, 140, 140);
-            doc.rect(sx, barY, segW, segH, 'FD');
+            doc.setDrawColor(40, 40, 40);
+            doc.setLineWidth(0.6);
+            doc.rect(sx, currentY, segW, segH, 'FD');
         }
     }
 
-    // Performance text
-    const lo = Math.max(200, score - 30 + (idx * 7 - 20));
-    const hi = Math.min(800, lo + 80 + idx * 5);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(5.5); doc.setTextColor(80, 80, 80);
-    doc.text(`Performance: ${lo}-${hi}`, x, barY + segH + 7);
+    return currentY + 28;
 }
+
 
 // ─── Score range helper ───
 function sRange(score, min = 200, max = 800, delta = 30) {
     return `${Math.max(min, score - delta)}-${Math.min(max, score + delta)}`;
 }
 
-// ─── Image loader ───
+
+// ─── Image loader (kept for compatibility) ───
 function loadImageAsBase64(src) {
     return new Promise((resolve) => {
         const img = new Image();
