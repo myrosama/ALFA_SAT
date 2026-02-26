@@ -335,7 +335,21 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {number} duration - The total time for the timer.
      */
     function startTimer(duration) {
-        if (typeof duration !== 'number' || duration <= 0) { if (timerDisplay) timerDisplay.textContent = "00:00"; return; }
+        if (typeof duration !== 'number' || duration <= 0) {
+            // Timer expired — auto-advance immediately
+            if (timerDisplay) timerDisplay.textContent = "00:00";
+            clearInterval(timerInterval);
+            timerInterval = null;
+            console.log('Timer expired (duration <= 0), auto-advancing...');
+            saveTestState();
+            const nextIdx = findNextNonEmptyModule(currentModuleIndex + 1);
+            if (nextIdx !== -1) {
+                startModule(nextIdx);
+            } else {
+                finishTest();
+            }
+            return;
+        }
 
         let timer = duration;
         let warned5min = duration <= 300; // Don't re-warn if already under 5min
@@ -604,6 +618,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Hide modal if it's open
         toggleModal(false);
 
+        // Build result ID before try block so it's accessible in catch for redirect
+        const resultId = proctorCode
+            ? `${user.uid}_${testId}_${proctorCode}`
+            : `${user.uid}_${testId}`;
+
         try {
             // +++ ADDED: Clear saved state on finish +++
             const key = `inProgressTest_${auth.currentUser.uid}_${testId}`;
@@ -612,10 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 2. Calculate score
             const scoreResult = calculateScore();
 
-            // 3. Create result ID (user UID + test ID, with proctorCode for proctored sessions)
-            const resultId = proctorCode
-                ? `${user.uid}_${testId}_${proctorCode}`
-                : `${user.uid}_${testId}`;
+            // 3. Use result ID built above
             const resultRef = db.collection('testResults').doc(resultId);
 
             // 4. Create result data object
@@ -689,15 +705,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error("Error finishing test and saving results:", error);
-            alert("An error occurred while saving your results. Please try again.");
-            // Re-enable buttons if save failed
-            if (nextBtn) {
-                nextBtn.disabled = false;
-                nextBtn.textContent = "Finish Module";
-            }
-            if (modalProceedBtn) {
-                modalProceedBtn.disabled = false;
-                modalProceedBtn.textContent = "Finish Test and See Results";
+
+            // Even if Firestore save fails, try to redirect so student isn't stuck
+            if (error.code === 'permission-denied' || error.message?.includes('permissions')) {
+                alert("Your results could not be saved due to a server configuration issue. Please contact your instructor. Redirecting...");
+                // Still try to redirect — at least the student isn't stuck
+                window.removeEventListener('beforeunload', saveTestState);
+                if (proctorCode) {
+                    window.location.href = `results.html?resultId=${resultId}&submitted=true&saveError=true`;
+                } else {
+                    window.location.href = `results.html?resultId=${resultId}&saveError=true`;
+                }
+            } else {
+                alert("An error occurred while saving your results. Please try again.");
+                // Re-enable buttons if save failed
+                if (nextBtn) {
+                    nextBtn.disabled = false;
+                    nextBtn.textContent = "Finish Module";
+                }
+                if (modalProceedBtn) {
+                    modalProceedBtn.disabled = false;
+                    modalProceedBtn.textContent = "Finish Test and See Results";
+                }
             }
         }
     }
