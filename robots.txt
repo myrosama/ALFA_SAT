@@ -1,0 +1,13 @@
+# ALFA SAT Robots.txt
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /admin-login.html
+Disallow: /edit-test.html
+Disallow: /proctor-session.html
+Disallow: /test.html
+Disallow: /results.html
+Disallow: /question-review.html
+Disallow: /review.html
+
+Sitemap: https://alfasat.uz/sitemap.xml
