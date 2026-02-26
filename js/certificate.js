@@ -30,9 +30,10 @@ async function generateCertificatePDF(data = {}, userName = 'Student Name') {
         testedOn = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     }
 
-    const total = Number(data.totalScore ?? 400);
-    const rw = Number(data.rwScore ?? 200);
-    const math = Number(data.mathScore ?? 200);
+    const aiScore = data.aiEstimatedScore;
+    const total = Number((aiScore && aiScore.totalScore) ? aiScore.totalScore : (data.totalScore ?? 400));
+    const rw = Number((aiScore && aiScore.rwScore) ? aiScore.rwScore : (data.rwScore ?? 200));
+    const math = Number((aiScore && aiScore.mathScore) ? aiScore.mathScore : (data.mathScore ?? 200));
     const tName = data.testName ?? 'Practice Test';
 
     // ──────── PAGE BACKGROUND (white) ────────
