@@ -151,7 +151,14 @@ async function processSessionScores(sessionCode, onProgress) {
                 // Write AI score to testResults
                 const writeOk = await safeFirestoreWrite(
                     db.collection('testResults').doc(result.resultId),
-                    { aiEstimatedScore: aiScore, scoringStatus: 'scored' },
+                    {
+                        aiEstimatedScore: aiScore,
+                        scoringStatus: 'scored',
+                        // Unify: also update top-level score fields so ALL consumers show the same score
+                        totalScore: aiScore.totalScore,
+                        rwScore: aiScore.rwScore,
+                        mathScore: aiScore.mathScore
+                    },
                     'testResults/' + result.resultId + ' → scored'
                 );
 
@@ -495,7 +502,11 @@ If no adjustments needed, return: { "adjustments": [], "groupAnalysis": "..." }`
                             'aiEstimatedScore.mathScore': adj.newMath,
                             'aiEstimatedScore.totalScore': adj.newTotal,
                             'aiEstimatedScore.adjustmentReason': adj.reason,
-                            'aiEstimatedScore.groupAnalysis': comparison.groupAnalysis
+                            'aiEstimatedScore.groupAnalysis': comparison.groupAnalysis,
+                            // Unify: also update top-level score fields
+                            totalScore: adj.newTotal,
+                            rwScore: adj.newRW,
+                            mathScore: adj.newMath
                         },
                         'testResults/' + student.resultId + ' → adjustment'
                     );
@@ -552,11 +563,19 @@ async function publishSessionResults(sessionCode) {
         try {
             const resultDoc = await db.collection('testResults').doc(resultId).get();
             const resultData = resultDoc.data();
-            const finalScore = resultData?.aiEstimatedScore?.totalScore || resultData?.totalScore || 'N/A';
+            const finalScore = resultData?.totalScore || 'N/A';
+            const finalRW = resultData?.rwScore || null;
+            const finalMath = resultData?.mathScore || null;
             await safeFirestoreWrite(
                 db.collection('users').doc(userId).collection('completedTests').doc(testId),
                 { scoringStatus: 'published', score: finalScore },
                 'users/' + userId + '/completedTests/' + testId + ' → published'
+            );
+            // Also update participant doc with final scores
+            await safeFirestoreWrite(
+                sessionRef.collection('participants').doc(userId),
+                { score: finalScore, rwScore: finalRW, mathScore: finalMath },
+                'participants/' + userId + ' → final scores'
             );
         } catch (e) {
             scoringLog('warn', 'Could not update completedTests for user:', userId, e.message);
