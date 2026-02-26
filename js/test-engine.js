@@ -233,8 +233,17 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             document.querySelectorAll('.ql-formula').forEach(span => {
                 const latex = span.dataset.value;
-                if (latex && MQ && span) MQ.StaticMath(span).latex(latex);
-                else if (latex && span) span.textContent = `[Math: ${latex}]`;
+                if (!latex) return;
+
+                // If the span already contains KaTeX-rendered content (from editor save), skip it
+                if (span.querySelector('.katex')) return;
+
+                // Otherwise, render with MathQuill
+                if (MQ && span) {
+                    MQ.StaticMath(span).latex(latex);
+                } else {
+                    span.textContent = `[Math: ${latex}]`;
+                }
             });
         } catch (e) { console.error("renderAllMath error:", e); }
     }
