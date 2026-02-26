@@ -1196,11 +1196,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (fullscreenBtn) fullscreenBtn.style.display = 'flex';
                 if (proceedBtn) proceedBtn.style.display = 'block';
 
-                // +++ Proctored Mode: Register participant +++
+                // +++ Proctored Mode: Register participant (with re-entry guard) +++
                 if (proctorCode && user) {
                     try {
                         const participantRef = db.collection('proctoredSessions').doc(proctorCode)
                             .collection('participants').doc(user.uid);
+
+                        // Check if student already completed this test
+                        const participantDoc = await participantRef.get();
+                        if (participantDoc.exists && participantDoc.data().status === 'completed') {
+                            alert('You have already completed this test. You cannot re-enter.');
+                            window.location.href = 'dashboard.html';
+                            return;
+                        }
+
+                        // Only register/update if not already completed
                         await participantRef.set({
                             userName: user.displayName || 'Student',
                             email: user.email || '',
