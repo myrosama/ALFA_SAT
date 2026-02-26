@@ -188,10 +188,10 @@ body.test-body {
     color: #333;
 }
 
-/* Serif font for questions and options (matching editor) */
+/* Sans-serif for questions and options (matching editor preview) */
 .question-text,
 .option-text {
-    font-family: var(--font-family-serif);
+    font-family: var(--font-family-sans);
 }
 
 .question-text {
