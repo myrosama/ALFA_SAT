@@ -153,11 +153,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 processScoresBtn.disabled = true;
                 processScoresBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
             } else if (status === 'scored') {
-                processScoresBtn.disabled = true;
-                processScoresBtn.innerHTML = '<i class="fa-solid fa-check"></i> Scores Processed';
+                processScoresBtn.disabled = false;
+                processScoresBtn.innerHTML = '<i class="fa-solid fa-rotate"></i> Re-score All';
             } else if (status === 'published') {
-                processScoresBtn.disabled = true;
-                processScoresBtn.innerHTML = '<i class="fa-solid fa-check-double"></i> Published';
+                processScoresBtn.disabled = false;
+                processScoresBtn.innerHTML = '<i class="fa-solid fa-rotate"></i> Re-score All';
             } else {
                 processScoresBtn.disabled = false;
                 processScoresBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Process Scores';
@@ -172,8 +172,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 publishResultsBtn.disabled = false;
                 publishResultsBtn.innerHTML = '<i class="fa-solid fa-bullhorn"></i> Publish Results Now';
             } else if (status === 'published') {
-                publishResultsBtn.innerHTML = '<i class="fa-solid fa-check"></i> Published';
-                publishResultsBtn.disabled = true;
+                publishResultsBtn.innerHTML = '<i class="fa-solid fa-bullhorn"></i> Re-publish Results';
+                publishResultsBtn.disabled = false;
             } else {
                 publishResultsBtn.disabled = true;
             }

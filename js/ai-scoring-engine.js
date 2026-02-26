@@ -128,6 +128,14 @@ async function processSessionScores(sessionCode, onProgress) {
         const result = resultDocs[i];
         scoringLog('info', `--- Student ${i + 1}/${resultDocs.length}: ${result.resultId} ---`);
 
+        // Skip already-scored students on re-runs
+        if (result.data.aiEstimatedScore) {
+            scoringLog('info', `  Already scored (AI total: ${result.data.aiEstimatedScore.totalScore}). Skipping.`);
+            scoredCount++;
+            if (onProgress) onProgress(i + 1, resultDocs.length, `Student ${i + 1} already scored — skipped`);
+            continue;
+        }
+
         if (onProgress) onProgress(i, resultDocs.length, `Processing student ${i + 1}...`);
 
         try {
