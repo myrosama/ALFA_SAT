@@ -146,133 +146,60 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Preloads all images from questions into blob URLs.
-     * Scans imageUrl, passage, prompt, and options for <img> tags.
-     * Downloads in batches to avoid Telegram API rate limits.
+     * Preloads all images from questions.
+     * 1. Resolves any tg://file_id URLs to fresh download URLs (with localStorage caching)
+     * 2. Browser-caches all resolved URLs via Image() elements
      */
     async function preloadAllImages() {
-        // Collect all unique image URLs from all questions
-        const imageUrlMap = new Map(); // originalUrl -> { questionRef, field }
         const allQuestions = allQuestionsByModule.flat();
 
-        for (const question of allQuestions) {
-            // 1. Direct imageUrl field
-            if (question.imageUrl) {
-                imageUrlMap.set(question.imageUrl, true);
+        // Update loading screen
+        if (fullscreenPromptTitle) fullscreenPromptTitle.textContent = 'Loading Test Resources...';
+        if (fullscreenPromptDesc) fullscreenPromptDesc.textContent = 'Resolving images...';
+
+        // Step 1: Resolve all tg:// URLs using the shared utility (with localStorage cache)
+        await TelegramImages.resolveAllTelegramUrls(allQuestions, (loaded, total) => {
+            if (fullscreenPromptDesc) {
+                fullscreenPromptDesc.textContent = `Resolving images: ${loaded} / ${total}`;
             }
+        });
 
-            // 2. Scan HTML content for embedded <img> tags
-            const htmlFields = [question.passage, question.prompt];
-            const options = question.options || {};
-            Object.values(options).forEach(opt => { if (typeof opt === 'string') htmlFields.push(opt); });
+        // Step 2: Collect all image URLs (now resolved) for browser pre-caching
+        const allUrls = TelegramImages.collectImageUrls(allQuestions);
+        const uniqueUrls = [...allUrls];
 
-            for (const html of htmlFields) {
-                if (!html || typeof html !== 'string') continue;
-                const imgMatches = html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi);
-                for (const match of imgMatches) {
-                    if (match[1]) imageUrlMap.set(match[1], true);
-                }
-            }
-        }
-
-        const uniqueUrls = [...imageUrlMap.keys()];
         if (uniqueUrls.length === 0) {
             console.log('No images to preload.');
             return;
         }
 
-        console.log(`Preloading ${uniqueUrls.length} images...`);
-
-        // Update loading screen with image progress
-        if (fullscreenPromptTitle) fullscreenPromptTitle.textContent = 'Loading Test Resources...';
+        console.log(`Browser-caching ${uniqueUrls.length} images...`);
         if (fullscreenPromptDesc) fullscreenPromptDesc.textContent = `Downloading images: 0 / ${uniqueUrls.length}`;
 
-        // Create a map of original URL -> blob URL
-        const blobUrlCache = new Map();
         let loaded = 0;
         let failed = 0;
-
-        // Preload using Image() elements — NO fetch, NO CORS issues
-        // Browser caches the image for subsequent <img> display
         const BATCH_SIZE = 5;
+
         for (let i = 0; i < uniqueUrls.length; i += BATCH_SIZE) {
             const batch = uniqueUrls.slice(i, i + BATCH_SIZE);
-            const batchPromises = batch.map(async (url) => {
-                try {
-                    await new Promise((resolve, reject) => {
-                        const img = new Image();
-                        img.onload = () => {
-                            loaded++;
-                            resolve();
-                        };
-                        img.onerror = () => {
-                            failed++;
-                            loaded++;
-                            resolve(); // Don't block on failed images
-                        };
-                        // Do NOT set crossOrigin — Telegram API doesn't support CORS
-                        // Images still load and cache fine without it
-                        img.src = url;
-                        setTimeout(() => { failed++; loaded++; resolve(); }, 15000);
-                    });
-                    blobUrlCache.set(url, url); // Keep original URL (browser cached)
-                } catch (err) {
-                    blobUrlCache.set(url, url);
-                    loaded++;
-                    failed++;
-                }
-                if (fullscreenPromptDesc) {
-                    fullscreenPromptDesc.textContent = `Downloading images: ${loaded} / ${uniqueUrls.length}`;
-                }
-            });
-            await Promise.all(batchPromises);
+            await Promise.all(batch.map(url => new Promise(resolve => {
+                const img = new Image();
+                img.onload = () => { loaded++; resolve(); };
+                img.onerror = () => { failed++; loaded++; resolve(); };
+                img.src = url;
+                setTimeout(() => { failed++; loaded++; resolve(); }, 15000);
+            })));
 
-            // Small delay between batches
+            if (fullscreenPromptDesc) {
+                fullscreenPromptDesc.textContent = `Downloading images: ${loaded} / ${uniqueUrls.length}`;
+            }
+
             if (i + BATCH_SIZE < uniqueUrls.length) {
-                await new Promise(resolve => setTimeout(resolve, 50));
+                await new Promise(r => setTimeout(r, 50));
             }
         }
 
         console.log(`Image preload complete: ${loaded - failed} success, ${failed} failed.`);
-
-        // Now replace all image URLs in questions with cached blob URLs
-        for (const question of allQuestions) {
-            // Replace direct imageUrl
-            if (question.imageUrl && blobUrlCache.has(question.imageUrl)) {
-                question.imageUrl = blobUrlCache.get(question.imageUrl);
-            }
-
-            // Replace URLs in HTML content fields
-            const fieldsToUpdate = ['passage', 'prompt'];
-            for (const field of fieldsToUpdate) {
-                if (question[field] && typeof question[field] === 'string') {
-                    question[field] = replaceImgSrcInHtml(question[field], blobUrlCache);
-                }
-            }
-
-            // Replace URLs in options
-            if (question.options) {
-                for (const key of Object.keys(question.options)) {
-                    if (typeof question.options[key] === 'string') {
-                        question.options[key] = replaceImgSrcInHtml(question.options[key], blobUrlCache);
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Replaces all <img src="..."> URLs in an HTML string with cached blob URLs.
-     */
-    function replaceImgSrcInHtml(html, blobUrlCache) {
-        if (!html) return html;
-        return html.replace(/<img([^>]+)src=["']([^"']+)["']/gi, (fullMatch, attrs, originalUrl) => {
-            const cachedUrl = blobUrlCache.get(originalUrl);
-            if (cachedUrl) {
-                return `<img${attrs}src="${cachedUrl}"`;
-            }
-            return fullMatch;
-        });
     }
     function startModule(moduleIndex) {
         currentModuleIndex = moduleIndex;

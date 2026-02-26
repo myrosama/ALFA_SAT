@@ -140,6 +140,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             questionData = { id: questionDoc.id, ...questionDoc.data() };
 
+            // Resolve tg:// image URLs before rendering
+            if (questionData.imageUrl && questionData.imageUrl.startsWith('tg://')) {
+                try {
+                    questionData.imageUrl = await TelegramImages.resolveTelegramUrl(questionData.imageUrl);
+                } catch (err) {
+                    console.error('Failed to resolve tg:// URL for review:', err);
+                }
+            }
+
             // --- 3. Render Content ---
             renderPageContent();
 

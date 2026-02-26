@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let savedQuestions = {}; // { "m1_q1": true, "m1_q2": true, ... }
     let editors = {}; // { passage, prompt, options: {A, B, C, D}, fillIn, explanation }
     let testName = "Loading..."; // Store test name
+    let currentImageTgUrl = null; // Tracks the tg://file_id for the current question's image
 
     // --- Data Definitions ---
     const QUESTION_DOMAINS = {
@@ -104,12 +105,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Placeholder function - we are not using Telegram for this.
-     * We will use image-to-base64 conversion instead.
+     * Uploads an image to Telegram and returns a permanent tg://file_id URL.
+     * The file_id never expires — we resolve it to a download URL on demand.
      */
     async function uploadImageToTelegram(file) {
-        // This function seems to be defined in the original file, but was missing in the provided snippet.
-        // Assuming it exists (e.g., from config.js or similar)
         if (typeof TELEGRAM_BOT_TOKEN === 'undefined' || typeof TELEGRAM_CHANNEL_ID === 'undefined') {
             console.error('Telegram configuration is missing.');
             alert('Error: Telegram configuration is missing. Cannot upload image.');
@@ -125,20 +124,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(url, { method: 'POST', body: formData });
             const data = await response.json();
             if (data.ok) {
-                // Get the file_id of the largest photo
+                // Get the file_id of the largest photo — this is PERMANENT
                 const photoArray = data.result.photo;
                 const fileId = photoArray[photoArray.length - 1].file_id;
-
-                // Use getFile to get the file_path
-                const fileUrlDataRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`);
-                const fileUrlData = await fileUrlDataRes.json();
-
-                if (fileUrlData.ok) {
-                    // Construct the permanent file URL
-                    return `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${fileUrlData.result.file_path}`;
-                } else {
-                    throw new Error(fileUrlData.description);
-                }
+                // Return tg:// URL — resolved to download URL on demand
+                return `tg://${fileId}`;
             } else {
                 throw new Error(data.description);
             }
@@ -364,7 +354,19 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("Error loading question data. See console.");
         }
 
-        renderStimulus(data);
+        // Track the tg:// URL for saving, resolve for display
+        currentImageTgUrl = data.imageUrl || null;
+        if (data.imageUrl && data.imageUrl.startsWith('tg://')) {
+            try {
+                const resolvedUrl = await TelegramImages.resolveTelegramUrl(data.imageUrl);
+                renderStimulus({ ...data, imageUrl: resolvedUrl });
+            } catch (err) {
+                console.error('Failed to resolve tg:// URL for editor:', err);
+                renderStimulus(data);
+            }
+        } else {
+            renderStimulus(data);
+        }
         if (editors.passage) editors.passage.root.innerHTML = data.passage || '';
 
         if (editors.prompt) editors.prompt.root.innerHTML = data.prompt || '';
@@ -414,12 +416,16 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Use the tracked tg:// URL (permanent) instead of the img.src (temporary)
+        const isImageVisible = !imageContainer.classList.contains('hidden');
+        const imageUrlToSave = isImageVisible ? (currentImageTgUrl || null) : null;
+
         const dataToSave = {
             passage: editors.passage.root.innerHTML,
             prompt: editors.prompt.root.innerHTML,
             explanation: editors.explanation.root.innerHTML,
-            imageUrl: imageContainer.classList.contains('hidden') ? null : document.getElementById('stimulus-image-preview').src,
-            imageWidth: imageContainer.classList.contains('hidden') ? null : imageContainer.style.width,
+            imageUrl: imageUrlToSave,
+            imageWidth: isImageVisible ? imageContainer.style.width : null,
             imagePosition: questionForm.querySelector('#q-image-position').value,
             module: currentModule,
             questionNumber: currentQuestion,
@@ -544,11 +550,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 imagePreview.src = "https://i.gifer.com/ZZ5H.gif"; // Simple loading GIF
                 imageContainer.classList.remove('hidden');
 
-                const imageUrl = await uploadImageToTelegram(file);
+                const tgUrl = await uploadImageToTelegram(file);
 
-                if (imageUrl) {
-                    renderStimulus({ imageUrl: imageUrl, imageWidth: '100%' });
+                if (tgUrl) {
+                    // Store the permanent tg:// URL for saving
+                    currentImageTgUrl = tgUrl;
+                    // Resolve to a temporary download URL for preview
+                    const displayUrl = await TelegramImages.resolveTelegramUrl(tgUrl);
+                    renderStimulus({ imageUrl: displayUrl, imageWidth: '100%' });
                 } else {
+                    currentImageTgUrl = null;
                     renderStimulus({}); // Hide image container on failure
                     alert("Image upload failed. Please try again.");
                 }
@@ -561,6 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
         removeImageBtn.addEventListener('click', () => {
             if (!currentQuestion) return alert("Please select a question first!");
             if (confirm("Are you sure you want to remove the image? This will be permanent when you save.")) {
+                currentImageTgUrl = null; // Clear tracked tg:// URL
                 renderStimulus({}); // Renders with no image data, effectively hiding it.
             }
         });
