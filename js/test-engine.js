@@ -1207,19 +1207,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // +++ Proctored Mode: Register participant (with re-entry guard) +++
                 if (proctorCode && user) {
-                    try {
-                        const participantRef = db.collection('proctoredSessions').doc(proctorCode)
-                            .collection('participants').doc(user.uid);
+                    const participantRef = db.collection('proctoredSessions').doc(proctorCode)
+                        .collection('participants').doc(user.uid);
 
-                        // Check if student already completed this test
+                    // Re-entry guard: check if already completed (separate try/catch so
+                    // registration still works even if the read is blocked by rules)
+                    try {
                         const participantDoc = await participantRef.get();
                         if (participantDoc.exists && participantDoc.data().status === 'completed') {
                             alert('You have already completed this test. You cannot re-enter.');
                             window.location.href = 'dashboard.html';
                             return;
                         }
+                    } catch (readErr) {
+                        console.warn('Could not check participant status (likely permissions):', readErr.code || readErr);
+                        // Continue anyway — registration is more important
+                    }
 
-                        // Only register/update if not already completed
+                    // Register participant
+                    try {
                         await participantRef.set({
                             userName: user.displayName || 'Student',
                             email: user.email || '',
@@ -1231,8 +1237,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             completedAt: null
                         }, { merge: true });
                         console.log('Proctored participant registered.');
-                    } catch (err) {
-                        console.warn('Could not register proctored participant:', err);
+                    } catch (writeErr) {
+                        console.warn('Could not register proctored participant:', writeErr);
                     }
                 }
 
