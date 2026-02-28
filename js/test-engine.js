@@ -414,6 +414,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (timer < 0) {
                 clearInterval(timerInterval);
                 timerDisplay.style.opacity = '1';
+                // Close review modal if it's open
+                toggleModal(false);
                 // Auto-advance: silently move to next module or finish
                 saveTestState();
                 const nextIdx = findNextNonEmptyModule(currentModuleIndex + 1);
@@ -492,11 +494,13 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {boolean} [isEndOfModule=false] - True if called automatically by timer.
      */
     function showReviewScreen(isEndOfModule = false) {
-        clearInterval(timerInterval); if (timerDisplay) timerDisplay.textContent = "00:00";
+        // Don't kill the timer here — let it keep running so auto-advance fires at 00:00.
+        // The timer auto-advance at line 414 handles the actual module transition.
         if (modalProceedBtn) {
             const nextNonEmpty = findNextNonEmptyModule(currentModuleIndex + 1);
             modalProceedBtn.textContent = (nextNonEmpty === -1) ? `Finish Test and See Results` : `Continue to Next Module`;
-            modalProceedBtn.style.display = isEndOfModule ? 'inline-block' : 'none';
+            // Always show the proceed button so user can advance manually
+            modalProceedBtn.style.display = 'inline-block';
         }
         toggleModal(true);
     }
