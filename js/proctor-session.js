@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const scoringProgressText = document.getElementById('scoring-progress-text');
     const processScoresBtn = document.getElementById('process-scores-btn');
     const publishResultsBtn = document.getElementById('publish-results-btn');
+    const cancelScoringBtn = document.getElementById('cancel-scoring-btn');
     const scoringNote = document.getElementById('scoring-note');
 
     // State
@@ -202,6 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 isProcessing = true;
                 processScoresBtn.disabled = true;
                 processScoresBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+                if (cancelScoringBtn) cancelScoringBtn.style.display = 'inline-block';
 
                 if (scoringProgress) scoringProgress.style.display = 'block';
                 if (scoringNote) scoringNote.innerHTML = '<i class="fa-solid fa-hourglass-half"></i> Analyzing each student\'s performance. This will take a few minutes per student. <strong>Do not close this page.</strong>';
@@ -243,6 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (scoringNote) scoringNote.innerHTML = `<i class="fa-solid fa-exclamation-circle"></i> Error: ${err.message}. You can retry.`;
                 } finally {
                     isProcessing = false;
+                    if (cancelScoringBtn) cancelScoringBtn.style.display = 'none';
                 }
             });
         }
@@ -274,6 +277,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     publishResultsBtn.disabled = false;
                     if (scoringNote) scoringNote.innerHTML = `<i class="fa-solid fa-exclamation-circle"></i> Publish error: ${err.message}`;
                 }
+            });
+        }
+
+        // Cancel Scoring button
+        if (cancelScoringBtn) {
+            cancelScoringBtn.addEventListener('click', () => {
+                if (!confirm('Cancel AI scoring? Students already scored will keep their scores.')) return;
+                if (window._scoringAbortController) {
+                    window._scoringAbortController.abort();
+                }
+                cancelScoringBtn.style.display = 'none';
+                processScoresBtn.innerHTML = '<i class="fa-solid fa-xmark"></i> Cancelled — Retry';
+                processScoresBtn.disabled = false;
+                if (scoringNote) scoringNote.innerHTML = '<i class="fa-solid fa-info-circle"></i> Scoring was cancelled. Already-scored students retain their scores. You can retry.';
             });
         }
     }

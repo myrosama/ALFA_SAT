@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let proctorCode = null; // Set from URL param if present
     let fullscreenExitCount = 0;
     let testReady = false; // Flag: true once questions are loaded
+    let testFinished = false; // Flag: true once finishTest() is called — prevents re-registration
 
     let currentCalcWidth = 360;
     let currentCalcHeight = 500;
@@ -610,6 +611,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function finishTest() {
         console.log("Finishing test...");
         clearInterval(timerInterval);
+        testFinished = true; // Prevent re-registration on fullscreen re-entry
 
         const user = auth.currentUser;
         if (!user) {
@@ -636,22 +638,59 @@ document.addEventListener('DOMContentLoaded', () => {
             ? `${user.uid}_${testId}_${proctorCode}`
             : `${user.uid}_${testId}`;
 
+        // Calculate score early so we have it for both success and failure paths
+        let scoreResult;
         try {
-            // +++ ADDED: Clear saved state on finish +++
+            scoreResult = calculateScore();
+        } catch (e) {
+            console.error('Score calculation failed:', e);
+            scoreResult = { totalScore: 0, rwScore: 0, mathScore: 0, rwRaw: 0, mathRaw: 0, rwTotal: 0, mathTotal: 0 };
+        }
+
+        // CRITICAL: Mark participant as completed FIRST — before anything else can fail
+        // This is the #1 priority so the admin always sees the correct status
+        if (proctorCode) {
+            try {
+                await db.collection('proctoredSessions').doc(proctorCode)
+                    .collection('participants').doc(user.uid)
+                    .update({
+                        status: 'completed',
+                        score: scoreResult.totalScore,
+                        rwScore: scoreResult.rwScore,
+                        mathScore: scoreResult.mathScore,
+                        completedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                console.log('Proctored participant marked as completed (early).');
+            } catch (err) {
+                console.warn('Could not update participant status (early):', err);
+                // Try set with merge as fallback
+                try {
+                    await db.collection('proctoredSessions').doc(proctorCode)
+                        .collection('participants').doc(user.uid)
+                        .set({
+                            status: 'completed', score: scoreResult.totalScore,
+                            completedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+                    console.log('Participant status set via merge fallback.');
+                } catch (err2) {
+                    console.error('All participant status updates failed:', err2);
+                }
+            }
+        }
+
+        try {
+            // Clear saved state on finish
             const key = `inProgressTest_${auth.currentUser.uid}_${testId}`;
             localStorage.removeItem(key);
 
-            // 2. Calculate score
-            const scoreResult = calculateScore();
-
-            // 3. Use result ID built above
+            // Use result ID built above
             const resultRef = db.collection('testResults').doc(resultId);
 
-            // 4. Create result data object
+            // Create result data object
             const resultData = {
                 userId: user.uid,
                 testId: testId,
-                testName: testName, // We fetched this in initTest
+                testName: testName,
                 completedAt: firebase.firestore.FieldValue.serverTimestamp(),
 
                 totalScore: scoreResult.totalScore,
@@ -663,18 +702,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 rwTotal: scoreResult.rwTotal,
                 mathTotal: scoreResult.mathTotal,
 
-                userAnswers: userAnswers, // Save all user answers
-                proctorCode: proctorCode || null, // Store proctor code for access control
+                userAnswers: userAnswers,
+                proctorCode: proctorCode || null,
                 scoringStatus: proctorCode ? 'pending_review' : 'published'
-                // Note: Questions are NOT stored here to avoid exceeding Firestore's 1MB limit.
-                // The results page fetches questions directly from the test document.
             };
 
-            // 5. Save to testResults collection
+            // Save to testResults collection
             await resultRef.set(resultData);
             console.log("Test result saved successfully to testResults:", resultId);
 
-            // 6. Update the user's "completedTests" subcollection for the dashboard
+            // Update the user's "completedTests" subcollection for the dashboard
             const userTestRef = db.collection('users').doc(user.uid).collection('completedTests').doc(testId);
             await userTestRef.set({
                 score: scoreResult.totalScore,
@@ -686,60 +723,32 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             console.log("User's completedTests subcollection updated.");
 
-            // +++ Proctored Mode: Mark participant as completed +++
-            if (proctorCode) {
-                try {
-                    await db.collection('proctoredSessions').doc(proctorCode)
-                        .collection('participants').doc(user.uid)
-                        .update({
-                            status: 'completed',
-                            score: scoreResult.totalScore,
-                            rwScore: scoreResult.rwScore,
-                            mathScore: scoreResult.mathScore,
-                            completedAt: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                    console.log('Proctored participant marked as completed.');
-                } catch (err) {
-                    console.warn('Could not update proctored participant completion:', err);
-                }
-            }
-
-            // 7. Remove beforeunload to prevent "leave page" dialog
+            // Remove beforeunload to prevent "leave page" dialog
             window.removeEventListener('beforeunload', saveTestState);
 
-            // 8. Redirect based on test type
+            // Redirect based on test type
             if (proctorCode) {
-                // PROCTORED: Show submission complete page (results released later)
                 window.location.href = `results.html?resultId=${resultId}&submitted=true`;
             } else {
-                // NORMAL: Show results immediately
                 window.location.href = `results.html?resultId=${resultId}`;
             }
 
         } catch (error) {
             console.error("Error finishing test and saving results:", error);
 
-            // Even if Firestore save fails, try to redirect so student isn't stuck
+            // Even if result saving fails, redirect so student isn't stuck
+            // Participant status was already updated above
+            window.removeEventListener('beforeunload', saveTestState);
             if (error.code === 'permission-denied' || error.message?.includes('permissions')) {
-                alert("Your results could not be saved due to a server configuration issue. Please contact your instructor. Redirecting...");
-                // Still try to redirect — at least the student isn't stuck
-                window.removeEventListener('beforeunload', saveTestState);
-                if (proctorCode) {
-                    window.location.href = `results.html?resultId=${resultId}&submitted=true&saveError=true`;
-                } else {
-                    window.location.href = `results.html?resultId=${resultId}&saveError=true`;
-                }
+                alert("Your results could not be saved due to a server issue. Please contact your instructor.");
             } else {
-                alert("An error occurred while saving your results. Please try again.");
-                // Re-enable buttons if save failed
-                if (nextBtn) {
-                    nextBtn.disabled = false;
-                    nextBtn.textContent = "Finish Module";
-                }
-                if (modalProceedBtn) {
-                    modalProceedBtn.disabled = false;
-                    modalProceedBtn.textContent = "Finish Test and See Results";
-                }
+                alert("An error occurred while saving. Your test is still marked as completed.");
+            }
+            // Always redirect — never leave student stuck
+            if (proctorCode) {
+                window.location.href = `results.html?resultId=${resultId}&submitted=true&saveError=true`;
+            } else {
+                window.location.href = `results.html?resultId=${resultId}&saveError=true`;
             }
         }
     }
@@ -1061,13 +1070,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (testWrapper) testWrapper.classList.remove('hidden');
         if (backdrop) backdrop.classList.remove('visible');
 
-        // +++ Proctored: Update status to 'taking' +++
-        if (proctorCode && auth.currentUser) {
+        // +++ Proctored: Update status to 'taking' — but ONLY if test isn't finished +++
+        if (proctorCode && auth.currentUser && !testFinished) {
             db.collection('proctoredSessions').doc(proctorCode)
                 .collection('participants').doc(auth.currentUser.uid)
                 .update({ status: 'taking', currentModule: currentModuleIndex + 1 })
                 .catch(err => console.warn('Could not update participant status:', err));
         }
+
+        // Don't resume if test already finished
+        if (testFinished) return;
 
         // +++ UPDATED: Smarter test start/resume logic +++
         if (timerInterval === null && currentTimerSeconds > 0) {
@@ -1209,13 +1221,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (fullscreenBtn) fullscreenBtn.style.display = 'flex';
                 if (proceedBtn) proceedBtn.style.display = 'block';
 
-                // +++ Proctored Mode: Register participant (with re-entry guard) +++
-                if (proctorCode && user) {
+                // +++ Proctored Mode: Register participant (with guards) +++
+                if (proctorCode && user && !testFinished) {
                     const participantRef = db.collection('proctoredSessions').doc(proctorCode)
                         .collection('participants').doc(user.uid);
 
-                    // Re-entry guard: check if already completed (separate try/catch so
-                    // registration still works even if the read is blocked by rules)
+                    // Re-entry guard: check if already completed
                     try {
                         const participantDoc = await participantRef.get();
                         if (participantDoc.exists && participantDoc.data().status === 'completed') {
@@ -1223,26 +1234,41 @@ document.addEventListener('DOMContentLoaded', () => {
                             window.location.href = 'dashboard.html';
                             return;
                         }
+                        // If already registered with taking/waiting status, don't overwrite
+                        if (participantDoc.exists) {
+                            console.log('Participant already registered, skipping re-registration.');
+                        } else {
+                            // Only register if not already in the system
+                            await participantRef.set({
+                                userName: user.displayName || 'Student',
+                                email: user.email || '',
+                                status: 'waiting',
+                                startedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                currentModule: 0,
+                                fullscreenExitCount: 0,
+                                score: null,
+                                completedAt: null
+                            });
+                            console.log('Proctored participant registered.');
+                        }
                     } catch (readErr) {
-                        console.warn('Could not check participant status (likely permissions):', readErr.code || readErr);
-                        // Continue anyway — registration is more important
-                    }
-
-                    // Register participant
-                    try {
-                        await participantRef.set({
-                            userName: user.displayName || 'Student',
-                            email: user.email || '',
-                            status: 'waiting',
-                            startedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                            currentModule: 0,
-                            fullscreenExitCount: 0,
-                            score: null,
-                            completedAt: null
-                        }, { merge: true });
-                        console.log('Proctored participant registered.');
-                    } catch (writeErr) {
-                        console.warn('Could not register proctored participant:', writeErr);
+                        console.warn('Could not check/register participant:', readErr.code || readErr);
+                        // Fallback: try to register anyway
+                        try {
+                            await participantRef.set({
+                                userName: user.displayName || 'Student',
+                                email: user.email || '',
+                                status: 'waiting',
+                                startedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                currentModule: 0,
+                                fullscreenExitCount: 0,
+                                score: null,
+                                completedAt: null
+                            }, { merge: true });
+                            console.log('Proctored participant registered (fallback).');
+                        } catch (writeErr) {
+                            console.warn('Could not register proctored participant:', writeErr);
+                        }
                     }
                 }
 

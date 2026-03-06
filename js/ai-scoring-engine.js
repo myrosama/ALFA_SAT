@@ -12,6 +12,43 @@ function scoringLog(level, ...args) {
     else console.log(prefix, ...args);
 }
 
+// === ABORT/CANCEL SUPPORT ===
+// Global abort controller — set by processSessionScores, can be aborted by cancel button
+window._scoringAbortController = null;
+
+/**
+ * Create a fetch call with automatic timeout and cancellation support.
+ * @param {string} url
+ * @param {object} options - fetch options
+ * @param {number} timeoutMs - timeout in milliseconds (default 60000)
+ * @returns {Promise<Response>}
+ */
+async function fetchWithTimeout(url, options = {}, timeoutMs = 60000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    // Also abort if the global cancel is triggered
+    const globalAbort = window._scoringAbortController;
+    if (globalAbort?.signal?.aborted) throw new Error('Scoring cancelled by user');
+    const onGlobalAbort = () => controller.abort();
+    if (globalAbort) globalAbort.signal.addEventListener('abort', onGlobalAbort);
+
+    try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        return response;
+    } catch (err) {
+        if (err.name === 'AbortError') {
+            // Distinguish timeout from user cancel
+            if (globalAbort?.signal?.aborted) throw new Error('Scoring cancelled by user');
+            throw new Error('API request timed out after ' + (timeoutMs / 1000) + 's');
+        }
+        throw err;
+    } finally {
+        clearTimeout(timeoutId);
+        if (globalAbort) globalAbort.signal.removeEventListener('abort', onGlobalAbort);
+    }
+}
+
 /**
  * Safely write to Firestore — tries set(merge), falls back to update, logs errors but doesn't throw.
  * Returns true if write succeeded, false otherwise.
@@ -44,6 +81,9 @@ async function safeFirestoreWrite(docRef, data, label) {
  */
 async function processSessionScores(sessionCode, onProgress) {
     const db = firebase.firestore();
+
+    // Set up global abort controller for cancel support
+    window._scoringAbortController = new AbortController();
 
     scoringLog('info', '=== SCORING PIPELINE START ===');
     scoringLog('info', 'Session code:', sessionCode);
@@ -139,6 +179,12 @@ async function processSessionScores(sessionCode, onProgress) {
         if (onProgress) onProgress(i, resultDocs.length, `Processing student ${i + 1}...`);
 
         try {
+            // Check for cancellation before each student
+            if (window._scoringAbortController?.signal?.aborted) {
+                scoringLog('warn', 'Scoring cancelled by user after', scoredCount, 'students');
+                break;
+            }
+
             // Rate limit: wait 12 seconds between calls (5 RPM = 1 per 12s)
             if (i > 0) {
                 scoringLog('info', 'Rate limit: waiting 12 seconds...');
@@ -348,7 +394,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
 
     scoringLog('info', 'Sending request to Gemini 2.5 Pro...');
 
-    const response = await fetch(apiUrl, {
+    const response = await fetchWithTimeout(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -358,7 +404,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
                 maxOutputTokens: 1500
             }
         })
-    });
+    }, 60000); // 60 second timeout
 
     if (!response.ok) {
         const errText = await response.text();
@@ -394,14 +440,14 @@ async function scoreStudentWithFlash(prompt) {
     scoringLog('info', 'Sending request to Gemini 2.0 Flash (fallback)...');
 
     try {
-        const response = await fetch(apiUrl, {
+        const response = await fetchWithTimeout(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: { temperature: 0.2, maxOutputTokens: 1500 }
             })
-        });
+        }, 45000); // 45 second timeout
 
         if (!response.ok) {
             scoringLog('error', 'Flash HTTP error:', response.status);
@@ -477,14 +523,14 @@ If no adjustments needed, return: { "adjustments": [], "groupAnalysis": "..." }`
 
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-preview-05-06:generateContent?key=${AI_API_KEY}`;
 
-    const response = await fetch(apiUrl, {
+    const response = await fetchWithTimeout(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             contents: [{ parts: [{ text: comparisonPrompt }] }],
             generationConfig: { temperature: 0.1, maxOutputTokens: 2000 }
         })
-    });
+    }, 45000); // 45 second timeout
 
     if (!response.ok) {
         scoringLog('error', 'Normalization API error:', response.status);
