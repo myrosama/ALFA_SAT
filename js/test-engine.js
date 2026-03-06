@@ -11,6 +11,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const auth = firebase.auth(); // Get auth service
     const MQ = MathQuill.getInterface(2);
 
+    // --- Retry Helper: retries a Firestore write up to N times with delay ---
+    async function retryWrite(writeFn, label, maxRetries = 3, delayMs = 1000) {
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                await writeFn();
+                if (attempt > 1) console.log(`${label}: succeeded on attempt ${attempt}`);
+                return true;
+            } catch (err) {
+                console.warn(`${label}: attempt ${attempt}/${maxRetries} failed:`, err.message);
+                if (attempt < maxRetries) {
+                    await new Promise(r => setTimeout(r, delayMs * attempt)); // Increasing delay
+                } else {
+                    console.error(`${label}: all ${maxRetries} attempts failed`);
+                    throw err; // Re-throw on final failure
+                }
+            }
+        }
+    }
+
     // --- State Management ---
     let testId = null;
     let testName = "Practice Test"; // Store test name
@@ -647,19 +666,30 @@ document.addEventListener('DOMContentLoaded', () => {
             scoreResult = { totalScore: 0, rwScore: 0, mathScore: 0, rwRaw: 0, mathRaw: 0, rwTotal: 0, mathTotal: 0 };
         }
 
+        // Force-refresh auth token to prevent stale token failures
+        try {
+            await user.getIdToken(true);
+            console.log('Auth token refreshed before save.');
+        } catch (tokenErr) {
+            console.warn('Token refresh failed (proceeding anyway):', tokenErr.message);
+        }
+
         // CRITICAL: Mark participant as completed FIRST — before anything else can fail
         // This is the #1 priority so the admin always sees the correct status
         if (proctorCode) {
             try {
-                await db.collection('proctoredSessions').doc(proctorCode)
-                    .collection('participants').doc(user.uid)
-                    .update({
-                        status: 'completed',
-                        score: scoreResult.totalScore,
-                        rwScore: scoreResult.rwScore,
-                        mathScore: scoreResult.mathScore,
-                        completedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
+                await retryWrite(() =>
+                    db.collection('proctoredSessions').doc(proctorCode)
+                        .collection('participants').doc(user.uid)
+                        .update({
+                            status: 'completed',
+                            score: scoreResult.totalScore,
+                            rwScore: scoreResult.rwScore,
+                            mathScore: scoreResult.mathScore,
+                            completedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        }),
+                    'Participant status update'
+                );
                 console.log('Proctored participant marked as completed (early).');
             } catch (err) {
                 console.warn('Could not update participant status (early):', err);
@@ -707,20 +737,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 scoringStatus: proctorCode ? 'pending_review' : 'published'
             };
 
-            // Save to testResults collection
-            await resultRef.set(resultData);
+            // Save to testResults collection (with retry)
+            await retryWrite(() => resultRef.set(resultData), 'Save testResults');
             console.log("Test result saved successfully to testResults:", resultId);
 
-            // Update the user's "completedTests" subcollection for the dashboard
+            // Update the user's "completedTests" subcollection for the dashboard (with retry)
             const userTestRef = db.collection('users').doc(user.uid).collection('completedTests').doc(testId);
-            await userTestRef.set({
+            await retryWrite(() => userTestRef.set({
                 score: scoreResult.totalScore,
                 completedAt: resultData.completedAt,
                 resultId: resultId,
                 proctorCode: proctorCode || null,
                 scoringStatus: proctorCode ? 'pending_review' : 'published',
                 testName: testName || 'Practice Test'
-            });
+            }), 'Save completedTests');
             console.log("User's completedTests subcollection updated.");
 
             // Remove beforeunload to prevent "leave page" dialog
