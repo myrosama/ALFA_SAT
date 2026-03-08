@@ -39,13 +39,9 @@ const TelegramImages = (() => {
                 }
             } catch (err) {
                 console.error('TelegramImages: Failed to load config:', err.message);
-                // Fallback: Use hardcoded tokens since students can't access config/telegram due to security rules
-                botTokens = [
-                    "8346966004:AAEjpZCJ1bdo177gQw4K_kgk8Pk8W1z0OHM",
-                    "8612742009:AAG19ZeeUoTF-8VRYkBtZF6yPxETD_9_8BU",
-                    "8479455437:AAE28dE-T2z7jzL1oVcdha0rX6sLhiUpqHg"
-                ];
-                channelId = "-1002674756395";
+                // Security Fix: Do not hardcode fallback tokens in client code.
+                botTokens = [];
+                channelId = "";
                 tokensLoaded = true;
             }
             tokenLoadPromise = null;
