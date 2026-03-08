@@ -657,11 +657,6 @@ async function publishSessionResults(sessionCode) {
  * Send announcement to Telegram channel.
  */
 async function sendTelegramAnnouncement(testName, studentCount) {
-    if (typeof TELEGRAM_BOT_TOKEN === 'undefined' || typeof TELEGRAM_CHANNEL_ID === 'undefined') {
-        scoringLog('warn', 'Telegram bot config not found, skipping announcement');
-        return;
-    }
-
     const message = `*ALFA SAT — Score Report Release*
 
 *${testName}*
@@ -674,23 +669,13 @@ Please log in to your ALFA SAT account to access your official score report and 
 
 ALFA SAT | 2026`;
 
-    try {
-        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: TELEGRAM_CHANNEL_ID,
-                text: message,
-                parse_mode: 'Markdown',
-                disable_web_page_preview: false
-            })
-        });
-        const data = await res.json();
-        if (!data.ok) scoringLog('warn', 'Telegram send failed:', data);
-        else scoringLog('info', 'Telegram announcement sent successfully');
-    } catch (err) {
-        scoringLog('error', 'Telegram API error:', err.message);
+    // Delegate to centralized TelegramImages module (tokens from Firestore)
+    if (typeof TelegramImages !== 'undefined' && TelegramImages.sendMessage) {
+        const sent = await TelegramImages.sendMessage(message, 'Markdown');
+        if (sent) scoringLog('info', 'Telegram announcement sent successfully');
+        else scoringLog('warn', 'Telegram announcement failed');
+    } else {
+        scoringLog('warn', 'TelegramImages module not available, skipping announcement');
     }
 }
 

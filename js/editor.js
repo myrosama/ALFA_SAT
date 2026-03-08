@@ -106,37 +106,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Uploads an image to Telegram and returns a permanent tg://file_id URL.
-     * The file_id never expires — we resolve it to a download URL on demand.
+     * Delegates to centralized TelegramImages module (tokens from Firestore).
      */
     async function uploadImageToTelegram(file) {
-        if (typeof TELEGRAM_BOT_TOKEN === 'undefined' || typeof TELEGRAM_CHANNEL_ID === 'undefined') {
-            console.error('Telegram configuration is missing.');
-            alert('Error: Telegram configuration is missing. Cannot upload image.');
-            return null;
-        }
-
-        const formData = new FormData();
-        formData.append('chat_id', TELEGRAM_CHANNEL_ID);
-        formData.append('photo', file);
-        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`;
-
-        try {
-            const response = await fetch(url, { method: 'POST', body: formData });
-            const data = await response.json();
-            if (data.ok) {
-                // Get the file_id of the largest photo — this is PERMANENT
-                const photoArray = data.result.photo;
-                const fileId = photoArray[photoArray.length - 1].file_id;
-                // Return tg:// URL — resolved to download URL on demand
-                return `tg://${fileId}`;
-            } else {
-                throw new Error(data.description);
-            }
-        } catch (error) {
-            console.error('Telegram Upload Error:', error);
-            alert('Error uploading image: ' + error.message);
-            return null;
-        }
+        return await TelegramImages.uploadImage(file);
     }
 
     /**

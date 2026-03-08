@@ -251,19 +251,50 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function renderAllMath() {
         try {
+            // 1. Render existing .ql-formula spans (from editor/pipeline)
             document.querySelectorAll('.ql-formula').forEach(span => {
                 const latex = span.dataset.value;
                 if (!latex) return;
-
-                // If the span already contains KaTeX-rendered content (from editor save), skip it
                 if (span.querySelector('.katex')) return;
-
-                // Otherwise, render with MathQuill
                 if (MQ && span) {
                     MQ.StaticMath(span).latex(latex);
                 } else {
                     span.textContent = `[Math: ${latex}]`;
                 }
+            });
+
+            // 2. Fix raw LaTeX that leaked into displayed text (e.g. "36^{\circ}")
+            // Only scan inside question/option areas to avoid breaking other content
+            const scanAreas = document.querySelectorAll('.question-text, .option-text, .pane-content');
+            scanAreas.forEach(area => {
+                const walker = document.createTreeWalker(area, NodeFilter.SHOW_TEXT, null, false);
+                const nodesToFix = [];
+                let node;
+                while (node = walker.nextNode()) {
+                    // Match patterns like x^{\circ}, \frac{1}{2}, etc.
+                    if (/\\[a-zA-Z]+\{|\^\{|_\{/.test(node.textContent)) {
+                        nodesToFix.push(node);
+                    }
+                }
+                nodesToFix.forEach(textNode => {
+                    const text = textNode.textContent;
+                    // Replace raw LaTeX with ql-formula wrapper
+                    const html = text.replace(/((?:[A-Za-z0-9.]+)?(?:\\[a-zA-Z]+\{[^}]*\}|[\^_]\{[^}]*\})+(?:[A-Za-z0-9.]*(?:[\^_]\{[^}]*\})*)*)/g, (match) => {
+                        return `<span class="ql-formula" data-value="${match}">\ufeff<span contenteditable="false"><span class="katex">${match}</span></span>\ufeff</span>`;
+                    });
+                    if (html !== text) {
+                        const temp = document.createElement('span');
+                        temp.innerHTML = html;
+                        textNode.parentNode.replaceChild(temp, textNode);
+                        // Re-render the new ql-formula spans
+                        temp.querySelectorAll('.ql-formula').forEach(span => {
+                            const latex = span.dataset.value;
+                            if (latex && MQ) {
+                                try { MQ.StaticMath(span).latex(latex); } catch (e) { }
+                            }
+                        });
+                    }
+                });
             });
         } catch (e) { console.error("renderAllMath error:", e); }
     }
@@ -306,10 +337,81 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         updateUI(question);
     }
+    /**
+     * Normalizes any options format from Firestore into the canonical {A, B, C, D} map.
+     * Handles: {A,B,C,D} maps, [{id,text}], [{option_value,option_text}], string arrays, etc.
+     */
+    function normalizeOptions(raw) {
+        const result = { A: '', B: '', C: '', D: '' };
+        if (!raw) return result;
+
+        // Already in correct {A, B, C, D} format
+        if (!Array.isArray(raw) && typeof raw === 'object') {
+            // Check if keys are A,B,C,D (case-insensitive)
+            const keys = Object.keys(raw);
+            const hasLetterKeys = ['A', 'B', 'C', 'D'].some(k => keys.includes(k) || keys.includes(k.toLowerCase()));
+            if (hasLetterKeys) {
+                result.A = String(raw.A || raw.a || '');
+                result.B = String(raw.B || raw.b || '');
+                result.C = String(raw.C || raw.c || '');
+                result.D = String(raw.D || raw.d || '');
+            } else {
+                // Object with non-standard keys — try to extract values
+                const vals = Object.values(raw).filter(v => typeof v === 'string' && v.length > 0);
+                ['A', 'B', 'C', 'D'].forEach((letter, i) => {
+                    result[letter] = vals[i] || '';
+                });
+            }
+            // Strip letter prefixes like "A) text" or "A. text"
+            for (const k of ['A', 'B', 'C', 'D']) {
+                let val = result[k].trim();
+                if (val.match(new RegExp(`^${k}[).:]\\s*`, 'i'))) {
+                    val = val.replace(new RegExp(`^${k}[).:]\\s*`, 'i'), '');
+                }
+                result[k] = val;
+            }
+            return result;
+        }
+
+        // Array format
+        if (Array.isArray(raw)) {
+            const letters = ['A', 'B', 'C', 'D'];
+            raw.slice(0, 4).forEach((item, i) => {
+                const letter = letters[i];
+                if (typeof item === 'string') {
+                    result[letter] = item;
+                } else if (typeof item === 'object' && item !== null) {
+                    // Try known key patterns: text, option_text, label, content, value (but not single-letter id/value)
+                    const text = item.text || item.option_text || item.label || item.content || '';
+                    if (text) {
+                        result[letter] = String(text);
+                    } else {
+                        // Fallback: find the longest string value that isn't just the letter itself
+                        const possibleTexts = Object.values(item)
+                            .filter(v => typeof v === 'string' && v.length > 1 && v.toUpperCase() !== letter)
+                            .sort((a, b) => b.length - a.length);
+                        result[letter] = possibleTexts[0] || String(Object.values(item).find(v => typeof v === 'string') || '');
+                    }
+                }
+            });
+            // Strip letter prefixes
+            for (const k of letters) {
+                let val = result[k].trim();
+                if (val.match(new RegExp(`^${k}[).:]\\s*`, 'i'))) {
+                    val = val.replace(new RegExp(`^${k}[).:]\\s*`, 'i'), '');
+                }
+                result[k] = val;
+            }
+            return result;
+        }
+
+        return result;
+    }
+
     function renderOptions(question) {
         if (!question || !question.id) return '<p>Invalid data.</p>';
         if (question.format === 'mcq') {
-            const options = question.options || {};
+            const options = normalizeOptions(question.options);
             return ['A', 'B', 'C', 'D'].map(opt => {
                 const optText = options[opt] || '';
                 return `<div class="option-wrapper"><label class="option"><input type="radio" name="${question.id}" value="${opt}"><span class="option-letter">${opt}</span><span class="option-text">${optText}</span></label><button class="strikethrough-btn" title="Eliminate choice"><i class="fa-solid fa-ban"></i></button></div>`;
@@ -716,6 +818,29 @@ document.addEventListener('DOMContentLoaded', () => {
             // Use result ID built above
             const resultRef = db.collection('testResults').doc(resultId);
 
+            // Build lightweight review index from already-loaded questions in memory
+            // This avoids re-fetching the full questions collection on results/review pages
+            function buildReviewIndex() {
+                const index = [];
+                for (let m = 0; m < allQuestionsByModule.length; m++) {
+                    const moduleQuestions = allQuestionsByModule[m] || [];
+                    moduleQuestions.forEach(q => {
+                        index.push({
+                            id: q.id,
+                            module: q.module || (m + 1),
+                            questionNumber: q.questionNumber || 0,
+                            format: q.format || 'mcq',
+                            correctAnswer: q.correctAnswer || null,
+                            fillInAnswer: q.fillInAnswer || null,
+                            domain: q.domain || '',
+                            skill: q.skill || ''
+                        });
+                    });
+                }
+                // Already sorted by module then questionNumber from allQuestionsByModule
+                return index;
+            }
+
             // Create result data object
             const resultData = {
                 userId: user.uid,
@@ -734,7 +859,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 userAnswers: userAnswers,
                 proctorCode: proctorCode || null,
-                scoringStatus: proctorCode ? 'pending_review' : 'published'
+                scoringStatus: proctorCode ? 'pending_review' : 'published',
+
+                // Lightweight review index — enables results/review pages
+                // to render question grids and navigation without re-reading
+                // the full tests/{testId}/questions collection
+                reviewIndex: buildReviewIndex()
             };
 
             // Save to testResults collection (with retry)

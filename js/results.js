@@ -1,15 +1,15 @@
-// js/results.js - Logic for the new Test Results page
-// UPDATED: To show all questions (correct & incorrect) and link to a new review page.
-// UPDATED AGAIN: To separate question grids by Module.
-// UPDATED AGAIN: To show only the question number (e.g., "1") instead of "M1: Q1".
+// js/results.js - Logic for the Test Results page
+// OPTIMIZED: Uses reviewIndex from result doc to avoid fetching full questions collection.
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Initialize Firebase ---
     const db = firebase.firestore();
     const auth = firebase.auth();
-    const MQ = MathQuill.getInterface(2); // For rendering math
+    const MQ = MathQuill.getInterface(2);
 
-    // --- Fill-in answer helper (supports comma-separated answers and numeric equivalence) ---
+    // === HELPER FUNCTIONS ===
+
+    /** Checks if a fill-in answer is correct (supports comma-separated and numeric equivalence). */
     function isFillinCorrect(userAns, fillInAnswer) {
         if (!userAns || !fillInAnswer) return false;
         const correct = fillInAnswer.replace(/<[^>]*>/g, '').trim();
@@ -26,6 +26,41 @@ document.addEventListener('DOMContentLoaded', () => {
         return false;
     }
 
+    /** Determines correctness from a lightweight index item + user answer. */
+    function isQuestionCorrectFromIndexItem(item, userAns) {
+        if (item.format === 'fill-in') {
+            return isFillinCorrect(userAns, item.fillInAnswer);
+        }
+        return userAns === item.correctAnswer;
+    }
+
+    /** Sorts a reviewIndex array by module asc, then questionNumber asc. */
+    function sortReviewIndex(index) {
+        return index.sort((a, b) => {
+            if (a.module !== b.module) return a.module - b.module;
+            return (a.questionNumber || 0) - (b.questionNumber || 0);
+        });
+    }
+
+    /** Builds a reviewIndex from a full questions collection snapshot (fallback for old results). */
+    function buildFallbackReviewIndexFromSnapshot(snapshot) {
+        const index = [];
+        snapshot.forEach(doc => {
+            const d = doc.data();
+            index.push({
+                id: doc.id,
+                module: d.module || 1,
+                questionNumber: d.questionNumber || 0,
+                format: d.format || 'mcq',
+                correctAnswer: d.correctAnswer || null,
+                fillInAnswer: d.fillInAnswer || null,
+                domain: d.domain || '',
+                skill: d.skill || ''
+            });
+        });
+        return sortReviewIndex(index);
+    }
+
     // --- Page Elements ---
     const resultsContainer = document.getElementById('results-container');
     const loadingContainer = document.getElementById('loading-container');
@@ -36,16 +71,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const qNumTemplate = document.getElementById('question-number-template');
 
     // --- State ---
-    let resultData = null; // Will hold the doc from Firestore
-    let currentResultId = null; // Store the resultId for linking
+    let resultData = null;
+    let currentResultId = null;
 
-    /**
-     * Renders all MathQuill static math blocks on the page.
-     */
+    /** Renders all MathQuill static math blocks on the page. */
     function renderAllMath() {
         try {
-            const formulaSpans = document.querySelectorAll('.ql-formula');
-            formulaSpans.forEach(span => {
+            document.querySelectorAll('.ql-formula').forEach(span => {
                 const latex = span.dataset.value;
                 if (latex && MQ && span) {
                     MQ.StaticMath(span).latex(latex);
@@ -58,10 +90,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Main function to load and display results.
+     * Uses reviewIndex from resultData when available (1 read).
+     * Falls back to fetching full questions collection for old results.
      */
     async function loadResults() {
         const urlParams = new URLSearchParams(window.location.search);
-        currentResultId = urlParams.get('resultId'); // Store for later use
+        currentResultId = urlParams.get('resultId');
 
         if (!currentResultId) {
             showError("No Result ID found in URL. Please go back to the dashboard.");
@@ -70,13 +104,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const user = auth.currentUser;
         if (!user) {
-            // This should be caught by main.js auth guard, but good to double-check
             showError("You must be logged in to view results.");
             return;
         }
 
         try {
-            // --- 1. Fetch Result Data ---
+            // --- 1. Fetch Result Data (1 Firestore read) ---
             const resultDoc = await db.collection('testResults').doc(currentResultId).get();
 
             if (!resultDoc.exists) {
@@ -86,13 +119,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             resultData = resultDoc.data();
 
-            // Security check: Ensure the logged-in user owns this result
+            // Security check
             if (resultData.userId !== user.uid) {
                 showError("Access Denied. You do not have permission to view this result.");
                 return;
             }
 
-            // --- PROCTORED TEST CHECK (must be BEFORE renderHeader to prevent flash) ---
+            // --- PROCTORED TEST CHECK ---
             const isSubmitted = urlParams.get('submitted') === 'true';
             const scoringStatus = resultData.scoringStatus || 'published';
 
@@ -101,7 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadingContainer.style.display = 'none';
                 resultsContainer.classList.add('loaded');
 
-                // Phase 1: Uploading animation (3.5 seconds)
                 resultsContainer.innerHTML = `
                     <style>
                         @keyframes uploadFill { from { width: 0%; } to { width: 100%; } }
@@ -122,14 +154,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
 
-                // Animate stage text
                 const stages = ['Saving responses...', 'Verifying data...', 'Uploading to server...', 'Finalizing...'];
                 const stageEl = document.getElementById('upload-stage-text');
                 for (let s = 1; s < stages.length; s++) {
                     setTimeout(() => { if (stageEl) stageEl.textContent = stages[s]; }, s * 900);
                 }
 
-                // Phase 2: Confirmation screen after 3.5s
                 setTimeout(() => {
                     resultsContainer.innerHTML = `
                         <style>
@@ -173,7 +203,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     title = 'Results Under Review';
                     desc = 'Your scores have been calculated and are currently being finalized. They will be released shortly.';
                 } else {
-                    // pending_review or processing
                     title = 'Results Pending';
                     desc = 'Your test is currently being reviewed and scored. Please check back later for your results.';
                 }
@@ -206,37 +235,36 @@ document.addEventListener('DOMContentLoaded', () => {
             // --- 2. Render Header ---
             renderHeader(resultData);
 
-            // --- 3. Fetch Questions from the Original Test Document ---
-            // Questions are NOT stored in testResults to avoid Firestore's 1MB limit.
-            const testId = resultData.testId;
-            if (!testId) {
-                showError("Test ID not found in result data.");
-                return;
+            // --- 3. Get review index (0 reads if reviewIndex present, ~N reads as fallback) ---
+            let reviewIndex = resultData.reviewIndex;
+
+            if (!reviewIndex || !Array.isArray(reviewIndex) || reviewIndex.length === 0) {
+                // FALLBACK for old result docs: fetch full questions collection once
+                console.warn('[results.js] reviewIndex missing — fetching full questions collection as fallback.');
+                const testId = resultData.testId;
+                if (!testId) {
+                    showError("Test ID not found in result data.");
+                    return;
+                }
+                const questionsSnapshot = await db.collection('tests').doc(testId).collection('questions').get();
+                reviewIndex = buildFallbackReviewIndexFromSnapshot(questionsSnapshot);
+                // Store snapshot for AI analysis fallback
+                window._fallbackQuestionsSnapshot = questionsSnapshot;
+            } else {
+                reviewIndex = sortReviewIndex(reviewIndex);
             }
 
-            const questionsSnapshot = await db.collection('tests').doc(testId).collection('questions').get();
-            const allQuestions = [];
-            questionsSnapshot.forEach(doc => {
-                allQuestions.push({ id: doc.id, ...doc.data() });
-            });
+            // Split into R&W and Math
+            const allRW = reviewIndex.filter(q => q.module === 1 || q.module === 2);
+            const allMath = reviewIndex.filter(q => q.module === 3 || q.module === 4);
 
-            // Get all R&W questions
-            const allRW = allQuestions
-                .filter(q => (q.module === 1 || q.module === 2));
-
-            // Get all Math questions
-            const allMath = allQuestions
-                .filter(q => (q.module === 3 || q.module === 4));
-
-            // Render the sections
+            // Render the sections using lightweight index items
             renderReviewSection("Reading & Writing", "rw-section", 1, 2, allRW, resultData);
             renderReviewSection("Math", "math-section", 3, 4, allMath, resultData);
 
             // --- 4. Finalize ---
-            loadingContainer.style.display = 'none'; // Hide loading spinner
-            resultsContainer.classList.add('loaded'); // Fade in content
-
-            // Render any math formulas in the dynamically added content
+            loadingContainer.style.display = 'none';
+            resultsContainer.classList.add('loaded');
             renderAllMath();
 
             // --- 5. Wire Certificate Download Button ---
@@ -262,7 +290,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const sessionDoc = await db.collection('proctoredSessions').doc(resultData.proctorCode).get();
                     if (sessionDoc.exists && sessionDoc.data().status === 'revoked') {
-                        // Hide all review sections (question grids)
                         document.querySelectorAll('.review-section').forEach(section => {
                             section.innerHTML = `
                                 <div style="text-align: center; padding: 30px; color: var(--dark-gray);">
@@ -278,14 +305,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-
-            // --- 8. AI Score Analysis (Optional for Normal Tests) ---
+            // --- 7. AI Score Analysis ---
             if (typeof renderAIAnalysis === 'function') {
                 if (resultData.aiAnalysis) {
-                    // Already analyzed — render
                     renderAIAnalysis(resultData.aiAnalysis, resultsContainer);
                 } else if (!resultData.proctorCode) {
-                    // Normal test: show optional "Analyze with AI" button
                     const aiOptDiv = document.createElement('div');
                     aiOptDiv.className = 'ai-analysis-section';
                     aiOptDiv.innerHTML = `
@@ -304,7 +328,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analyzing...';
 
                         try {
-                            // Build question data for AI
+                            // For AI analysis we need full question data — fetch if not already cached
+                            let questionsSnapshot = window._fallbackQuestionsSnapshot;
+                            if (!questionsSnapshot) {
+                                questionsSnapshot = await db.collection('tests').doc(resultData.testId).collection('questions').get();
+                            }
+
                             const allQ = [];
                             questionsSnapshot.forEach(d => allQ.push({ id: d.id, ...d.data() }));
                             const byModule = [[], [], [], []];
@@ -347,14 +376,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Renders the top score header.
-     * @param {object} data - The result data from Firestore.
      */
     function renderHeader(data) {
         const headerClone = headerTemplate.content.cloneNode(true);
 
         headerClone.getElementById('test-name-display').textContent += (data.testName || 'Practice Test');
 
-        // Use AI-estimated score if available, otherwise static
         const aiScore = data.aiEstimatedScore;
         if (aiScore && aiScore.totalScore) {
             headerClone.getElementById('total-score-display').textContent = aiScore.totalScore;
@@ -371,7 +398,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         resultsContainer.appendChild(headerClone);
 
-        // Show AI analysis card if available
         if (aiScore && aiScore.explanation) {
             const aiCard = document.createElement('div');
             aiCard.className = 'ai-analysis-section';
@@ -390,40 +416,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Populates a given grid element with question buttons.
-     * @param {HTMLElement} gridEl - The .review-grid element to populate.
-     * @param {Array} questions - An array of question objects for this grid.
-     * @param {object} userAnswers - The user's answers map.
+     * Populates a grid with question buttons using lightweight index items.
+     * No full question data needed — only id, questionNumber, format, correctAnswer, fillInAnswer.
      */
-    function populateGrid(gridEl, questions, userAnswers) {
-        if (questions.length === 0) {
+    function populateGrid(gridEl, indexItems, userAnswers) {
+        if (indexItems.length === 0) {
             gridEl.innerHTML = `<p class="no-questions-in-module">No questions found for this module.</p>`;
             return;
         }
 
-        questions.forEach(q => {
-            const isCorrect = q.format === 'fill-in'
-                ? isFillinCorrect(userAnswers[q.id], q.fillInAnswer)
-                : userAnswers[q.id] === q.correctAnswer;
+        indexItems.forEach(item => {
+            const isCorrect = isQuestionCorrectFromIndexItem(item, userAnswers[item.id]);
 
             const qBtnClone = qNumTemplate.content.cloneNode(true);
             const qBtnEl = qBtnClone.querySelector('.q-number-btn');
 
-            // Add correct/incorrect class for styling
             qBtnEl.classList.add(isCorrect ? 'correct' : 'incorrect');
+            qBtnClone.querySelector('.q-number').textContent = item.questionNumber;
+            qBtnEl.dataset.questionId = item.id;
 
-            // Get the display module/section number
-            const moduleNum = (q.module % 2) === 0 ? 2 : 1; // 1->1, 2->2, 3->1, 4->2
-
-            // UPDATED: Show only the question number
-            qBtnClone.querySelector('.q-number').textContent = q.questionNumber;
-
-            // Store data on the button to find it later
-            qBtnEl.dataset.questionId = q.id;
-
-            // UPDATED: Add event listener to link to the new review page
             qBtnEl.addEventListener('click', () => {
-                window.location.href = `question-review.html?resultId=${currentResultId}&questionId=${q.id}`;
+                window.location.href = `question-review.html?resultId=${currentResultId}&questionId=${item.id}`;
             });
 
             gridEl.appendChild(qBtnClone);
@@ -431,15 +444,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Renders a review section (R&W or Math) and internally creates sub-grids for each module.
-     * @param {string} title - The section title (e.g., "Reading & Writing").
-     * @param {string} cssClass - The CSS class to add (e.g., "rw-section").
-     * @param {number} moduleNumA - The first module number (e.g., 1 for R&W, 3 for Math).
-     * @param {number} moduleNumB - The second module number (e.g., 2 for R&W, 4 for Math).
-     * @param {Array} allSectionQuestions - An array of ALL question objects for this section.
-     * @param {object} data - The main result data object.
+     * Renders a review section (R&W or Math) using lightweight index items.
      */
-    function renderReviewSection(title, cssClass, moduleNumA, moduleNumB, allSectionQuestions, data) {
+    function renderReviewSection(title, cssClass, moduleNumA, moduleNumB, sectionItems, data) {
         const sectionClone = sectionTemplate.content.cloneNode(true);
         const sectionEl = sectionClone.querySelector('.review-section');
         const titleEl = sectionClone.querySelector('.section-title');
@@ -448,7 +455,6 @@ document.addEventListener('DOMContentLoaded', () => {
         titleEl.classList.add(cssClass);
         sectionClone.querySelector('.title-text').textContent = `Review: ${title}`;
 
-        // Set the raw score display for the section
         if (cssClass === 'rw-section') {
             rawScoreEl.textContent = `${data.rwRaw} / ${data.rwTotal} Correct`;
         } else if (cssClass === 'math-section') {
@@ -457,57 +463,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const userAnswers = data.userAnswers || {};
 
-        // Filter and sort questions for Module A
-        const moduleA_Qs = allSectionQuestions
+        const moduleA_Items = sectionItems
             .filter(q => q.module === moduleNumA)
-            .sort((a, b) => a.questionNumber - b.questionNumber);
+            .sort((a, b) => (a.questionNumber || 0) - (b.questionNumber || 0));
 
-        // Filter and sort questions for Module B
-        const moduleB_Qs = allSectionQuestions
+        const moduleB_Items = sectionItems
             .filter(q => q.module === moduleNumB)
-            .sort((a, b) => a.questionNumber - b.questionNumber);
+            .sort((a, b) => (a.questionNumber || 0) - (b.questionNumber || 0));
 
-        // --- Create Module A Container ---
+        // --- Module A ---
         const moduleA_Container = document.createElement('div');
         moduleA_Container.className = 'module-review-container';
-
         const moduleA_Title = document.createElement('h4');
         moduleA_Title.className = 'module-title';
-        moduleA_Title.textContent = `Module ${moduleNumA <= 2 ? 1 : 1}`; // 1->1, 3->1
+        moduleA_Title.textContent = `Module 1`;
         moduleA_Container.appendChild(moduleA_Title);
-
         const moduleA_Grid = document.createElement('div');
         moduleA_Grid.className = 'review-grid';
-        populateGrid(moduleA_Grid, moduleA_Qs, userAnswers);
+        populateGrid(moduleA_Grid, moduleA_Items, userAnswers);
         moduleA_Container.appendChild(moduleA_Grid);
-
         sectionEl.appendChild(moduleA_Container);
 
-        // --- Create Module B Container ---
+        // --- Module B ---
         const moduleB_Container = document.createElement('div');
         moduleB_Container.className = 'module-review-container';
-
         const moduleB_Title = document.createElement('h4');
         moduleB_Title.className = 'module-title';
-        moduleB_Title.textContent = `Module ${moduleNumB <= 2 ? 2 : 2}`; // 2->2, 4->2
+        moduleB_Title.textContent = `Module 2`;
         moduleB_Container.appendChild(moduleB_Title);
-
         const moduleB_Grid = document.createElement('div');
         moduleB_Grid.className = 'review-grid';
-        populateGrid(moduleB_Grid, moduleB_Qs, userAnswers);
+        populateGrid(moduleB_Grid, moduleB_Items, userAnswers);
         moduleB_Container.appendChild(moduleB_Grid);
-
         sectionEl.appendChild(moduleB_Container);
 
-        // Append the whole section to the page
         resultsContainer.appendChild(sectionClone);
     }
 
-
-    /**
-     * Displays a final error message to the user.
-     * @param {string} message - The error message to show.
-     */
+    /** Displays a final error message. */
     function showError(message) {
         loadingContainer.style.display = 'none';
         if (resultsContainer) {
@@ -516,18 +509,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-
     // --- Auth Check & Initial Load ---
     auth.onAuthStateChanged(user => {
         if (user) {
-            // User is logged in, proceed to load results
             loadResults();
         } else {
-            // User is not logged in, main.js should handle redirect,
-            // but we'll show an error just in case.
             showError("You must be logged in to view results.");
         }
     });
 
 }); // --- END OF DOMContentLoaded ---
-
