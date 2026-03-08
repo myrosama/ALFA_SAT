@@ -2,9 +2,11 @@
 // FIXED: Strict rules for Question Ordering ( Page N = Question N ).
 // FIXED: Strict rules for EBRW (No Math) vs Math (KaTeX).
 // FIXED: Added Custom Prompt support.
+// UPDATED: Multi-admin personal dashboards with role-based test categorization.
 
 let auth;
 let db;
+let currentAdminRole = null; // 'real_exam_admin' or 'premium_admin'
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -175,11 +177,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            const testCategory = currentAdminRole === 'real_exam_admin' ? 'real_exam' : 'premium';
             db.collection('tests').doc(testId).set({
                 name: testName,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 visibility: 'hide',
-                whitelist: []
+                whitelist: [],
+                createdBy: auth.currentUser?.uid || '',
+                testCategory: testCategory
             }).then(() => {
                 console.log('Test created successfully!');
                 closeModal(createTestModal);
@@ -339,49 +344,51 @@ document.addEventListener('DOMContentLoaded', () => {
                 logProgress(`PDF converted. Found ${images.length} pages.`);
 
                 // 2. Initialize Test in Firestore
+                const testCategory = currentAdminRole === 'real_exam_admin' ? 'real_exam' : 'premium';
                 await db.collection('tests').doc(testId).set({
                     name: testName,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     visibility: 'hide',
                     whitelist: [],
+                    createdBy: auth.currentUser?.uid || '',
+                    testCategory: testCategory,
                     status: 'importing',
                     totalPages: images.length
                 });
                 logProgress(`Created test shell: ${testId}`);
 
-                // 3. BATCH PROCESSING LOOP
-                const BATCH_SIZE = 3; // Safe for free tier
-                const DELAY_MS = 5000; // 5s wait
-                let totalQuestionsSaved = 0;
+                // 3. EXTRACT QUESTIONS — No hardcoded module assignment
+                const BATCH_SIZE = 3;
+                const DELAY_MS = 5000;
+                let allExtractedQuestions = [];
+
+                // Store PDF images for later image cropping
+                window._pdfImages = images;
 
                 for (let i = 0; i < images.length; i += BATCH_SIZE) {
                     const batchImages = images.slice(i, i + BATCH_SIZE);
                     const batchNum = Math.floor(i / BATCH_SIZE) + 1;
                     const totalBatches = Math.ceil(images.length / BATCH_SIZE);
                     const startPage = i + 1;
+                    const endPage = Math.min(i + BATCH_SIZE, images.length);
 
-                    logProgress(`Analyzing Batch ${batchNum}/${totalBatches} (Pages ${startPage}-${startPage + batchImages.length - 1})...`);
+                    logProgress(`Analyzing Batch ${batchNum}/${totalBatches} (Pages ${startPage}-${endPage})...`);
                     if (progressTextLabel) progressTextLabel.textContent = `AI Analyzing Batch ${batchNum}/${totalBatches}...`;
-
-                    const progressPercent = 30 + ((i / images.length) * 60);
+                    const progressPercent = 15 + ((i / images.length) * 60);
                     if (progressBar) progressBar.style.width = `${progressPercent}%`;
 
                     try {
-                        // Heuristic Context for AI
-                        let contextModule = "Reading & Writing Module 1";
-                        if (startPage > 14) contextModule = "Reading & Writing Module 2";
-                        if (startPage > 28) contextModule = "Math Module 1";
-                        if (startPage > 40) contextModule = "Math Module 2";
-
-                        // +++ Pass custom instructions to AI +++
-                        const questions = await callGeminiForBatch(batchImages, contextModule, customInstructions);
+                        const questions = await callGeminiForBatch(batchImages, customInstructions, startPage);
 
                         if (questions && questions.length > 0) {
-                            logProgress(`Batch ${batchNum}: Found ${questions.length} questions. Saving...`);
-                            await saveParsedQuestions(testId, testName, questions);
-                            totalQuestionsSaved += questions.length;
+                            questions.forEach(q => {
+                                q._batchStartPage = startPage;
+                                q._batchIndex = i;
+                            });
+                            allExtractedQuestions.push(...questions);
+                            logProgress(`Batch ${batchNum}: Found ${questions.length} questions.`);
                         } else {
-                            logProgress(`Batch ${batchNum}: No questions extracted.`);
+                            logProgress(`Batch ${batchNum}: No questions (directions/answer key page).`);
                         }
                     } catch (batchError) {
                         console.error(`Batch ${batchNum} failed:`, batchError);
@@ -394,13 +401,70 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
+                // 4. POST-PROCESSING: assign modules, deduplicate, validate
+                logProgress("Post-processing: assigning modules and deduplicating...");
+                if (progressBar) progressBar.style.width = '80%';
+                if (progressTextLabel) progressTextLabel.textContent = "Assigning modules...";
+
+                allExtractedQuestions = assignModulesAndDeduplicate(allExtractedQuestions);
+                logProgress(`Final count: ${allExtractedQuestions.length} questions across 4 modules.`);
+
+                // 5. IMAGE CROPPING: crop images for questions with image_bbox
+                const questionsWithImages = allExtractedQuestions.filter(q => q.image_bbox);
+                if (questionsWithImages.length > 0) {
+                    logProgress(`Cropping ${questionsWithImages.length} images from PDF...`);
+                    if (progressTextLabel) progressTextLabel.textContent = `Cropping ${questionsWithImages.length} images...`;
+                    if (progressBar) progressBar.style.width = '85%';
+
+                    for (const q of questionsWithImages) {
+                        try {
+                            const croppedDataUrl = await cropImageFromPDFPage(q.image_bbox, q._batchStartPage, q._batchIndex);
+                            if (croppedDataUrl) {
+                                // Upload to Telegram
+                                if (typeof TelegramImages !== 'undefined' && TelegramImages.uploadBase64Image) {
+                                    const tgUrl = await TelegramImages.uploadBase64Image(croppedDataUrl);
+                                    if (tgUrl) {
+                                        q.imageUrl = tgUrl;
+                                        q.imageWidth = '100%';
+                                        const imgType = q.image_bbox.type || 'diagram';
+                                        q.imagePosition = q.imagePosition || (imgType === 'table' || imgType === 'chart' ? 'below' : 'above');
+                                        logProgress(`  Uploaded image for Q${q.questionNumber}`);
+                                    }
+                                } else {
+                                    // Fallback: store as inline base64 (not ideal but works)
+                                    q.imageUrl = croppedDataUrl;
+                                    q.imageWidth = '100%';
+                                    q.imagePosition = q.imagePosition || 'above';
+                                }
+                            }
+                        } catch (e) {
+                            console.warn(`Image crop failed for Q${q.questionNumber}:`, e);
+                        }
+                        delete q.image_bbox;
+                    }
+                }
+
+                // Clean up internal fields
+                allExtractedQuestions.forEach(q => {
+                    delete q._batchStartPage;
+                    delete q._batchIndex;
+                    delete q.image_bbox;
+                    delete q.sectionType;
+                });
+
+                // 6. SAVE
+                if (allExtractedQuestions.length > 0) {
+                    logProgress("Saving all questions to Firestore...");
+                    if (progressBar) progressBar.style.width = '92%';
+                    await saveParsedQuestions(testId, testName, allExtractedQuestions);
+                }
+
                 if (progressBar) progressBar.style.width = '100%';
-                if (progressTextLabel) progressTextLabel.textContent = `Success! Imported ${totalQuestionsSaved} questions.`;
+                if (progressTextLabel) progressTextLabel.textContent = `Success! Imported ${allExtractedQuestions.length} questions.`;
                 logProgress("IMPORT COMPLETE.");
 
-                // Notify Telegram
-                if (typeof TELEGRAM_BOT_TOKEN !== 'undefined' && TELEGRAM_BOT_TOKEN.length > 20) {
-                    uploadToTelegram(pdfFileBlob, `Test "${testName}" Imported (${totalQuestionsSaved} qs)`);
+                if (typeof TelegramImages !== 'undefined' && TelegramImages.sendMessage) {
+                    TelegramImages.sendMessage(`📥 Test "${testName}" imported with ${allExtractedQuestions.length} questions.`);
                 }
 
                 setTimeout(() => {
@@ -416,8 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- CORE PDF & AI FUNCTIONS ---
-
+    // --- CORE PDF FUNCTION ---
     async function readPDFAndConvert(file) {
         if (typeof pdfjsLib === 'undefined') throw new Error("PDF.js library is not loaded.");
         const fileArray = await file.arrayBuffer();
@@ -445,48 +508,62 @@ document.addEventListener('DOMContentLoaded', () => {
         return results.map(r => r.base64);
     }
 
-    // --- HELPER: Gemini API Call (STRICT FORMATTING PROMPT) ---
-    async function callGeminiForBatch(base64Images, contextModule, customInstructions) {
+    // =====================================================
+    // GEMINI API CALL — No module pre-assignment
+    // =====================================================
+    async function callGeminiForBatch(base64Images, customInstructions, startPage) {
         const apiKey = AI_API_KEY;
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
-        const QUESTION_DOMAINS = {
-            "Reading & Writing": ["Information and Ideas", "Craft and Structure", "Expression of Ideas", "Standard English Conventions"],
-            "Math": ["Algebra", "Advanced Math", "Problem-Solving and Data Analysis", "Geometry and Trigonometry"]
-        };
-        const domainListRW = QUESTION_DOMAINS["Reading & Writing"].join(', ');
-        const domainListMath = QUESTION_DOMAINS["Math"].join(', ');
-
         const masterPrompt = `You are a precise SAT Test Parsing Agent.
-        
-        CONTEXT: You are analyzing pages from ${contextModule}.
-        
-        USER INSTRUCTIONS: ${customInstructions}
-        
-        STRICT FORMATTING RULES (MUST FOLLOW):
-        1. **QUESTION ORDER:** Look for the *printed* question number on the page (e.g., "1", "2", "27"). Use this as the 'questionNumber'. This is the canonical source of truth.
-        
-        2. **EBRW (Reading/Writing) SECTIONS:**
-           - **PURE TEXT ONLY.** No exceptions.
-           - **ABSOLUTELY NO LaTeX or KaTeX.** Do NOT use <span class="ql-formula">.
-           - Do NOT use markdown like **bold**. Use HTML tags: <b>, <i>, <u>, <ul>, <li>.
-           - For "blanks" in text, use "________" (8 underscores).
-        
-        3. **MATH SECTIONS:**
-           - **ALL** numbers, variables, equations, and fractions MUST be converted to KaTeX.
-           - **WRAPPER:** <span class="ql-formula" data-value="LATEX_CODE">﻿<span contenteditable="false"><span class="katex">LATEX_CODE</span></span>﻿</span>
-           - **CRITICAL:** Do NOT put a space after the closing </span> tag if it is inline.
-           - Example: "If x=4" -> "If <span class="ql-formula" data-value="x=4">...</span>"
-        
-        4. **GENERAL:**
-           - Extract ALL questions on these pages.
-           - If Math question has NO options (A,B,C,D), set format="fill-in" and put answer in 'fillInAnswer'.
-           - If Math question HAS options, set format="mcq" and put options in 'options' object.
-           - Categorize domain/skill based on:
-             - RW: ${domainListRW}
-             - Math: ${domainListMath}
 
-        OUTPUT: Return a valid JSON array of question objects.`;
+You are analyzing page(s) ${startPage} onward from a Digital SAT practice test PDF.
+${customInstructions ? `USER INSTRUCTIONS: ${customInstructions}` : ''}
+
+YOUR TASK: Extract EVERY question visible on these pages.
+
+CRITICAL RULES:
+
+1. **SECTION DETECTION (YOU decide):**
+   - Look at the page content to determine if this is a Reading & Writing section or a Math section.
+   - Reading & Writing pages have: text passages, literary excerpts, grammar questions.
+   - Math pages have: equations, numbers, graphs, geometry, word problems with calculations.
+   - Set "sectionType" to "rw" for Reading & Writing, or "math" for Math.
+   - This is YOUR determination from the content — there is no pre-assigned module.
+
+2. **QUESTION NUMBER:** Use the printed question number visible on the page (1, 2, 3...).
+
+3. **READING & WRITING FORMAT:**
+   - PURE TEXT ONLY. No LaTeX, no KaTeX, no ql-formula.
+   - Use HTML tags: <b>, <i>, <u>, <ul>, <li>.
+   - For blanks: "________" (8 underscores).
+   - Passages go in "passage", the question in "prompt".
+   - All R&W questions are MCQ.
+
+4. **MATH FORMAT:**
+   - ALL math must use KaTeX wrapper: <span class="ql-formula" data-value="LATEX_CODE">﻿<span contenteditable="false"><span class="katex">LATEX_CODE</span></span>﻿</span>
+   - MCQ questions: format="mcq", options={A,B,C,D}
+   - Student-produced response: format="fill-in", fillInAnswer="answer"
+
+5. **IMAGES/TABLES/CHARTS/GRAPHS:**
+   - If a question has an image, table, chart, or graph, include:
+     "image_bbox": {"x0": float, "y0": float, "x1": float, "y1": float, "page_index": int, "type": "table|chart|diagram"}
+   - Coordinates are NORMALIZED 0.0 to 1.0 relative to page dimensions.
+   - page_index is 0-based within this batch (0 = first page of batch, 1 = second, etc.)
+   - For tables: bbox MUST include headers/titles above the table.
+   - Set imagePosition: "below" for tables/charts, "above" for standalone diagrams.
+   - If NO image exists, omit these fields.
+
+6. **ANSWER:** If the correct answer is visible, set correctAnswer. Otherwise leave empty.
+
+7. **DOMAINS:**
+   - RW: Information and Ideas, Craft and Structure, Expression of Ideas, Standard English Conventions
+   - Math: Algebra, Advanced Math, Problem-Solving and Data Analysis, Geometry and Trigonometry
+
+8. **SKIP RULES:** If a page is directions, title page, or answer key — return [].
+   Do NOT invent questions. Only extract what is printed.
+
+OUTPUT: Return a valid JSON array. Each object MUST include sectionType and questionNumber.`;
 
         const contents = [{ parts: [{ text: masterPrompt }] }];
         base64Images.forEach(img => contents[0].parts.push({ inlineData: { mimeType: "image/jpeg", data: img } }));
@@ -496,7 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
             items: {
                 type: "OBJECT",
                 properties: {
-                    module: { type: "INTEGER" },
+                    sectionType: { type: "STRING", enum: ["rw", "math"] },
                     questionNumber: { type: "INTEGER" },
                     passage: { type: "STRING" },
                     prompt: { type: "STRING" },
@@ -514,9 +591,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     fillInAnswer: { type: "STRING" },
                     domain: { type: "STRING" },
                     skill: { type: "STRING" },
-                    explanation: { type: "STRING" }
+                    explanation: { type: "STRING" },
+                    imagePosition: { type: "STRING" },
+                    image_bbox: {
+                        type: "OBJECT",
+                        properties: {
+                            x0: { type: "NUMBER" },
+                            y0: { type: "NUMBER" },
+                            x1: { type: "NUMBER" },
+                            y1: { type: "NUMBER" },
+                            page_index: { type: "INTEGER" },
+                            type: { type: "STRING" }
+                        }
+                    }
                 },
-                required: ["prompt", "format", "domain"]
+                required: ["sectionType", "questionNumber", "prompt", "format"]
             }
         };
 
@@ -535,7 +624,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!response.ok) {
                 const err = await response.json();
-                console.warn(`Batch Error: ${err.error.message}`);
+                console.warn(`Batch Error: ${err.error?.message || 'Unknown'}`);
                 return [];
             }
 
@@ -545,6 +634,191 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             console.error("Batch AI Error:", e);
             return [];
+        }
+    }
+
+    // =====================================================
+    // POST-PROCESSING: Question-number-restart module assignment
+    // =====================================================
+    function assignModulesAndDeduplicate(questions) {
+        if (!questions || questions.length === 0) return [];
+
+        // 1. Drop invalid questions
+        let valid = questions.filter(q => q.prompt && q.prompt.trim().length > 5);
+
+        // 2. Split by section type (Gemini's determination)
+        const rwQuestions = valid.filter(q => q.sectionType === 'rw');
+        const mathQuestions = valid.filter(q => q.sectionType === 'math');
+
+        console.log(`[PostProcess] RW: ${rwQuestions.length}, Math: ${mathQuestions.length}`);
+
+        // 3. Assign modules using question-number-restart detection
+        assignModulesViaRestart(rwQuestions, 1, 2);  // RW → Module 1, Module 2
+        assignModulesViaRestart(mathQuestions, 3, 4); // Math → Module 3, Module 4
+
+        const allAssigned = [...rwQuestions, ...mathQuestions];
+
+        // 4. Deduplicate by module + questionNumber (keep the one with more content)
+        const seen = new Map();
+        for (const q of allAssigned) {
+            const key = `m${q.module}_q${q.questionNumber}`;
+            const existing = seen.get(key);
+            if (!existing) {
+                seen.set(key, q);
+            } else {
+                const existingLen = (existing.prompt || '').length + (existing.passage || '').length;
+                const newLen = (q.prompt || '').length + (q.passage || '').length;
+                if (newLen > existingLen) seen.set(key, q);
+            }
+        }
+        let deduped = Array.from(seen.values());
+
+        // 5. Fix missing question numbers
+        for (let mod = 1; mod <= 4; mod++) {
+            const moduleQs = deduped.filter(q => q.module === mod)
+                .sort((a, b) => (a.questionNumber || 0) - (b.questionNumber || 0));
+            moduleQs.forEach((q, idx) => {
+                if (!q.questionNumber || q.questionNumber <= 0) q.questionNumber = idx + 1;
+            });
+        }
+
+        // 6. Sort: module asc, questionNumber asc
+        deduped.sort((a, b) => {
+            if (a.module !== b.module) return a.module - b.module;
+            return (a.questionNumber || 0) - (b.questionNumber || 0);
+        });
+
+        // Log module counts
+        for (let m = 1; m <= 4; m++) {
+            const count = deduped.filter(q => q.module === m).length;
+            console.log(`[PostProcess] Module ${m}: ${count} questions`);
+        }
+
+        return deduped;
+    }
+
+    /**
+     * Assigns module numbers using question-number-restart detection.
+     * Questions are sorted by extraction order (batch page).
+     * When questionNumber drops significantly (e.g., 27→1), that's a module boundary.
+     * 
+     * @param {Array} questions - All questions of one section type (rw or math)
+     * @param {number} mod1 - First module number (1 for RW, 3 for Math)
+     * @param {number} mod2 - Second module number (2 for RW, 4 for Math)
+     */
+    function assignModulesViaRestart(questions, mod1, mod2) {
+        if (questions.length === 0) return;
+
+        // Sort by extraction order (batch page position)
+        questions.sort((a, b) => {
+            if ((a._batchStartPage || 0) !== (b._batchStartPage || 0)) {
+                return (a._batchStartPage || 0) - (b._batchStartPage || 0);
+            }
+            return (a.questionNumber || 0) - (b.questionNumber || 0);
+        });
+
+        // Find the restart point where question numbers drop
+        let restartIndex = -1;
+        let maxQNum = 0;
+
+        for (let i = 0; i < questions.length; i++) {
+            const qNum = questions[i].questionNumber || 0;
+
+            // A restart is when: we've seen high numbers (>5) and then see a low number (<=3)
+            // This catches the 27→1 or 22→1 restart pattern
+            if (maxQNum >= 5 && qNum <= 3 && qNum < maxQNum * 0.5) {
+                restartIndex = i;
+                break;
+            }
+            maxQNum = Math.max(maxQNum, qNum);
+        }
+
+        // Assign modules
+        if (restartIndex === -1) {
+            // No restart detected — all questions belong to mod1
+            questions.forEach(q => { q.module = mod1; });
+            console.log(`[Restart] ${mod1 <= 2 ? 'RW' : 'Math'}: No restart detected, all → Module ${mod1}`);
+        } else {
+            // Split at restart
+            for (let i = 0; i < questions.length; i++) {
+                questions[i].module = (i < restartIndex) ? mod1 : mod2;
+            }
+            console.log(`[Restart] ${mod1 <= 2 ? 'RW' : 'Math'}: Restart at index ${restartIndex} (Q${questions[restartIndex].questionNumber}). Module ${mod1}: ${restartIndex}, Module ${mod2}: ${questions.length - restartIndex}`);
+        }
+    }
+
+    // =====================================================
+    // IMAGE CROPPING — Canvas-based from PDF page images
+    // =====================================================
+    async function cropImageFromPDFPage(bbox, batchStartPage, batchIndex) {
+        try {
+            const pageIndex = bbox.page_index || 0;
+            const globalPageIndex = batchIndex + pageIndex;
+
+            if (!window._pdfImages || globalPageIndex >= window._pdfImages.length) {
+                console.warn('Image crop: page index out of range');
+                return null;
+            }
+
+            const pageBase64 = window._pdfImages[globalPageIndex];
+
+            // Load the page image
+            const img = new Image();
+            await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = reject;
+                img.src = `data:image/jpeg;base64,${pageBase64}`;
+            });
+
+            // Normalize coordinates (Gemini might return 0-1 or 0-1000)
+            let { x0, y0, x1, y1 } = bbox;
+            if (Math.max(x0, y0, x1, y1) > 1.0) {
+                x0 /= 1000; y0 /= 1000; x1 /= 1000; y1 /= 1000;
+            }
+
+            // Ensure correct order
+            if (x0 > x1) [x0, x1] = [x1, x0];
+            if (y0 > y1) [y0, y1] = [y1, y0];
+
+            // Convert to pixel coordinates
+            const px0 = x0 * img.width;
+            const py0 = y0 * img.height;
+            const px1 = x1 * img.width;
+            const py1 = y1 * img.height;
+
+            const cropWidth = px1 - px0;
+            const cropHeight = py1 - py0;
+
+            if (cropWidth <= 5 || cropHeight <= 5) {
+                console.warn('Image crop: zero-area bounding box');
+                return null;
+            }
+
+            // Add padding (8% horizontal, 15% vertical)
+            const padX = Math.max(10, cropWidth * 0.08);
+            const padY = Math.max(15, cropHeight * 0.15);
+
+            const safeX0 = Math.max(0, px0 - padX);
+            const safeY0 = Math.max(0, py0 - padY);
+            const safeX1 = Math.min(img.width, px1 + padX);
+            const safeY1 = Math.min(img.height, py1 + padY);
+
+            // Crop using canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = safeX1 - safeX0;
+            canvas.height = safeY1 - safeY0;
+            const ctx = canvas.getContext('2d');
+
+            ctx.drawImage(img,
+                safeX0, safeY0, canvas.width, canvas.height,
+                0, 0, canvas.width, canvas.height
+            );
+
+            return canvas.toDataURL('image/png', 0.95);
+
+        } catch (e) {
+            console.error('Image crop error:', e);
+            return null;
         }
     }
 
@@ -562,10 +836,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (mod < 1 || mod > 4) mod = 1;
 
             // 2. Use AI's Question Number if present
-            // This is the key to your "Strict Order" requirement.
             let num = q.questionNumber;
-
-            // Fallback if AI missed it (rare with new prompt)
             if (!num) {
                 num = `unknown_${Math.floor(Math.random() * 1000)}`;
             }
@@ -573,15 +844,77 @@ document.addEventListener('DOMContentLoaded', () => {
             const docId = `m${mod}_q${num}`;
             const docRef = testRef.collection('questions').doc(docId);
 
-            // Ensure fields are present
-            if (!q.questionNumber) q.questionNumber = parseInt(num) || 99;
-            if (!q.module) q.module = mod;
+            // --- Normalize data to match editor.js schema ---
+            const data = {
+                passage: q.passage || '',
+                prompt: q.prompt || '',
+                explanation: q.explanation || '',
+                imageUrl: q.imageUrl || '',
+                imageWidth: q.imageWidth || '100%',
+                imagePosition: q.imagePosition || 'above',
+                module: mod,
+                questionNumber: parseInt(num) || 99,
+                domain: q.domain || '',
+                skill: q.skill || '',
+                format: q.format || 'mcq',
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            };
 
-            batch.set(docRef, q);
+            if (data.format === 'mcq') {
+                // Normalize options from any AI format into {A, B, C, D}
+                const opts = q.options;
+                const parsed = { A: '', B: '', C: '', D: '' };
+
+                if (opts && !Array.isArray(opts) && typeof opts === 'object') {
+                    parsed.A = String(opts.A || opts.a || '');
+                    parsed.B = String(opts.B || opts.b || '');
+                    parsed.C = String(opts.C || opts.c || '');
+                    parsed.D = String(opts.D || opts.d || '');
+                } else if (Array.isArray(opts)) {
+                    const letters = ['A', 'B', 'C', 'D'];
+                    opts.slice(0, 4).forEach((item, i) => {
+                        const letter = letters[i];
+                        if (typeof item === 'string') {
+                            parsed[letter] = item;
+                        } else if (typeof item === 'object' && item !== null) {
+                            // Try known keys: text, option_text, label, content
+                            const text = item.text || item.option_text || item.label || item.content || '';
+                            if (text) {
+                                parsed[letter] = String(text);
+                            } else {
+                                // Fallback: longest string value that isn't just the letter
+                                const possibleTexts = Object.values(item)
+                                    .filter(v => typeof v === 'string' && v.length > 1 && v.toUpperCase() !== letter)
+                                    .sort((a, b) => b.length - a.length);
+                                parsed[letter] = possibleTexts[0] || '';
+                            }
+                        }
+                    });
+                }
+
+                // Strip letter prefixes like "A) text"
+                for (const k of ['A', 'B', 'C', 'D']) {
+                    let val = parsed[k].trim();
+                    const prefixRe = new RegExp(`^${k}[).:]\\s*`, 'i');
+                    if (prefixRe.test(val)) val = val.replace(prefixRe, '');
+                    parsed[k] = val;
+                }
+
+                data.options = parsed;
+                const ans = String(q.correctAnswer || 'A').trim().toUpperCase();
+                data.correctAnswer = ['A', 'B', 'C', 'D'].includes(ans) ? ans : 'A';
+            } else {
+                // fill-in format
+                data.fillInAnswer = q.fillInAnswer || '';
+                data.correctAnswer = String(q.correctAnswer || '');
+            }
+
+            batch.set(docRef, data);
         });
 
         await batch.commit();
     }
+
 
     // --- ADMIN TEST DISPLAY FUNCTION ---
     async function displayAdminTests(userId) {
@@ -591,16 +924,29 @@ document.addEventListener('DOMContentLoaded', () => {
         testListContainerAdmin.innerHTML = '<p>Loading tests...</p>';
 
         try {
+            // Fetch ALL tests, then client-side filter:
+            // Show tests owned by this admin OR legacy tests with no createdBy field
             const snapshot = await db.collection('tests').orderBy('createdAt', 'desc').get();
-            if (snapshot.empty) {
+
+            const myTests = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const owner = data.createdBy || '';
+                // Show if: this admin owns it, OR it's unclaimed (legacy)
+                if (owner === userId || !owner) {
+                    myTests.push({ id: doc.id, ...data });
+                }
+            });
+
+            if (myTests.length === 0) {
                 testListContainerAdmin.innerHTML = "<p>No tests found. Create one to get started!</p>";
                 return;
             }
 
             let html = '';
-            snapshot.forEach(doc => {
-                const test = doc.data();
-                const testId = doc.id;
+            myTests.forEach(test => {
+                const testId = test.id;
+                const isLegacy = !test.createdBy;
 
                 let statusTag = '';
                 switch (test.visibility) {
@@ -614,12 +960,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         statusTag = '<span class="test-status-tag hide">Hidden</span>';
                 }
 
+                // Show a small label for unclaimed legacy tests
+                const legacyLabel = isLegacy ? ' <span style="font-size:0.7rem; color:#e67e22; font-weight:600;">(legacy)</span>' : '';
+
                 html += `
                     <div class="test-item-admin" data-id="${testId}">
                         <div class="test-info">
                             ${statusTag}
                             <div>
-                                <h4>${test.name || 'Unnamed Test'}</h4>
+                                <h4>${test.name || 'Unnamed Test'}${legacyLabel}</h4>
                                 <span>ID: ${testId}</span>
                             </div>
                         </div>
@@ -632,6 +981,42 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>`;
             });
             testListContainerAdmin.innerHTML = html;
+
+            // If any legacy tests (no createdBy), show a claim banner
+            const legacyTests = myTests.filter(t => !t.createdBy);
+            if (legacyTests.length > 0) {
+                const banner = document.createElement('div');
+                banner.style.cssText = 'background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:12px 16px; margin-bottom:15px; display:flex; align-items:center; justify-content:space-between; gap:10px;';
+                banner.innerHTML = `
+                    <span style="font-size:0.9rem; color:#856404;">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <strong>${legacyTests.length}</strong> test(s) don't have an owner yet.
+                    </span>
+                    <button id="claim-legacy-btn" class="btn btn-primary" style="margin:0; padding:6px 14px; font-size:0.85rem;">
+                        <i class="fa-solid fa-hand-pointer"></i> Claim All
+                    </button>
+                `;
+                testListContainerAdmin.insertBefore(banner, testListContainerAdmin.firstChild);
+
+                document.getElementById('claim-legacy-btn').addEventListener('click', async () => {
+                    if (!confirm(`Assign all ${legacyTests.length} unclaimed test(s) to your account?`)) return;
+                    const category = currentAdminRole === 'real_exam_admin' ? 'real_exam' : 'premium';
+                    try {
+                        const batch = db.batch();
+                        legacyTests.forEach(t => {
+                            batch.update(db.collection('tests').doc(t.id), {
+                                createdBy: userId,
+                                testCategory: category
+                            });
+                        });
+                        await batch.commit();
+                        alert(`Done! ${legacyTests.length} test(s) claimed.`);
+                        window.location.reload();
+                    } catch (err) {
+                        alert('Error: ' + err.message);
+                    }
+                });
+            }
 
             // --- Add event listeners for new buttons ---
             testListContainerAdmin.addEventListener('click', async (e) => {
@@ -995,6 +1380,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentPage === 'admin.html') {
                 const adminDoc = await db.collection('admins').doc(user.uid).get();
                 if (adminDoc.exists) {
+                    currentAdminRole = adminDoc.data().role || 'premium_admin';
+                    // Show role badge in admin header
+                    const roleBadge = document.getElementById('admin-role-badge');
+                    if (roleBadge) {
+                        const roleLabel = currentAdminRole === 'real_exam_admin' ? 'Real Exam Manager' : 'Premium Manager';
+                        const roleIcon = currentAdminRole === 'real_exam_admin' ? 'fa-file-lines' : 'fa-crown';
+                        roleBadge.innerHTML = `<i class="fa-solid ${roleIcon}"></i> ${roleLabel}`;
+                        roleBadge.style.display = 'inline-flex';
+                    }
                     displayAdminTests(user.uid);
                 } else {
                     auth.signOut();
@@ -1132,20 +1526,29 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- DASHBOARD POPULATION ---
+    // --- DASHBOARD POPULATION (Sectioned Layout) ---
     async function populateDashboard(userId) {
-        const testGrid = document.getElementById('test-grid-container');
-        if (!testGrid) return;
+        const loadingContainer = document.getElementById('loading-container');
+        const finishedSection = document.getElementById('finished-section');
+        const inProgressSection = document.getElementById('in-progress-section');
+        const realExamSection = document.getElementById('real-exam-section');
+        const premiumSection = document.getElementById('premium-section');
+        const otherSection = document.getElementById('other-section');
+
+        const finishedGrid = document.getElementById('finished-grid');
+        const inProgressGrid = document.getElementById('in-progress-grid');
+        const realExamGrid = document.getElementById('real-exam-grid');
+        const premiumGrid = document.getElementById('premium-grid');
+        const otherGrid = document.getElementById('other-grid');
+
+        if (!loadingContainer) return;
         if (!db) {
-            console.error("Firestore DB not initialized in populateDashboard.");
-            testGrid.innerHTML = '<p>Error: Could not connect to the database.</p>';
+            loadingContainer.innerHTML = '<p>Error: Could not connect to the database.</p>';
             return;
         }
 
-        testGrid.innerHTML = '<p>Loading available tests...</p>';
-
         try {
-            // 1. Get a map of completed test IDs and their results
+            // 1. Get completed tests map
             const completedTestsMap = new Map();
             const completedSnapshot = await db.collection('users').doc(userId).collection('completedTests').get();
             completedSnapshot.forEach(doc => {
@@ -1169,37 +1572,66 @@ document.addEventListener('DOMContentLoaded', () => {
                 allAvailableTests.set(doc.id, { id: doc.id, ...doc.data() });
             });
 
-            const testsSnapshot = Array.from(allAvailableTests.values());
-            testsSnapshot.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            const testsArray = Array.from(allAvailableTests.values());
+            testsArray.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
-            testGrid.innerHTML = '';
+            // Hide loading container
+            loadingContainer.style.display = 'none';
 
-            // 3. Render cards
-            testsSnapshot.forEach(test => {
+            // 3. Categorize tests into sections
+            const finished = [];
+            const inProgress = [];
+            const realExamTests = [];
+            const premiumTests = [];
+            const otherTests = [];
+
+            testsArray.forEach(test => {
                 const testId = test.id;
                 const completionData = completedTestsMap.get(testId);
-
                 const inProgressKey = `inProgressTest_${userId}_${testId}`;
                 const inProgressData = localStorage.getItem(inProgressKey);
-
-                const card = document.createElement('div');
-                card.classList.add('test-card');
-
-                let cardHTML = '';
+                const category = test.testCategory || 'custom';
 
                 if (completionData) {
-                    // --- Test is COMPLETED ---
-                    card.classList.add('completed');
+                    finished.push({ test, completionData });
+                } else if (inProgressData) {
+                    inProgress.push({ test });
+                } else {
+                    // Not started — categorize by type
+                    if (category === 'real_exam') realExamTests.push({ test });
+                    else if (category === 'premium') premiumTests.push({ test });
+                    else otherTests.push({ test });
+                }
+            });
+
+            // Also add orphaned completed tests (from proctored sessions)
+            completedTestsMap.forEach((completionData, ctTestId) => {
+                if (!allAvailableTests.has(ctTestId)) {
+                    finished.push({
+                        test: { id: ctTestId, name: completionData.testName || 'Practice Test' },
+                        completionData
+                    });
+                }
+            });
+
+            // 4. Render each section
+            // --- FINISHED ---
+            if (finished.length > 0 && finishedGrid) {
+                finishedSection.style.display = 'block';
+                finished.forEach(({ test, completionData }) => {
                     const isPending = completionData.proctorCode && completionData.scoringStatus !== 'published';
                     let dateStr = '';
                     if (completionData.completedAt) {
                         const d = completionData.completedAt.toDate ? completionData.completedAt.toDate() : new Date(completionData.completedAt);
                         dateStr = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
                     }
-                    cardHTML = `
+                    const card = document.createElement('div');
+                    card.classList.add('test-card', 'completed');
+                    card.dataset.category = test.testCategory || 'custom';
+                    card.innerHTML = `
                         <div class="card-content">
                             <h4>${test.name || 'Unnamed Test'}</h4>
-                            <p>${dateStr ? `Completed on ${dateStr}` : (test.description || 'A full-length adaptive test.')}</p>
+                            <p>${dateStr ? `Completed on ${dateStr}` : 'A full-length adaptive test.'}</p>
                             <div class="test-status ${isPending ? 'pending' : 'completed'}">
                                 <i class="fa-solid ${isPending ? 'fa-clock' : 'fa-check-circle'}"></i>
                                 ${isPending ? 'Results Pending' : `Finished - Score: <strong>${completionData.score || 'N/A'}</strong>`}
@@ -1207,71 +1639,213 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <a href="results.html?resultId=${completionData.resultId}" class="btn card-btn btn-view-results">${isPending ? 'View Status' : 'View Results'}</a>
                     `;
-                } else if (inProgressData) {
-                    // +++ Test is IN PROGRESS ---
-                    card.classList.add('in-progress');
-                    cardHTML = `
+                    finishedGrid.appendChild(card);
+                });
+            }
+
+            // --- IN PROGRESS ---
+            if (inProgress.length > 0 && inProgressGrid) {
+                inProgressSection.style.display = 'block';
+                inProgress.forEach(({ test }) => {
+                    const card = document.createElement('div');
+                    card.classList.add('test-card', 'in-progress');
+                    card.dataset.category = test.testCategory || 'custom';
+                    card.innerHTML = `
                         <div class="card-content">
                             <h4>${test.name || 'Unnamed Test'}</h4>
                             <p>${test.description || 'A full-length adaptive test.'}</p>
                             <span class="test-status not-started">In Progress</span>
                         </div>
-                        <a href="test.html?id=${testId}" class="btn btn-primary card-btn">Continue Test</a>
+                        <a href="test.html?id=${test.id}" class="btn btn-primary card-btn">Continue Test</a>
                     `;
-                } else {
-                    // --- Test is NOT STARTED ---
-                    card.classList.add('not-started');
-                    cardHTML = `
+                    inProgressGrid.appendChild(card);
+                });
+            }
+
+            // --- REAL EXAM TESTS (FREE) ---
+            if (realExamTests.length > 0 && realExamGrid) {
+                realExamSection.style.display = 'block';
+                realExamTests.forEach(({ test }) => {
+                    const card = document.createElement('div');
+                    card.classList.add('test-card', 'not-started', 'real-exam-card');
+                    card.dataset.category = 'real_exam';
+                    card.innerHTML = `
+                        <div class="card-content">
+                            <div class="card-badges">
+                                <span class="card-badge free-badge"><i class="fa-solid fa-gift"></i> FREE</span>
+                            </div>
+                            <h4>${test.name || 'Unnamed Test'}</h4>
+                            <p>${test.description || 'Real SAT exam questions for practice.'}</p>
+                            <span class="test-status not-started">Not Started</span>
+                        </div>
+                        <a href="test.html?id=${test.id}" class="btn btn-primary card-btn">Start Test</a>
+                    `;
+                    realExamGrid.appendChild(card);
+                });
+            }
+
+            // --- PREMIUM TESTS ---
+            if (premiumTests.length > 0 && premiumGrid) {
+                premiumSection.style.display = 'block';
+                premiumTests.forEach(({ test }) => {
+                    const isUnlocked = test.whitelist && test.whitelist.includes(userId);
+                    const card = document.createElement('div');
+                    card.classList.add('test-card', 'not-started', 'premium-card');
+                    card.dataset.category = 'premium';
+                    card.innerHTML = `
+                        <div class="card-content">
+                            <div class="card-badges">
+                                <span class="card-badge premium-badge"><i class="fa-solid fa-crown"></i> Premium</span>
+                            </div>
+                            <h4>${test.name || 'Unnamed Test'}</h4>
+                            <p>${test.description || 'AI-generated SAT-style questions.'}</p>
+                            <span class="test-status not-started">Not Started</span>
+                        </div>
+                        <a href="test.html?id=${test.id}" class="btn btn-primary card-btn">Start Test</a>
+                    `;
+                    premiumGrid.appendChild(card);
+                });
+            }
+
+            // --- OTHER/CUSTOM TESTS ---
+            if (otherTests.length > 0 && otherGrid) {
+                otherSection.style.display = 'block';
+                otherTests.forEach(({ test }) => {
+                    const card = document.createElement('div');
+                    card.classList.add('test-card', 'not-started');
+                    card.dataset.category = 'custom';
+                    card.innerHTML = `
                         <div class="card-content">
                             <h4>${test.name || 'Unnamed Test'}</h4>
                             <p>${test.description || 'A full-length adaptive test.'}</p>
                             <span class="test-status not-started">Not Started</span>
                         </div>
-                        <a href="test.html?id=${testId}" class="btn btn-primary card-btn">Start Test</a>
+                        <a href="test.html?id=${test.id}" class="btn btn-primary card-btn">Start Test</a>
                     `;
-                }
-
-                card.innerHTML = cardHTML;
-                testGrid.appendChild(card);
-            });
-
-            // --- Render orphaned proctored test results ---
-            // These are tests the student completed via proctored code
-            // but they don't appear in the visible tests list
-            completedTestsMap.forEach((completionData, ctTestId) => {
-                if (!allAvailableTests.has(ctTestId)) {
-                    const card = document.createElement('div');
-                    const isPending = completionData.proctorCode && completionData.scoringStatus !== 'published';
-                    const testTitle = completionData.testName || 'Practice Test';
-                    let dateStr = '';
-                    if (completionData.completedAt) {
-                        const d = completionData.completedAt.toDate ? completionData.completedAt.toDate() : new Date(completionData.completedAt);
-                        dateStr = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                    }
-                    card.classList.add('test-card', 'completed');
-                    card.innerHTML = `
-                        <div class="card-content">
-                            <h4>${testTitle}</h4>
-                            <p>${dateStr ? `Completed on ${dateStr}` : 'Completed via proctored session.'}</p>
-                            <div class="test-status ${isPending ? 'pending' : 'completed'}">
-                                <i class="fa-solid ${isPending ? 'fa-clock' : 'fa-check-circle'}"></i>
-                                ${isPending ? 'Results Pending' : `Finished - Score: <strong>${completionData.score || 'N/A'}</strong>`}
-                            </div>
-                        </div>
-                        <a href="results.html?resultId=${completionData.resultId}" class="btn card-btn btn-view-results">${isPending ? 'View Status' : 'View Results'}</a>
-                    `;
-                    testGrid.appendChild(card);
-                }
-            });
-
-            // If no cards were rendered at all, show empty message
-            if (testGrid.children.length === 0) {
-                testGrid.innerHTML = '<p>No practice tests are available at the moment.</p>';
+                    otherGrid.appendChild(card);
+                });
             }
+
+            // If no tests at all
+            const totalTests = finished.length + inProgress.length + realExamTests.length + premiumTests.length + otherTests.length;
+            if (totalTests === 0) {
+                loadingContainer.style.display = 'block';
+                loadingContainer.querySelector('.test-grid').innerHTML = '<p>No practice tests are available at the moment.</p>';
+            }
+
+            // 5. Setup filter tab listeners
+            setupDashboardFilters();
 
         } catch (error) {
             console.error("Error fetching tests for student dashboard:", error);
-            testGrid.innerHTML = '<p>Could not load tests due to an error. Please try refreshing the page.</p>';
+            loadingContainer.innerHTML = '<p>Could not load tests due to an error. Please try refreshing the page.</p>';
+        }
+    }
+
+    // --- DASHBOARD FILTER TABS ---
+    function setupDashboardFilters() {
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        if (!filterBtns.length) return;
+
+        const sections = {
+            finished: document.getElementById('finished-section'),
+            inProgress: document.getElementById('in-progress-section'),
+            realExam: document.getElementById('real-exam-section'),
+            premium: document.getElementById('premium-section'),
+            other: document.getElementById('other-section')
+        };
+
+        // Track which sections have content
+        const hasContent = {};
+        Object.entries(sections).forEach(([key, el]) => {
+            hasContent[key] = el && el.querySelector('.test-grid')?.children?.length > 0;
+        });
+
+        // On "All" tab, limit finished section to 3 cards
+        limitFinishedCards(3);
+
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Update active state
+                filterBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                const filter = btn.dataset.filter;
+
+                if (filter === 'all') {
+                    // Show all sections that have content
+                    Object.entries(sections).forEach(([key, el]) => {
+                        if (el) el.style.display = hasContent[key] ? 'block' : 'none';
+                    });
+                    // Reset finished card visibility and limit to 3
+                    resetFinishedCards();
+                    limitFinishedCards(3);
+
+                } else if (filter === 'finished') {
+                    // Show ALL finished cards only
+                    Object.values(sections).forEach(el => { if (el) el.style.display = 'none'; });
+                    if (hasContent.finished) {
+                        sections.finished.style.display = 'block';
+                        resetFinishedCards();
+                        limitFinishedCards(0); // 0 = show all
+                    }
+
+                } else if (filter === 'real_exam') {
+                    Object.values(sections).forEach(el => { if (el) el.style.display = 'none'; });
+                    if (hasContent.realExam) sections.realExam.style.display = 'block';
+                    // Show finished real exams
+                    if (hasContent.finished) {
+                        sections.finished.style.display = 'block';
+                        filterFinishedCardsByCategory('real_exam');
+                        limitFinishedCards(0);
+                    }
+
+                } else if (filter === 'premium') {
+                    Object.values(sections).forEach(el => { if (el) el.style.display = 'none'; });
+                    if (hasContent.premium) sections.premium.style.display = 'block';
+                    if (hasContent.finished) {
+                        sections.finished.style.display = 'block';
+                        filterFinishedCardsByCategory('premium');
+                        limitFinishedCards(0);
+                    }
+                }
+            });
+        });
+
+        /** Reset all finished cards to visible */
+        function resetFinishedCards() {
+            const finishedGrid = document.getElementById('finished-grid');
+            if (!finishedGrid) return;
+            finishedGrid.querySelectorAll('.test-card').forEach(card => {
+                card.style.display = '';
+                card.classList.remove('hidden-overflow');
+            });
+        }
+
+        /** Filter finished cards by category, hide non-matching */
+        function filterFinishedCardsByCategory(category) {
+            const finishedGrid = document.getElementById('finished-grid');
+            if (!finishedGrid) return;
+            finishedGrid.querySelectorAll('.test-card').forEach(card => {
+                card.style.display = (card.dataset.category === category) ? '' : 'none';
+            });
+        }
+
+        /** Limit visible finished cards to `max`. 0 = show all. */
+        function limitFinishedCards(max) {
+            const finishedGrid = document.getElementById('finished-grid');
+            if (!finishedGrid || max === 0) return;
+
+            const cards = finishedGrid.querySelectorAll('.test-card');
+            let visibleCount = 0;
+            cards.forEach(card => {
+                if (card.style.display === 'none') return; // already hidden by filter
+                visibleCount++;
+                if (visibleCount > max) {
+                    card.style.display = 'none';
+                    card.classList.add('hidden-overflow');
+                }
+            });
         }
     }
 

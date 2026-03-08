@@ -1,12 +1,16 @@
-// js/question-review.js - Logic for the new single question review page
+// js/question-review.js - Logic for the single question review page
+// OPTIMIZED: Uses reviewIndex from result doc for prev/next navigation.
+// Only fetches the single requested question doc for full content.
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Initialize Firebase ---
     const db = firebase.firestore();
     const auth = firebase.auth();
-    const MQ = MathQuill.getInterface(2); // For rendering math
+    const MQ = MathQuill.getInterface(2);
 
-    // --- Fill-in answer helper (supports comma-separated answers and numeric equivalence) ---
+    // === HELPER FUNCTIONS ===
+
+    /** Checks if a fill-in answer is correct. */
     function isFillinCorrect(userAns, fillInAnswer) {
         if (!userAns || !fillInAnswer) return false;
         const correct = fillInAnswer.replace(/<[^>]*>/g, '').trim();
@@ -22,8 +26,87 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return false;
     }
+
     function getFillinText(q) {
         return q.fillInAnswer ? q.fillInAnswer.replace(/<[^>]*>/g, '').trim() : (q.correctAnswer || 'N/A');
+    }
+
+    /** Sorts a reviewIndex array by module asc, then questionNumber asc. */
+    function sortReviewIndex(index) {
+        return index.sort((a, b) => {
+            if (a.module !== b.module) return a.module - b.module;
+            return (a.questionNumber || 0) - (b.questionNumber || 0);
+        });
+    }
+
+    /** Builds a reviewIndex from a full questions collection snapshot (fallback for old results). */
+    function buildFallbackReviewIndexFromSnapshot(snapshot) {
+        const index = [];
+        snapshot.forEach(doc => {
+            const d = doc.data();
+            index.push({
+                id: doc.id,
+                module: d.module || 1,
+                questionNumber: d.questionNumber || 0,
+                format: d.format || 'mcq',
+                correctAnswer: d.correctAnswer || null,
+                fillInAnswer: d.fillInAnswer || null
+            });
+        });
+        return sortReviewIndex(index);
+    }
+
+    /**
+     * Normalizes any options format from Firestore into the canonical {A, B, C, D} map.
+     */
+    function normalizeOptions(raw) {
+        const result = { A: '', B: '', C: '', D: '' };
+        if (!raw) return result;
+        if (!Array.isArray(raw) && typeof raw === 'object') {
+            const keys = Object.keys(raw);
+            const hasLetterKeys = ['A', 'B', 'C', 'D'].some(k => keys.includes(k) || keys.includes(k.toLowerCase()));
+            if (hasLetterKeys) {
+                result.A = String(raw.A || raw.a || '');
+                result.B = String(raw.B || raw.b || '');
+                result.C = String(raw.C || raw.c || '');
+                result.D = String(raw.D || raw.d || '');
+            } else {
+                const vals = Object.values(raw).filter(v => typeof v === 'string' && v.length > 0);
+                ['A', 'B', 'C', 'D'].forEach((letter, i) => { result[letter] = vals[i] || ''; });
+            }
+            for (const k of ['A', 'B', 'C', 'D']) {
+                let val = result[k].trim();
+                if (val.match(new RegExp(`^${k}[).:]\\s*`, 'i'))) val = val.replace(new RegExp(`^${k}[).:]\\s*`, 'i'), '');
+                result[k] = val;
+            }
+            return result;
+        }
+        if (Array.isArray(raw)) {
+            const letters = ['A', 'B', 'C', 'D'];
+            raw.slice(0, 4).forEach((item, i) => {
+                const letter = letters[i];
+                if (typeof item === 'string') {
+                    result[letter] = item;
+                } else if (typeof item === 'object' && item !== null) {
+                    const text = item.text || item.option_text || item.label || item.content || '';
+                    if (text) {
+                        result[letter] = String(text);
+                    } else {
+                        const possibleTexts = Object.values(item)
+                            .filter(v => typeof v === 'string' && v.length > 1 && v.toUpperCase() !== letter)
+                            .sort((a, b) => b.length - a.length);
+                        result[letter] = possibleTexts[0] || String(Object.values(item).find(v => typeof v === 'string') || '');
+                    }
+                }
+            });
+            for (const k of letters) {
+                let val = result[k].trim();
+                if (val.match(new RegExp(`^${k}[).:]\\s*`, 'i'))) val = val.replace(new RegExp(`^${k}[).:]\\s*`, 'i'), '');
+                result[k] = val;
+            }
+            return result;
+        }
+        return result;
     }
 
     // --- Page Elements ---
@@ -53,13 +136,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let resultData = null;
     let questionData = null;
 
-    /**
-     * Renders all MathQuill static math blocks on the page.
-     */
+    /** Renders all MathQuill static math blocks. */
     function renderAllMath() {
         try {
-            const formulaSpans = document.querySelectorAll('.ql-formula');
-            formulaSpans.forEach(span => {
+            document.querySelectorAll('.ql-formula').forEach(span => {
                 const latex = span.dataset.value;
                 if (latex && MQ && span) {
                     MQ.StaticMath(span).latex(latex);
@@ -72,6 +152,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Main function to load and display the specific question.
+     * Uses reviewIndex for navigation (0 extra reads).
+     * Fetches only the single requested question doc (1 read).
      */
     async function loadQuestionReview() {
         const urlParams = new URLSearchParams(window.location.search);
@@ -83,7 +165,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Set back button URL
         if (backToResultsBtn) {
             backToResultsBtn.href = `results.html?resultId=${resultId}`;
         }
@@ -98,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // --- 1. Fetch Result Data ---
+            // --- 1. Fetch Result Data (1 Firestore read) ---
             const resultDoc = await db.collection('testResults').doc(resultId).get();
             if (!resultDoc.exists) {
                 showError("Test result not found.");
@@ -125,8 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // --- 2. Fetch the Specific Question from the Original Test Document ---
-            // Questions are NOT stored in testResults to avoid Firestore's 1MB limit.
+            // --- 2. Fetch the Single Question Doc (1 Firestore read) ---
             const testId = resultData.testId;
             if (!testId) {
                 showError("Test ID not found in result data.");
@@ -152,16 +232,19 @@ document.addEventListener('DOMContentLoaded', () => {
             // --- 3. Render Content ---
             renderPageContent();
 
-            // --- 4. Build question navigation (prev/next) ---
-            const allQDocs = await db.collection('tests').doc(testId).collection('questions').get();
-            const orderedQuestions = [];
-            allQDocs.forEach(d => orderedQuestions.push({ id: d.id, ...d.data() }));
-            orderedQuestions.sort((a, b) => {
-                if (a.module !== b.module) return a.module - b.module;
-                return (a.questionNumber || 0) - (b.questionNumber || 0);
-            });
+            // --- 4. Build navigation from reviewIndex (0 extra Firestore reads) ---
+            let reviewIndex = resultData.reviewIndex;
 
-            const qIds = orderedQuestions.map(q => q.id);
+            if (!reviewIndex || !Array.isArray(reviewIndex) || reviewIndex.length === 0) {
+                // FALLBACK for old result docs: fetch full questions collection once
+                console.warn('[question-review.js] reviewIndex missing — fetching full questions collection as fallback.');
+                const allQDocs = await db.collection('tests').doc(testId).collection('questions').get();
+                reviewIndex = buildFallbackReviewIndexFromSnapshot(allQDocs);
+            } else {
+                reviewIndex = sortReviewIndex(reviewIndex);
+            }
+
+            const qIds = reviewIndex.map(q => q.id);
             const currentIdx = qIds.indexOf(questionId);
 
             const prevBtn = document.getElementById('review-prev-btn');
@@ -174,8 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             function navigateToQuestion(idx) {
                 const newQId = qIds[idx];
-                const newUrl = `question-review.html?resultId=${resultId}&questionId=${newQId}`;
-                window.location.href = newUrl;
+                window.location.href = `question-review.html?resultId=${resultId}&questionId=${newQId}`;
             }
 
             if (prevBtn && currentIdx > 0) {
@@ -198,9 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * Renders all the dynamic content onto the page.
-     */
+    /** Renders all the dynamic content onto the page. */
     function renderPageContent() {
         if (!questionData) return;
 
@@ -208,15 +288,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const moduleNum = (questionData.module % 2) === 0 ? 2 : 1;
         const sectionType = isMath ? 'Math' : 'Reading & Writing';
 
-        // --- Header ---
         if (headerTitle) headerTitle.textContent = `Review: ${sectionType}`;
         if (headerSubtitle) headerSubtitle.textContent = `Module ${moduleNum}, Question ${questionData.questionNumber}`;
         if (qNumberDisplay) qNumberDisplay.textContent = questionData.questionNumber;
 
-        // --- Layout ---
         if (testMain) testMain.classList.toggle('math-layout-active', isMath);
 
-        // --- Stimulus ---
         const isStimulusEmpty = (!questionData.passage || questionData.passage.trim() === '' || questionData.passage === '<p><br></p>') && !questionData.imageUrl;
         if (stimulusPane) stimulusPane.classList.toggle('is-empty', isStimulusEmpty);
         if (stimulusPaneContent) {
@@ -226,7 +303,6 @@ document.addEventListener('DOMContentLoaded', () => {
             stimulusPaneContent.innerHTML = (imgPos === 'below') ? (passageHTML + imgHTML) : (imgHTML + passageHTML);
         }
 
-        // --- Question & Result ---
         const userAnswer = resultData.userAnswers[questionId];
         const correctAnswer = questionData.format === 'fill-in'
             ? getFillinText(questionData)
@@ -247,7 +323,6 @@ document.addEventListener('DOMContentLoaded', () => {
             qPromptContent.innerHTML = `<div class="question-text">${questionData.prompt || ''}</div>`;
         }
 
-        // --- Options / Fill-in ---
         if (qOptionsContent) {
             if (questionData.format === 'mcq') {
                 qOptionsContent.innerHTML = renderMCQOptions(questionData, userAnswer, correctAnswer);
@@ -256,7 +331,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // --- Explanation ---
         if (qExplanationContent) {
             const explanation = questionData.explanation || '<p><i>No explanation provided for this question.</i></p>';
             if (explanation === '<p><br></p>' || explanation.trim() === '') {
@@ -267,67 +341,54 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * Generates HTML for Multiple Choice Options
-     */
+    /** Generates HTML for MCQ options with correct/incorrect highlighting. */
     function renderMCQOptions(q, userAns, correctAns) {
-        const options = q.options || {};
+        const options = normalizeOptions(q.options);
         let html = '<div class="question-options">';
         ['A', 'B', 'C', 'D'].forEach(opt => {
             const optText = options[opt] || '';
             let classes = "option-wrapper";
-
-            if (opt === correctAns) {
-                classes += " correct-answer";
-            } else if (opt === userAns) {
-                classes += " incorrect-answer";
-            }
+            if (opt === correctAns) classes += " correct-answer";
+            else if (opt === userAns) classes += " incorrect-answer";
 
             html += `
-                <div class="${classes}">
-                    <label class="option">
-                        <span class="option-letter">${opt}</span>
-                        <span class="option-text">${optText}</span>
-                    </label>
-                </div>`;
+            <div class="${classes}">
+                <label class="option">
+                    <span class="option-letter">${opt}</span>
+                    <span class="option-text">${optText}</span>
+                </label>
+            </div>`;
         });
         html += '</div>';
         return html;
     }
 
-    /**
-     * Generates HTML for Fill-in-the-Blank review
-     */
+    /** Generates HTML for fill-in-the-blank review. */
     function renderFillIn(q, userAns, correctAns) {
         const fillInText = getFillinText(q);
         const correct = isFillinCorrect(userAns, q.fillInAnswer);
         let userAnswerHtml = '';
         if (correct) {
             userAnswerHtml = `
-                <div class="label">Your Answer</div>
-                <div class="user-answer correct">${userAns}</div>`;
+            <div class="label">Your Answer</div>
+            <div class="user-answer correct">${userAns}</div>`;
         } else {
             userAnswerHtml = `
-                <div class="label">Your Answer</div>
-                <div class="user-answer incorrect">${userAns || '<i>(No answer)</i>'}</div>`;
+            <div class="label">Your Answer</div>
+            <div class="user-answer incorrect">${userAns || '<i>(No answer)</i>'}</div>`;
         }
-
         return `
-            <div class="fill-in-answer-review">
-                ${userAnswerHtml}
-                <div class="label">Correct Answer</div>
-                <div class="correct-answer">${fillInText}</div>
-            </div>`;
+        <div class="fill-in-answer-review">
+            ${userAnswerHtml}
+            <div class="label">Correct Answer</div>
+            <div class="correct-answer">${fillInText}</div>
+        </div>`;
     }
 
-    /**
-     * Displays a final error message to the user.
-     */
+    /** Displays an error message. */
     function showError(message) {
         if (loadingContainer) loadingContainer.style.display = 'none';
         if (contentBody) contentBody.style.visibility = 'hidden';
-
-        // Re-use loading container for error message
         if (loadingContainer) {
             loadingContainer.style.display = 'flex';
             loadingContainer.innerHTML = `<p style="color: var(--error-red); font-weight: 600;">${message}</p>`;
@@ -340,7 +401,6 @@ document.addEventListener('DOMContentLoaded', () => {
             loadQuestionReview();
         } else {
             showError("You must be logged in to view results.");
-            // main.js will also trigger a redirect
         }
     });
 

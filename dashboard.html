@@ -25,7 +25,7 @@
                 <span>ALFA SAT</span>
             </div>
             <nav>
-                <!-- +++ REPLACED Log Out link with Profile Menu +++ -->
+                <!-- +++ Profile Menu +++ -->
                 <div class="profile-nav">
                     <button class="btn-icon" id="profile-btn" title="Profile">
                         <i class="fa-solid fa-user-circle"></i>
@@ -66,14 +66,71 @@
             </form>
         </div>
 
-        <div class="test-list-container">
-            <h3>Full-Length Practice Tests</h3>
+        <!-- Filter Tabs -->
+        <div class="dashboard-filters" id="dashboard-filters">
+            <button class="filter-btn active" data-filter="all">
+                <i class="fa-solid fa-layer-group"></i> All Tests
+            </button>
+            <button class="filter-btn" data-filter="real_exam">
+                <i class="fa-solid fa-file-lines"></i> Real Exams
+            </button>
+            <button class="filter-btn" data-filter="premium">
+                <i class="fa-solid fa-crown"></i> Premium
+            </button>
+            <button class="filter-btn" data-filter="finished">
+                <i class="fa-solid fa-check-circle"></i> Finished
+            </button>
+        </div>
+
+        <!-- Finished Tests Section (at top) -->
+        <div class="test-section finished-section" id="finished-section" style="display: none;">
+            <div class="section-header-row">
+                <h3><i class="fa-solid fa-check-circle"></i> Recent Results</h3>
+            </div>
+            <div class="test-grid finished-grid" id="finished-grid"></div>
+        </div>
+
+        <!-- In Progress Section -->
+        <div class="test-section in-progress-section" id="in-progress-section" style="display: none;">
+            <div class="section-header-row">
+                <h3><i class="fa-solid fa-fire"></i> Continue Where You Left Off</h3>
+            </div>
+            <div class="test-grid" id="in-progress-grid"></div>
+        </div>
+
+        <!-- Real Exam Tests Section (FREE) -->
+        <div class="test-section real-exam-section" id="real-exam-section" style="display: none;">
+            <div class="section-header-row">
+                <h3><i class="fa-solid fa-file-lines"></i> Real Exam Tests</h3>
+                <span class="section-badge free-badge">FREE</span>
+            </div>
+            <div class="test-grid" id="real-exam-grid"></div>
+        </div>
+
+        <!-- Premium Tests Section -->
+        <div class="test-section premium-section" id="premium-section" style="display: none;">
+            <div class="section-header-row">
+                <h3><i class="fa-solid fa-crown"></i> Premium Tests</h3>
+            </div>
+            <div class="test-grid" id="premium-grid"></div>
+        </div>
+
+        <!-- General/Other Tests -->
+        <div class="test-section other-section" id="other-section" style="display: none;">
+            <div class="section-header-row">
+                <h3><i class="fa-solid fa-dumbbell"></i> Practice Tests</h3>
+            </div>
+            <div class="test-grid" id="other-grid"></div>
+        </div>
+
+        <!-- Loading / Empty State -->
+        <div class="test-list-container" id="loading-container">
             <div class="test-grid" id="test-grid-container">
-                <!-- Test cards will be dynamically inserted here by main.js -->
                 <p>Loading available tests...</p>
             </div>
         </div>
     </main>
+
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>ALFA SAT — Setup Telegram Config</title>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        h1 {
+            color: #4a3d8f;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        button {
+            background: #4a3d8f;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        button:hover {
+            background: #3d3180;
+        }
+
+        code {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔧 Setup Telegram Config</h1>
+    <p>This page writes your Telegram bot tokens to Firestore so they're NOT in the source code.</p>
+    <p>Run this <strong>once</strong> while logged in as an admin. The tokens will be stored at
+        <code>config/telegram</code>.</p>
+
+    <button id="setup-btn" onclick="setupConfig()">Write Telegram Config to Firestore</button>
+
+    <div id="status"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-init.js"></script>
+    <script>
+        async function setupConfig() {
+            const statusEl = document.getElementById('status');
+            const btn = document.getElementById('setup-btn');
+
+            btn.disabled = true;
+            btn.textContent = 'Writing...';
+
+            try {
+                const auth = firebase.auth();
+                const db = firebase.firestore();
+
+                // Check if user is logged in
+                const user = auth.currentUser;
+                if (!user) {
+                    statusEl.innerHTML = '<div class="error">Not logged in. Please log in as admin first at <a href="admin-login.html">admin-login.html</a></div>';
+                    btn.disabled = false;
+                    btn.textContent = 'Write Telegram Config to Firestore';
+                    return;
+                }
+
+                // Write the config document
+                await db.collection('config').doc('telegram').set({
+                    botTokens: [
+                        '8346966004:AAEjpZCJ1bdo177gQw4K_kgk8Pk8W1z0OHM',  // Bot 1 (primary)
+                        '8612742009:AAG19ZeeUoTF-8VRYkBtZF6yPxETD_9_8BU',  // Bot 2 (worker)
+                        '8479455437:AAE28dE-T2z7jzL1oVcdha0rX6sLhiUpqHg',  // Bot 3 (worker)
+                    ],
+                    channelId: '-1002674756395',
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedBy: user.uid
+                });
+
+                statusEl.innerHTML = `
+                    <div class="success">
+                        ✅ <strong>Success!</strong> Telegram config written to Firestore.<br>
+                        <br>
+                        <strong>3 bot tokens</strong> stored in <code>config/telegram</code><br>
+                        <strong>Channel ID</strong>: -1002674756395<br>
+                        <br>
+                        You can now close this page. To add more bots later, just update the <code>botTokens</code> array in Firestore.
+                    </div>
+                `;
+
+            } catch (err) {
+                statusEl.innerHTML = `<div class="error">❌ Error: ${err.message}</div>`;
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Write Telegram Config to Firestore';
+        }
+
+        // Wait for auth state
+        firebase.auth().onAuthStateChanged(user => {
+            const statusEl = document.getElementById('status');
+            if (user) {
+                statusEl.innerHTML = `<div class="info">Logged in as: ${user.email}</div>`;
+            } else {
+                statusEl.innerHTML = '<div class="error">Not logged in. <a href="admin-login.html">Log in as admin</a> first.</div>';
+            }
+        });
+    </script>
+</body>
+
+</html>
