@@ -389,10 +389,10 @@ Return ONLY valid JSON (no markdown, no code blocks):
     "studyRecommendation": "<one actionable recommendation>"
 }`;
 
-    // Call Gemini 2.5 Pro
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-preview-05-06:generateContent?key=${AI_API_KEY}`;
+    // Call Gemini 2.0 Flash (free tier — text-only scoring)
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${AI_API_KEY}`;
 
-    scoringLog('info', 'Sending request to Gemini 2.5 Pro...');
+    scoringLog('info', 'Sending request to Gemini 2.0 Flash...');
 
     const response = await fetchWithTimeout(apiUrl, {
         method: 'POST',
@@ -401,15 +401,16 @@ Return ONLY valid JSON (no markdown, no code blocks):
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
                 temperature: 0.2,
-                maxOutputTokens: 1500
+                maxOutputTokens: 1500,
+                responseMimeType: 'application/json'
             }
         })
     }, 60000); // 60 second timeout
 
     if (!response.ok) {
         const errText = await response.text();
-        scoringLog('error', 'Gemini 2.5 Pro HTTP error:', response.status, errText.substring(0, 200));
-        scoringLog('info', 'Falling back to Gemini 2.0 Flash...');
+        scoringLog('error', 'Gemini 2.0 Flash HTTP error:', response.status, errText.substring(0, 200));
+        scoringLog('info', 'Falling back to Gemini 1.5 Flash...');
         return await scoreStudentWithFlash(prompt);
     }
 
@@ -432,12 +433,12 @@ Return ONLY valid JSON (no markdown, no code blocks):
 
 
 /**
- * Fallback to Gemini 2.0 Flash if 2.5 Pro is unavailable.
+ * Fallback to Gemini 1.5 Flash if 2.0 Flash is unavailable.
  */
 async function scoreStudentWithFlash(prompt) {
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${AI_API_KEY}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${AI_API_KEY}`;
 
-    scoringLog('info', 'Sending request to Gemini 2.0 Flash (fallback)...');
+    scoringLog('info', 'Sending request to Gemini 1.5 Flash (fallback)...');
 
     try {
         const response = await fetchWithTimeout(apiUrl, {
@@ -521,7 +522,7 @@ Return ONLY valid JSON (no markdown):
 
 If no adjustments needed, return: { "adjustments": [], "groupAnalysis": "..." }`;
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-preview-05-06:generateContent?key=${AI_API_KEY}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${AI_API_KEY}`;
 
     const response = await fetchWithTimeout(apiUrl, {
         method: 'POST',

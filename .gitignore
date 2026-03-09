@@ -17,3 +17,4 @@ serviceAccountKey.json
 
 # OS
 .DS_Store
+js/config.js
