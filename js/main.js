@@ -943,6 +943,15 @@ OUTPUT: Return a valid JSON array. Each object MUST include sectionType and ques
                 return;
             }
 
+            // Sort tests by name (e.g., '2025 Nov' before '2024 Aug'), falling back to createdAt
+            myTests.sort((a, b) => {
+                const nameA = a.name || "";
+                const nameB = b.name || "";
+                if (nameA > nameB) return -1;
+                if (nameA < nameB) return 1;
+                return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+            });
+
             let html = '';
             myTests.forEach(test => {
                 const testId = test.id;
@@ -1573,7 +1582,14 @@ OUTPUT: Return a valid JSON array. Each object MUST include sectionType and ques
             });
 
             const testsArray = Array.from(allAvailableTests.values());
-            testsArray.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            // Sort tests by name (e.g., '2025 Nov' before '2024 Aug'), falling back to createdAt
+            testsArray.sort((a, b) => {
+                const nameA = a.name || "";
+                const nameB = b.name || "";
+                if (nameA > nameB) return -1;
+                if (nameA < nameB) return 1;
+                return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+            });
 
             // Hide loading container
             loadingContainer.style.display = 'none';
@@ -1614,10 +1630,17 @@ OUTPUT: Return a valid JSON array. Each object MUST include sectionType and ques
                 }
             });
 
-            // 4. Render each section
             // --- FINISHED ---
             if (finished.length > 0 && finishedGrid) {
                 finishedSection.style.display = 'block';
+                
+                // Sort finished tests by completion date (newest first)
+                finished.sort((a, b) => {
+                    const timeA = a.completionData.completedAt?.toDate ? a.completionData.completedAt.toDate().getTime() : (a.completionData.completedAt || 0);
+                    const timeB = b.completionData.completedAt?.toDate ? b.completionData.completedAt.toDate().getTime() : (b.completionData.completedAt || 0);
+                    return timeB - timeA;
+                });
+
                 finished.forEach(({ test, completionData }) => {
                     const isPending = completionData.proctorCode && completionData.scoringStatus !== 'published';
                     let dateStr = '';
