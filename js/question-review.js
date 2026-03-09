@@ -245,29 +245,106 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const qIds = reviewIndex.map(q => q.id);
-            const currentIdx = qIds.indexOf(questionId);
+            let currentIdx = qIds.indexOf(questionId);
 
             const prevBtn = document.getElementById('review-prev-btn');
             const nextBtnNav = document.getElementById('review-next-btn');
             const counterEl = document.getElementById('review-question-counter');
 
-            if (counterEl && currentIdx >= 0) {
-                counterEl.textContent = `Question ${currentIdx + 1} of ${qIds.length}`;
+            // --- SPA NAVIGATION & PRELOADING ---
+            const questionCache = { [questionId]: questionData };
+
+            function updateNavButtons() {
+                if (counterEl && currentIdx >= 0) {
+                    counterEl.textContent = `Question ${currentIdx + 1} of ${qIds.length}`;
+                }
+
+                if (prevBtn) {
+                    prevBtn.disabled = (currentIdx === 0);
+                    prevBtn.onclick = () => currentIdx > 0 && navigateToQuestionSPA(currentIdx - 1);
+                }
+
+                if (nextBtnNav) {
+                    nextBtnNav.disabled = (currentIdx === qIds.length - 1);
+                    nextBtnNav.onclick = () => currentIdx < qIds.length - 1 && navigateToQuestionSPA(currentIdx + 1);
+                }
+
+                // Preload NEXT question in background for zero-latency clicks
+                if (currentIdx < qIds.length - 1) {
+                    const nextQId = qIds[currentIdx + 1];
+                    if (!questionCache[nextQId]) {
+                        db.collection('tests').doc(testId).collection('questions').doc(nextQId).get().then(async doc => {
+                            if (doc.exists) {
+                                const data = { id: doc.id, ...doc.data() };
+                                if (data.imageUrl && data.imageUrl.startsWith('tg://')) {
+                                    try { data.imageUrl = await TelegramImages.resolveTelegramUrl(data.imageUrl); } catch (e) { }
+                                }
+                                questionCache[nextQId] = data;
+                            }
+                        }).catch(e => console.warn("Preload failed", e));
+                    }
+                }
             }
 
-            function navigateToQuestion(idx) {
+            async function navigateToQuestionSPA(idx) {
                 const newQId = qIds[idx];
-                window.location.href = `question-review.html?resultId=${resultId}&questionId=${newQId}`;
+                currentIdx = idx;
+                questionId = newQId;
+
+                // Update URL without reloading
+                const url = new URL(window.location);
+                url.searchParams.set('questionId', newQId);
+                window.history.pushState({ questionId: newQId }, '', url);
+
+                updateNavButtons();
+
+                if (questionCache[newQId]) {
+                    // Instant load from cache
+                    questionData = questionCache[newQId];
+                    renderPageContent();
+                    renderAllMath();
+                } else {
+                    // Fetch on demand (if user clicks too fast)
+                    if (contentBody) contentBody.style.opacity = '0.5';
+                    try {
+                        const qDoc = await db.collection('tests').doc(testId).collection('questions').doc(newQId).get();
+                        if (qDoc.exists) {
+                            questionData = { id: qDoc.id, ...qDoc.data() };
+                            if (questionData.imageUrl && questionData.imageUrl.startsWith('tg://')) {
+                                try { questionData.imageUrl = await TelegramImages.resolveTelegramUrl(questionData.imageUrl); } catch (e) { }
+                            }
+                            questionCache[newQId] = questionData;
+                            renderPageContent();
+                            renderAllMath();
+                        }
+                    } catch (e) { console.error(e); }
+                    if (contentBody) contentBody.style.opacity = '1';
+                }
+                window.scrollTo({ top: 0, behavior: 'instant' });
             }
 
-            if (prevBtn && currentIdx > 0) {
-                prevBtn.disabled = false;
-                prevBtn.addEventListener('click', () => navigateToQuestion(currentIdx - 1));
-            }
-            if (nextBtnNav && currentIdx < qIds.length - 1) {
-                nextBtnNav.disabled = false;
-                nextBtnNav.addEventListener('click', () => navigateToQuestion(currentIdx + 1));
-            }
+            // Handle browser back/forward buttons
+            window.addEventListener('popstate', (event) => {
+                const p = new URLSearchParams(window.location.search);
+                const pId = p.get('questionId');
+                if (pId) {
+                    const idx = qIds.indexOf(pId);
+                    if (idx !== -1) {
+                        currentIdx = idx;
+                        questionId = pId;
+                        updateNavButtons();
+                        if (questionCache[pId]) {
+                            questionData = questionCache[pId];
+                            renderPageContent();
+                            renderAllMath();
+                        } else {
+                            navigateToQuestionSPA(idx);
+                        }
+                    }
+                }
+            });
+
+            updateNavButtons();
 
             // --- 5. Finalize ---
             if (loadingContainer) loadingContainer.style.display = 'none';

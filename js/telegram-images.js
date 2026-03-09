@@ -7,47 +7,21 @@ const TelegramImages = (() => {
     const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes (Telegram URLs last ~1 hour)
     const BATCH_SIZE = 3; // Max concurrent getFile calls
 
-    // --- Bot Token Pool (fetched from Firestore at runtime) ---
-    let botTokens = [];
-    let channelId = "";
+    // --- Bot Token Pool (read from config.js) ---
+    // If not found in config.js, fallback to empty to avoid crashing
+    let botTokens = (typeof TELEGRAM_BOT_TOKENS !== 'undefined') ? TELEGRAM_BOT_TOKENS : [];
+    let channelId = (typeof TELEGRAM_CHANNEL_ID !== 'undefined') ? TELEGRAM_CHANNEL_ID : "";
     let roundRobinIndex = 0;
-    let tokensLoaded = false;
-    let tokenLoadPromise = null;
 
     /**
-     * Loads bot tokens from Firestore config/telegram document.
-     * Tokens are protected by Firestore security rules (authenticated users only).
-     * Caches in memory so we only fetch once per page load.
+     * Ensures tokens are available (now instantaneous, kept async for API compatibility)
      */
     async function ensureTokensLoaded() {
-        if (tokensLoaded && botTokens.length > 0) return;
-
-        // Prevent multiple concurrent loads
-        if (tokenLoadPromise) return tokenLoadPromise;
-
-        tokenLoadPromise = (async () => {
-            try {
-                const db = firebase.firestore();
-                const doc = await db.collection('config').doc('telegram').get();
-                if (doc.exists) {
-                    const data = doc.data();
-                    botTokens = data.botTokens || [];
-                    channelId = data.channelId || "";
-                    tokensLoaded = true;
-                } else {
-                    console.error('TelegramImages: config/telegram document not found in Firestore');
-                }
-            } catch (err) {
-                console.error('TelegramImages: Failed to load config:', err.message);
-                // Security Fix: Do not hardcode fallback tokens in client code.
-                botTokens = [];
-                channelId = "";
-                tokensLoaded = true;
-            }
-            tokenLoadPromise = null;
-        })();
-
-        return tokenLoadPromise;
+        if (botTokens.length === 0 && typeof TELEGRAM_BOT_TOKENS !== 'undefined') {
+            botTokens = TELEGRAM_BOT_TOKENS;
+            channelId = TELEGRAM_CHANNEL_ID;
+        }
+        return Promise.resolve();
     }
 
     /** Gets the next bot token using round-robin distribution */
@@ -290,31 +264,49 @@ const TelegramImages = (() => {
             return null;
         }
 
-        const token = getNextToken();
-
         const formData = new FormData();
         formData.append('chat_id', channelId);
         formData.append('photo', file);
 
-        try {
-            const response = await fetch(
-                `https://api.telegram.org/bot${token}/sendPhoto`,
-                { method: 'POST', body: formData }
-            );
-            const data = await response.json();
+        let lastError = null;
+        const maxAttempts = botTokens.length;
 
-            if (data.ok) {
-                const photoArray = data.result.photo;
-                const fileId = photoArray[photoArray.length - 1].file_id;
-                return `tg://${fileId}`;
-            } else {
-                throw new Error(data.description);
+        for (let botAttempt = 0; botAttempt < maxAttempts; botAttempt++) {
+            const token = getNextToken();
+            try {
+                const response = await fetch(
+                    `https://api.telegram.org/bot${token}/sendPhoto`,
+                    { method: 'POST', body: formData }
+                );
+
+                // If unauthorized (401) or rate-limited (429), try the next token
+                if (response.status === 401 || response.status === 429) {
+                    console.warn(`Telegram token failed with ${response.status}. Trying next...`);
+                    lastError = `Status ${response.status}`;
+                    continue;
+                }
+
+                const data = await response.json();
+
+                if (data.ok) {
+                    const photoArray = data.result.photo;
+                    const fileId = photoArray[photoArray.length - 1].file_id;
+                    return `tg://${fileId}`;
+                } else {
+                    lastError = data.description;
+                    console.warn('Upload failed on this token:', data.description);
+                    // Still continue to next token if it's a Telegram-level error
+                }
+            } catch (error) {
+                lastError = error.message;
+                console.warn('Network error on this token:', error.message);
+                // Continue to next token
             }
-        } catch (error) {
-            console.error('TelegramImages: Upload error:', error);
-            alert('Error uploading image: ' + error.message);
-            return null;
         }
+
+        console.error('TelegramImages: All upload attempts failed. Last error:', lastError);
+        alert('Error uploading image. All bot tokens failed. See console.');
+        return null;
     }
 
     /**
