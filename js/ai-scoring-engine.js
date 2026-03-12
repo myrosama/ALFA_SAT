@@ -1,6 +1,6 @@
 // js/ai-scoring-engine.js
 // Score Processing Engine for ALFA SAT Proctored Tests
-// Uses Gemini 2.5 Pro for score estimation
+// Uses Gemini 3.1 Flash Lite for score estimation
 // Processes students one-by-one with IRT-inspired scoring prompts
 
 // === LOGGING UTILITY ===
@@ -271,7 +271,7 @@ async function processSessionScores(sessionCode, onProgress) {
 
 
 /**
- * Score a single student using Gemini 2.5 Pro with IRT-inspired prompt.
+ * Score a single student using Gemini 3.1 Flash Lite with IRT-inspired prompt.
  */
 async function scoreStudentWithAI(resultData, allQuestions, groupRawScores, testName) {
     if (typeof AI_API_KEY === 'undefined' || !AI_API_KEY) {
@@ -389,10 +389,10 @@ Return ONLY valid JSON (no markdown, no code blocks):
     "studyRecommendation": "<one actionable recommendation>"
 }`;
 
-    // Call Gemini 2.0 Flash (free tier — text-only scoring)
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${AI_API_KEY}`;
+    // Call Gemini 3.1 Flash Lite (free tier — text-only scoring)
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${AI_API_KEY}`;
 
-    scoringLog('info', 'Sending request to Gemini 2.0 Flash...');
+    scoringLog('info', 'Sending request to Gemini 3.1 Flash Lite...');
 
     const response = await fetchWithTimeout(apiUrl, {
         method: 'POST',
@@ -409,8 +409,8 @@ Return ONLY valid JSON (no markdown, no code blocks):
 
     if (!response.ok) {
         const errText = await response.text();
-        scoringLog('error', 'Gemini 2.0 Flash HTTP error:', response.status, errText.substring(0, 200));
-        scoringLog('info', 'Falling back to Gemini 1.5 Flash...');
+        scoringLog('error', 'Gemini 3.1 Flash Lite HTTP error:', response.status, errText.substring(0, 200));
+        scoringLog('info', 'Falling back to Gemini 2.0 Flash...');
         return await scoreStudentWithFlash(prompt);
     }
 
@@ -433,12 +433,12 @@ Return ONLY valid JSON (no markdown, no code blocks):
 
 
 /**
- * Fallback to Gemini 1.5 Flash if 2.0 Flash is unavailable.
+ * Fallback to Gemini 2.0 Flash if 3.1 Flash Lite is unavailable.
  */
 async function scoreStudentWithFlash(prompt) {
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${AI_API_KEY}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${AI_API_KEY}`;
 
-    scoringLog('info', 'Sending request to Gemini 1.5 Flash (fallback)...');
+    scoringLog('info', 'Sending request to Gemini 2.0 Flash (fallback)...');
 
     try {
         const response = await fetchWithTimeout(apiUrl, {
@@ -522,7 +522,7 @@ Return ONLY valid JSON (no markdown):
 
 If no adjustments needed, return: { "adjustments": [], "groupAnalysis": "..." }`;
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${AI_API_KEY}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${AI_API_KEY}`;
 
     const response = await fetchWithTimeout(apiUrl, {
         method: 'POST',

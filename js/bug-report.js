@@ -141,7 +141,7 @@ Respond in this exact JSON format:
 {"valid": true/false, "priority": "LOW/MEDIUM/HIGH", "analysis": "your brief analysis", "error_location": "exact location of the error (e.g. passage paragraph 2, option C, question prompt)", "suggested_fix": "what should be changed"}`;
 
         try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${AI_API_KEY}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${AI_API_KEY}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
