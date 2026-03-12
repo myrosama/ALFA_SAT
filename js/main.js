@@ -513,7 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // =====================================================
     async function callGeminiForBatch(base64Images, customInstructions, startPage) {
         const apiKey = AI_API_KEY;
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`;
 
         const masterPrompt = `You are a precise SAT Test Parsing Agent.
 

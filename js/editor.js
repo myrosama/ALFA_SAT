@@ -1034,7 +1034,7 @@ Return *only* a single, valid JSON object with these fields.
         }
         // +++ END OF FIX +++
 
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`;
 
         const payload = {
             contents: [
