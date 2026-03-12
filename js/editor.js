@@ -113,6 +113,166 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
+     * Extract LaTeX segments from text using balanced-brace parsing.
+     * Handles nested braces like \frac{\sqrt{2}}{2} correctly.
+     * Module-scope so both loadHtmlIntoEditor and renderAllMath can use it.
+     */
+    function extractLatexSegments(text) {
+        const segments = [];
+        let i = 0;
+        
+        while (i < text.length) {
+            // Check for $...$ delimited LaTeX
+            if (text[i] === '$') {
+                const end = text.indexOf('$', i + 1);
+                if (end !== -1) {
+                    const latex = text.slice(i + 1, end);
+                    segments.push({ type: 'formula', value: latex.trim(), start: i, end: end + 1 });
+                    i = end + 1;
+                    continue;
+                }
+            }
+            
+            // Check for \command pattern (backslash followed by letters)
+            if (text[i] === '\\' && i + 1 < text.length && /[a-zA-Z]/.test(text[i + 1])) {
+                const cmdStart = i;
+                i++; // skip backslash
+                // Read command name
+                while (i < text.length && /[a-zA-Z]/.test(text[i])) i++;
+                
+                // Read all consecutive {balanced_braces} groups
+                let hasBraces = false;
+                while (i < text.length && text[i] === '{') {
+                    hasBraces = true;
+                    let depth = 1;
+                    i++; // skip opening {
+                    while (i < text.length && depth > 0) {
+                        if (text[i] === '{') depth++;
+                        else if (text[i] === '}') depth--;
+                        i++;
+                    }
+                }
+                
+                const latex = text.slice(cmdStart, i);
+                // Only treat as formula if it has braces or is a known symbol
+                const knownSymbols = ['\\pi', '\\theta', '\\alpha', '\\beta', '\\gamma', '\\delta',
+                                      '\\sigma', '\\mu', '\\lambda', '\\infty', '\\times', '\\div',
+                                      '\\pm', '\\leq', '\\geq', '\\neq', '\\approx', '\\cdot',
+                                      '\\cos', '\\sin', '\\tan', '\\log', '\\ln'];
+                if (hasBraces || knownSymbols.includes(latex)) {
+                    segments.push({ type: 'formula', value: latex, start: cmdStart, end: i });
+                } else {
+                    i = cmdStart + 1;
+                    continue;
+                }
+                continue;
+            }
+            
+            // Check for ^{...} or _{...} patterns (superscript/subscript)
+            if ((text[i] === '^' || text[i] === '_') && i + 1 < text.length && text[i + 1] === '{') {
+                const cmdStart = i;
+                i++; // skip ^ or _
+                let depth = 1;
+                i++; // skip opening {
+                while (i < text.length && depth > 0) {
+                    if (text[i] === '{') depth++;
+                    else if (text[i] === '}') depth--;
+                    i++;
+                }
+                const latex = text.slice(cmdStart, i);
+                segments.push({ type: 'formula', value: latex, start: cmdStart, end: i });
+                continue;
+            }
+            
+            i++;
+        }
+        
+        if (segments.length === 0) return [];
+        
+        // Build final segments with text gaps
+        const result = [];
+        let lastEnd = 0;
+        for (const seg of segments) {
+            if (seg.start > lastEnd) {
+                result.push({ type: 'text', value: text.slice(lastEnd, seg.start) });
+            }
+            result.push({ type: 'formula', value: seg.value });
+            lastEnd = seg.end;
+        }
+        if (lastEnd < text.length) {
+            result.push({ type: 'text', value: text.slice(lastEnd) });
+        }
+        
+        return result;
+    }
+
+    /**
+     * Renders any KaTeX formulas found in the DOM.
+     * Uses extractLatexSegments for balanced-brace parsing of raw LaTeX.
+     */
+    function renderAllMath() {
+        if (typeof katex === 'undefined') return;
+        
+        try {
+            // 1. Render existing .ql-formula spans (from editor/pipeline)
+            document.querySelectorAll('.ql-formula').forEach(span => {
+                const latex = span.dataset.value;
+                if (!latex) return;
+                if (span.querySelector('.katex')) return;
+                
+                try {
+                    katex.render(latex, span, {
+                        throwOnError: false,
+                        displayMode: false
+                    });
+                } catch (e) {
+                    console.error("KaTeX render error:", e, "for latex:", latex);
+                }
+            });
+
+            // 2. Fix raw LaTeX that leaked into displayed text using balanced-brace parser
+            const scanAreas = document.querySelectorAll('#stimulus-editor, #question-text-editor, .answer-input, #preview-modal, .panel-content, .ql-editor');
+            scanAreas.forEach(area => {
+                if (document.activeElement === area) return;
+
+                const walker = document.createTreeWalker(area, NodeFilter.SHOW_TEXT, null, false);
+                const nodesToFix = [];
+                let node;
+                while (node = walker.nextNode()) {
+                    if (/\\[a-zA-Z]+\{|\^\{|_\{|\$/.test(node.textContent)) {
+                        nodesToFix.push(node);
+                    }
+                }
+                nodesToFix.forEach(textNode => {
+                    const text = textNode.textContent;
+                    const segments = extractLatexSegments(text);
+                    
+                    if (segments.length === 0) return;
+                    
+                    const container = document.createElement('span');
+                    segments.forEach(seg => {
+                        if (seg.type === 'formula') {
+                            const span = document.createElement('span');
+                            span.className = 'ql-formula';
+                            span.dataset.value = seg.value;
+                            try {
+                                katex.render(seg.value, span, { throwOnError: false, displayMode: false });
+                            } catch (e) {
+                                span.textContent = seg.value;
+                            }
+                            container.appendChild(span);
+                        } else {
+                            container.appendChild(document.createTextNode(seg.value));
+                        }
+                    });
+                    
+                    textNode.parentNode.replaceChild(container, textNode);
+                });
+            });
+        } catch (e) { console.error("renderAllMath error:", e); }
+    }
+
+    /**
      * Renders the stimulus image preview.
      */
     function renderStimulus(data = {}) {
@@ -340,20 +500,142 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             renderStimulus(data);
         }
-        if (editors.passage) editors.passage.root.innerHTML = data.passage || '';
+        // extractLatexSegments is now at module scope (above renderAllMath)
 
-        if (editors.prompt) editors.prompt.root.innerHTML = data.prompt || '';
+        /**
+         * Converts pipeline HTML with ql-formula spans into Quill Delta ops.
+         * This bypasses Quill's clipboard entirely, ensuring formulas render as KaTeX.
+         */
+        function loadHtmlIntoEditor(editor, html) {
+            if (!editor || !html) {
+                if (editor) editor.setContents([{ insert: '\n' }]);
+                return;
+            }
+            
+            // Parse the HTML into a temporary DOM element
+            const temp = document.createElement('div');
+            temp.innerHTML = html;
+            
+            const ops = [];
+            
+            function processNode(node) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    let text = node.textContent;
+                    if (text) {
+                        // Use a function-based parser for LaTeX to handle nested braces
+                        const segments = extractLatexSegments(text);
+                        if (segments.length === 0) {
+                            ops.push({ insert: text });
+                        } else {
+                            for (const seg of segments) {
+                                if (seg.type === 'formula') {
+                                    ops.push({ insert: { formula: seg.value } });
+                                } else if (seg.value) {
+                                    ops.push({ insert: seg.value });
+                                }
+                            }
+                        }
+                    }
+                    return;
+                }
+                
+                if (node.nodeType !== Node.ELEMENT_NODE) return;
+                
+                const el = node;
+                
+                // Handle ql-formula spans → Quill formula embed
+                if (el.classList && el.classList.contains('ql-formula')) {
+                    const latex = el.getAttribute('data-value');
+                    if (latex) {
+                        ops.push({ insert: { formula: latex } });
+                    }
+                    return; // Don't process children of formula spans
+                }
+                
+                // Handle paragraph elements
+                if (el.tagName === 'P') {
+                    // Process children first
+                    for (const child of el.childNodes) {
+                        processNode(child);
+                    }
+                    // Add newline with alignment
+                    const attrs = {};
+                    if (el.classList.contains('ql-align-center')) {
+                        attrs.align = 'center';
+                    }
+                    ops.push({ insert: '\n', attributes: Object.keys(attrs).length ? attrs : undefined });
+                    return;
+                }
+                
+                // Handle bold, italic, underline
+                if (el.tagName === 'B' || el.tagName === 'STRONG') {
+                    const text = el.textContent;
+                    if (text) ops.push({ insert: text, attributes: { bold: true } });
+                    return;
+                }
+                if (el.tagName === 'I' || el.tagName === 'EM') {
+                    const text = el.textContent;
+                    if (text) ops.push({ insert: text, attributes: { italic: true } });
+                    return;
+                }
+                if (el.tagName === 'U') {
+                    const text = el.textContent;
+                    if (text) ops.push({ insert: text, attributes: { underline: true } });
+                    return;
+                }
+                
+                // Handle list items
+                if (el.tagName === 'LI') {
+                    // Process children (the text inside the li)
+                    for (const child of el.childNodes) {
+                        processNode(child);
+                    }
+                    // Determine list type based on parent
+                    const parentTag = el.parentElement ? el.parentElement.tagName : '';
+                    const listType = parentTag === 'OL' ? 'ordered' : 'bullet';
+                    
+                    // Add newline with list attribute
+                    ops.push({ insert: '\n', attributes: { list: listType } });
+                    return;
+                }
+                
+                // Default: recurse into children
+                for (const child of el.childNodes) {
+                    processNode(child);
+                }
+            }
+            
+            processNode(temp);
+            
+            // Ensure Delta ends with a newline
+            if (ops.length === 0 || (ops[ops.length - 1].insert !== '\n')) {
+                ops.push({ insert: '\n' });
+            }
+            
+            try {
+                editor.setContents(ops);
+            } catch (e) {
+                console.error('setContents failed, falling back to dangerouslyPasteHTML', e);
+                editor.clipboard.dangerouslyPasteHTML(html);
+            }
+        }
+
+        loadHtmlIntoEditor(editors.passage, data.passage || '');
+        loadHtmlIntoEditor(editors.prompt, data.prompt || '');
         if (data.options && editors.options) {
             ['A', 'B', 'C', 'D'].forEach(opt => {
-                if (editors.options[opt]) {
-                    editors.options[opt].root.innerHTML = data.options[opt] || '';
-                }
+                loadHtmlIntoEditor(editors.options[opt], data.options[opt] || '');
             });
         }
-        if (editors.fillIn) editors.fillIn.root.innerHTML = data.fillInAnswer || '';
-        if (editors.explanation) editors.explanation.root.innerHTML = data.explanation || '';
+        if (editors.fillIn) {
+            editors.fillIn.clipboard.dangerouslyPasteHTML(data.fillInAnswer || '');
+        }
+        loadHtmlIntoEditor(editors.explanation, data.explanation || '');
 
-        formatSelect.value = data.format || 'mcq';
+        // Map grid-in to fill-in (pipeline uses grid-in, editor uses fill-in)
+        let formatValue = data.format || 'mcq';
+        if (formatValue === 'grid-in') formatValue = 'fill-in';
+        formatSelect.value = formatValue;
         const radio = questionForm.querySelector(`input[name="correct-answer"][value="${data.correctAnswer}"]`);
         if (radio) radio.checked = true;
 
@@ -366,8 +648,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         formatSelect.dispatchEvent(new Event('change'));
 
+    // Initialize Tooltips and Math on preview button click (custom modal)
+    const previewBtn = questionForm.querySelector('#preview-question-btn');
+    if (previewBtn) {
+        previewBtn.addEventListener('click', function () {
+            console.log("Preview triggered, scheduling Math rendering...");
+            setTimeout(renderAllMath, 300);
+        });
+    }
+
+        // Render math after loading data into editors
+        setTimeout(renderAllMath, 200);
+
         // --- Attach Event Listeners for the new form ---
-        questionForm.addEventListener('submit', handleFormSubmit);
+        questionForm.querySelector('#save-question-btn').addEventListener('click', handleFormSubmit);
         questionForm.querySelector('#delete-question-btn').addEventListener('click', handleDeleteQuestion);
         setupImageResizing(); // Setup resizing for the loaded image container
     }
@@ -381,7 +675,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const questionId = `m${currentModule}_q${currentQuestion}`;
         const questionForm = editorContainer.querySelector('#question-form');
-        const saveBtn = questionForm.querySelector('button[type="submit"]');
+        const saveBtn = questionForm.querySelector('#save-question-btn');
         const imageContainer = document.getElementById('stimulus-image-container');
 
         if (!editors.passage || !editors.prompt || !editors.options.A || !editors.fillIn || !editors.explanation) {
@@ -392,6 +686,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // Use the tracked tg:// URL (permanent) instead of the img.src (temporary)
         const isImageVisible = !imageContainer.classList.contains('hidden');
         const imageUrlToSave = isImageVisible ? (currentImageTgUrl || null) : null;
+
+        let fillInHtml = "";
+        let correctAnswerToSave = null;
+        const formatSelectValue = questionForm.querySelector('#q-format').value;
+        
+        if (formatSelectValue === 'fill-in') {
+            fillInHtml = editors.fillIn ? editors.fillIn.root.innerHTML : "";
+            correctAnswerToSave = fillInHtml.replace(/<[^>]*>/g, '').trim();
+        } else {
+            correctAnswerToSave = questionForm.querySelector('input[name="correct-answer"]:checked')?.value || null;
+        }
 
         const dataToSave = {
             passage: editors.passage.root.innerHTML,
@@ -404,17 +709,15 @@ document.addEventListener('DOMContentLoaded', () => {
             questionNumber: currentQuestion,
             domain: questionForm.querySelector('#q-domain').value,
             skill: questionForm.querySelector('#q-skill').value,
-            format: questionForm.querySelector('#q-format').value,
+            format: formatSelectValue,
             options: {
-                A: editors.options.A.root.innerHTML,
-                B: editors.options.B.root.innerHTML,
-                C: editors.options.C.root.innerHTML,
-                D: editors.options.D.root.innerHTML,
+                A: (editors.options && editors.options.A) ? editors.options.A.root.innerHTML : "",
+                B: (editors.options && editors.options.B) ? editors.options.B.root.innerHTML : "",
+                C: (editors.options && editors.options.C) ? editors.options.C.root.innerHTML : "",
+                D: (editors.options && editors.options.D) ? editors.options.D.root.innerHTML : "",
             },
-            fillInAnswer: editors.fillIn.root.innerHTML,
-            correctAnswer: questionForm.querySelector('#q-format').value === 'fill-in'
-                ? editors.fillIn.root.innerHTML.replace(/<[^>]*>/g, '').trim()
-                : (questionForm.querySelector('input[name="correct-answer"]:checked')?.value || null),
+            fillInAnswer: fillInHtml,
+            correctAnswer: correctAnswerToSave,
             lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -822,20 +1125,29 @@ Return *only* a single, valid JSON object with these fields.
 
         // 1. Fill Quill Editors
         if (data.passage && editors.passage) {
-            // Use <p> tags for proper Quill formatting
-            editors.passage.root.innerHTML = data.passage.split('\n').map(p => `<p>${p}</p>`).join('');
+            // Use dangerouslyPasteHTML to preserve <ul>, <li>, and <span class="katex">
+            const passageHtml = data.passage.includes('<p>') || data.passage.includes('<ul>') 
+                ? data.passage 
+                : data.passage.split('\n').map(p => `<p>${p}</p>`).join('');
+            editors.passage.clipboard.dangerouslyPasteHTML(passageHtml);
         }
         if (data.prompt && editors.prompt) {
-            editors.prompt.root.innerHTML = data.prompt.split('\n').map(p => `<p>${p}</p>`).join('');
+            const promptHtml = data.prompt.includes('<p>') || data.prompt.includes('<ul>')
+                ? data.prompt
+                : data.prompt.split('\n').map(p => `<p>${p}</p>`).join('');
+            editors.prompt.clipboard.dangerouslyPasteHTML(promptHtml);
         }
         if (data.options && editors.options) {
-            editors.options.A.root.innerHTML = `<p>${data.options.A || ''}</p>`;
-            editors.options.B.root.innerHTML = `<p>${data.options.B || ''}</p>`;
-            editors.options.C.root.innerHTML = `<p>${data.options.C || ''}</p>`;
-            editors.options.D.root.innerHTML = `<p>${data.options.D || ''}</p>`;
+            editors.options.A.clipboard.dangerouslyPasteHTML(`<p>${data.options.A || ''}</p>`);
+            editors.options.B.clipboard.dangerouslyPasteHTML(`<p>${data.options.B || ''}</p>`);
+            editors.options.C.clipboard.dangerouslyPasteHTML(`<p>${data.options.C || ''}</p>`);
+            editors.options.D.clipboard.dangerouslyPasteHTML(`<p>${data.options.D || ''}</p>`);
         }
         if (data.explanation && editors.explanation) {
-            editors.explanation.root.innerHTML = data.explanation.split('\n').map(p => `<p>${p}</p>`).join('');
+            const expHtml = data.explanation.includes('<p>') || data.explanation.includes('<ul>')
+                ? data.explanation
+                : data.explanation.split('\n').map(p => `<p>${p}</p>`).join('');
+            editors.explanation.clipboard.dangerouslyPasteHTML(expHtml);
         }
 
         // 2. Set Correct Answer
@@ -967,6 +1279,9 @@ Return *only* a single, valid JSON object with these fields.
         } else {
             previewOptionsEl.innerHTML = `<input type="text" class="preview-fill-in" placeholder="Type your answer here" disabled maxlength="6">`;
         }
+
+        // Render math in the preview
+        setTimeout(renderAllMath, 50);
 
         // Show modal
         previewModal.classList.add('visible');

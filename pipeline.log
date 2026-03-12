@@ -1,0 +1,646 @@
+2026-03-09 17:56:03 [INFO] 🚀 ALFA SAT Pipeline — Gemini 2.5 Flash
+2026-03-09 17:56:03 [INFO]    Model: gemini-2.0-flash
+2026-03-09 17:56:03 [INFO]    API Keys: 1 available
+2026-03-09 17:56:03 [INFO]    DPI: 300
+2026-03-09 17:56:03 [INFO] 
+============================================================
+2026-03-09 17:56:03 [INFO] 📄 Processing: 2025 Nov US-A (Fixed V3)
+2026-03-09 17:56:03 [INFO] 📁 Path: /home/sadrikov49/Desktop/ALFA SAT PROJECT/pdfs/2025 Nov US-A @EliteXSAT.pdf
+2026-03-09 17:56:03 [INFO] 🆔 Test ID: test_v3_fixed_formulas
+2026-03-09 17:56:03 [INFO] 🔥 LIVE — will write to Firestore
+2026-03-09 17:56:03 [INFO] ============================================================
+2026-03-09 17:56:27 [INFO]   → Rendered 27 pages at 300 DPI
+2026-03-09 17:56:27 [INFO]   🗺️ Built page map: Pivot at page 14
+2026-03-09 17:56:27 [INFO] 
+  🕵️  Analyzing pages 1–3 [R&W]...
+2026-03-09 17:56:51 [INFO]     ✅ RW_Q1
+2026-03-09 17:56:51 [INFO]     ✅ RW_Q2
+2026-03-09 17:56:51 [INFO]     ✅ RW_Q3
+2026-03-09 17:56:51 [INFO]     ✅ RW_Q4
+2026-03-09 17:56:51 [INFO]     ✅ RW_Q5
+2026-03-09 17:56:51 [INFO]     ✅ RW_Q6
+2026-03-09 17:56:51 [INFO]     ✅ RW_Q7
+2026-03-09 17:56:51 [INFO]     ✅ RW_Q8
+2026-03-09 17:56:51 [INFO]     ✅ RW_Q9
+2026-03-09 17:56:51 [INFO]     ✅ RW_Q10
+2026-03-09 17:56:51 [INFO]     ✅ RW_Q11
+2026-03-09 17:56:52 [INFO] 
+  🕵️  Analyzing pages 4–6 [R&W]...
+2026-03-09 17:57:09 [INFO]     ✅ RW_Q11
+2026-03-09 17:57:09 [INFO]     ✅ RW_Q12
+2026-03-09 17:57:09 [INFO]       📸 Image flagged for M?_Q12 (no upload)
+2026-03-09 17:57:09 [INFO]     ✅ RW_Q13
+2026-03-09 17:57:09 [INFO]       📸 Image flagged for M?_Q13 (no upload)
+2026-03-09 17:57:09 [INFO]     ✅ RW_Q14
+2026-03-09 17:57:09 [INFO]     ✅ RW_Q15
+2026-03-09 17:57:09 [INFO]     ✅ RW_Q16
+2026-03-09 17:57:09 [INFO]     ✅ RW_Q17
+2026-03-09 17:57:10 [INFO] 
+  🕵️  Analyzing pages 7–9 [R&W]...
+2026-03-09 17:57:31 [INFO]     ✅ RW_Q18
+2026-03-09 17:57:31 [INFO]     ✅ RW_Q19
+2026-03-09 17:57:31 [INFO]     ✅ RW_Q20
+2026-03-09 17:57:31 [INFO]     ✅ RW_Q21
+2026-03-09 17:57:31 [INFO]     ✅ RW_Q22
+2026-03-09 17:57:31 [INFO]     ✅ RW_Q23
+2026-03-09 17:57:31 [INFO]     ✅ RW_Q24
+2026-03-09 17:57:31 [INFO]     ✅ RW_Q25
+2026-03-09 17:57:31 [INFO]     ✅ RW_Q26
+2026-03-09 17:57:32 [INFO] 
+  🕵️  Analyzing pages 10–12 [R&W]...
+2026-03-09 17:57:37 [INFO]     ✅ RW_Q27
+2026-03-09 17:57:38 [INFO] 
+  🕵️  Analyzing pages 13–15 [MATH]...
+2026-03-09 17:57:44 [INFO]     ✅ MATH_Q7
+2026-03-09 17:57:45 [INFO] 
+  🕵️  Analyzing pages 16–18 [MATH]...
+2026-03-09 17:57:52 [INFO]     ✅ MATH_Q18
+2026-03-09 17:57:52 [INFO]     ✅ MATH_Q19
+2026-03-09 17:57:52 [INFO]     ✅ MATH_Q20
+2026-03-09 17:57:53 [INFO] 
+  🕵️  Analyzing pages 19–21 [MATH]...
+2026-03-09 17:58:08 [INFO]     ✅ MATH_Q22
+2026-03-09 17:58:08 [INFO]     ✅ MATH_Q23
+2026-03-09 17:58:08 [INFO]     ✅ MATH_Q24
+2026-03-09 17:58:08 [INFO]     ✅ MATH_Q25
+2026-03-09 17:58:08 [INFO]     ✅ MATH_Q26
+2026-03-09 17:58:08 [INFO]     ✅ MATH_Q27
+2026-03-09 17:58:09 [INFO] 
+  🕵️  Analyzing pages 22–24 [MATH]...
+2026-03-09 17:58:59 [INFO]   ⚠️  JSON Parse Error (Attempt 1): Unterminated string starting at: line 322 column 7 (char 24860)
+2026-03-09 17:59:46 [INFO]   ⚠️  JSON Parse Error (Attempt 2): Unterminated string starting at: line 322 column 20 (char 23867)
+2026-03-09 18:00:33 [INFO]   ⚠️  JSON Parse Error (Attempt 3): Expecting ',' delimiter: line 114 column 5 (char 12580)
+2026-03-09 18:00:33 [INFO]     ⚠️  No questions found for pages 22–24
+2026-03-09 18:00:34 [INFO] 
+  🕵️  Analyzing pages 25–27 [MATH]...
+2026-03-09 18:01:24 [INFO]   ⚠️  JSON Parse Error (Attempt 1): Expecting ',' delimiter: line 6 column 177 (char 253)
+2026-03-09 18:02:18 [INFO]   ⚠️  JSON Parse Error (Attempt 2): Expecting ',' delimiter: line 6 column 177 (char 253)
+2026-03-09 18:03:13 [INFO]   ⚠️  JSON Parse Error (Attempt 3): Expecting ',' delimiter: line 6 column 177 (char 253)
+2026-03-09 18:03:13 [INFO]     ⚠️  No questions found for pages 25–27
+2026-03-09 18:03:14 [INFO] 
+  🧠 Assigning modules (38 raw questions)...
+2026-03-09 18:03:14 [INFO]   Section split → RW: 28, Math: 10, Unknown: 0
+2026-03-09 18:03:14 [INFO]   RW: No restart detected → all 28 Qs → Module 1
+2026-03-09 18:03:14 [INFO]   Math: No restart detected → all 10 Qs → Module 3
+2026-03-09 18:03:14 [INFO]   🧹 Deduplicating...
+2026-03-09 18:03:14 [INFO] 
+  🔍 Agent 1: Completeness Check...
+2026-03-09 18:03:14 [INFO]     ✅ Module 1 (R&W): 27/27 — complete!
+2026-03-09 18:03:14 [INFO]     ⚠️  Module 2 (R&W): 0/27 — missing [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
+2026-03-09 18:03:14 [INFO]     ⚠️  Module 3 (Math): 10/22 — missing [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 21]
+2026-03-09 18:03:14 [INFO]     ⚠️  Module 4 (Math): 0/22 — missing [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+2026-03-09 18:03:14 [INFO]     📊 Total: 37 found, 66 missing
+2026-03-09 18:03:14 [INFO] 
+  🔧 Agent 2: Filling 6 gaps...
+2026-03-09 18:03:14 [INFO]     🔎 Searching for M2_Q1 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:03:19 [INFO]     ✅ Recovered M2_Q1 from page 8
+2026-03-09 18:03:19 [INFO]     🔎 Searching for M2_Q2 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:03:23 [INFO]     ✅ Recovered M2_Q2 from page 8
+2026-03-09 18:03:23 [INFO]     🔎 Searching for M2_Q3 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:03:29 [INFO]     ✅ Recovered M2_Q3 from page 8
+2026-03-09 18:03:29 [INFO]     🔎 Searching for M2_Q4 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:03:35 [INFO]     ✅ Recovered M2_Q4 from page 8
+2026-03-09 18:03:35 [INFO]     🔎 Searching for M2_Q5 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:05:32 [INFO] 🚀 ALFA SAT Pipeline — Gemini 2.5 Flash
+2026-03-09 18:05:32 [INFO]    Model: gemini-2.0-flash
+2026-03-09 18:05:32 [INFO]    API Keys: 1 available
+2026-03-09 18:05:32 [INFO]    DPI: 300
+2026-03-09 18:05:32 [INFO] 
+============================================================
+2026-03-09 18:05:32 [INFO] 📄 Processing: 2025 Nov US-A (V3 Final)
+2026-03-09 18:05:32 [INFO] 📁 Path: /home/sadrikov49/Desktop/ALFA SAT PROJECT/pdfs/2025 Nov US-A @EliteXSAT.pdf
+2026-03-09 18:05:32 [INFO] 🆔 Test ID: test_v3_final_fixed
+2026-03-09 18:05:32 [INFO] 🔥 LIVE — will write to Firestore
+2026-03-09 18:05:32 [INFO] ============================================================
+2026-03-09 18:05:57 [INFO]   → Rendered 27 pages at 300 DPI
+2026-03-09 18:05:57 [INFO]   🗺️ Built page map: Pivot at page 22
+2026-03-09 18:05:57 [INFO] 
+  🕵️  Analyzing pages 1–3 [R&W]...
+2026-03-09 18:06:23 [INFO]     ✅ RW_Q1
+2026-03-09 18:06:23 [INFO]     ✅ RW_Q2
+2026-03-09 18:06:23 [INFO]     ✅ RW_Q3
+2026-03-09 18:06:23 [INFO]     ✅ RW_Q4
+2026-03-09 18:06:23 [INFO]     ✅ RW_Q5
+2026-03-09 18:06:23 [INFO]     ✅ RW_Q6
+2026-03-09 18:06:23 [INFO]     ✅ RW_Q7
+2026-03-09 18:06:23 [INFO]     ✅ RW_Q8
+2026-03-09 18:06:23 [INFO]     ✅ RW_Q9
+2026-03-09 18:06:23 [INFO]     ✅ RW_Q10
+2026-03-09 18:06:23 [INFO]     ✅ RW_Q11
+2026-03-09 18:06:24 [INFO] 
+  🕵️  Analyzing pages 4–6 [R&W]...
+2026-03-09 18:06:40 [INFO]     ✅ RW_Q11
+2026-03-09 18:06:40 [INFO]     ✅ RW_Q12
+2026-03-09 18:06:40 [INFO]       📸 Image flagged for M?_Q12 (no upload)
+2026-03-09 18:06:40 [INFO]     ✅ RW_Q13
+2026-03-09 18:06:40 [INFO]       📸 Image flagged for M?_Q13 (no upload)
+2026-03-09 18:06:40 [INFO]     ✅ RW_Q14
+2026-03-09 18:06:40 [INFO]     ✅ RW_Q15
+2026-03-09 18:06:40 [INFO]     ✅ RW_Q16
+2026-03-09 18:06:40 [INFO]     ✅ RW_Q17
+2026-03-09 18:06:41 [INFO] 
+  🕵️  Analyzing pages 7–9 [R&W]...
+2026-03-09 18:07:02 [INFO]     ✅ RW_Q18
+2026-03-09 18:07:02 [INFO]     ✅ RW_Q19
+2026-03-09 18:07:02 [INFO]     ✅ RW_Q20
+2026-03-09 18:07:02 [INFO]     ✅ RW_Q21
+2026-03-09 18:07:02 [INFO]     ✅ RW_Q22
+2026-03-09 18:07:02 [INFO]     ✅ RW_Q23
+2026-03-09 18:07:02 [INFO]     ✅ RW_Q24
+2026-03-09 18:07:02 [INFO]     ✅ RW_Q25
+2026-03-09 18:07:02 [INFO]     ✅ RW_Q26
+2026-03-09 18:07:03 [INFO] 
+  🕵️  Analyzing pages 10–12 [R&W]...
+2026-03-09 18:07:07 [INFO]     ✅ RW_Q27
+2026-03-09 18:07:08 [INFO] 
+  🕵️  Analyzing pages 13–15 [R&W]...
+2026-03-09 18:07:28 [INFO]     ✅ RW_Q6
+2026-03-09 18:07:28 [INFO]     ✅ RW_Q7
+2026-03-09 18:07:28 [INFO]     ✅ RW_Q8
+2026-03-09 18:07:28 [INFO]     ✅ RW_Q9
+2026-03-09 18:07:28 [INFO]     ✅ RW_Q10
+2026-03-09 18:07:28 [INFO]     ✅ RW_Q11
+2026-03-09 18:07:28 [INFO]     ✅ RW_Q12
+2026-03-09 18:07:29 [INFO] 
+  🕵️  Analyzing pages 16–18 [R&W]...
+2026-03-09 18:07:49 [INFO]     ✅ RW_Q13
+2026-03-09 18:07:49 [INFO]     ✅ RW_Q14
+2026-03-09 18:07:49 [INFO]     ✅ RW_Q15
+2026-03-09 18:07:49 [INFO]     ✅ RW_Q16
+2026-03-09 18:07:49 [INFO]     ✅ RW_Q17
+2026-03-09 18:07:49 [INFO]     ✅ RW_Q18
+2026-03-09 18:07:49 [INFO]     ✅ RW_Q19
+2026-03-09 18:07:49 [INFO]     ✅ RW_Q20
+2026-03-09 18:07:49 [INFO]     ✅ RW_Q21
+2026-03-09 18:07:50 [INFO] 
+  🕵️  Analyzing pages 19–21 [R&W]...
+2026-03-09 18:08:11 [INFO]     ✅ RW_Q21
+2026-03-09 18:08:11 [INFO]     ✅ RW_Q22
+2026-03-09 18:08:11 [INFO]     ✅ RW_Q23
+2026-03-09 18:08:11 [INFO]     ✅ RW_Q24
+2026-03-09 18:08:11 [INFO]     ✅ RW_Q25
+2026-03-09 18:08:11 [INFO]     ✅ RW_Q26
+2026-03-09 18:08:11 [INFO]     ✅ RW_Q27
+2026-03-09 18:08:12 [INFO] 
+  🕵️  Analyzing pages 22–24 [MATH]...
+2026-03-09 18:08:58 [INFO]   ⚠️  JSON Parse Error (Attempt 1): Unterminated string starting at: line 94 column 20 (char 5541)
+2026-03-09 18:09:42 [INFO]   ⚠️  JSON Parse Error (Attempt 2): Unterminated string starting at: line 94 column 20 (char 5772)
+2026-03-09 18:10:24 [INFO]     ✅ MATH_Q1
+2026-03-09 18:10:24 [INFO]     ✅ MATH_Q2
+2026-03-09 18:10:24 [INFO]     ✅ MATH_Q3
+2026-03-09 18:10:24 [INFO]     ✅ MATH_Q4
+2026-03-09 18:10:24 [INFO]     ✅ MATH_Q5
+2026-03-09 18:10:24 [INFO]       📸 Image flagged for M?_Q5 (no upload)
+2026-03-09 18:10:24 [INFO]     ✅ MATH_Q6
+2026-03-09 18:10:24 [INFO]     ✅ MATH_Q7
+2026-03-09 18:10:24 [INFO]     ✅ MATH_Q8
+2026-03-09 18:10:24 [INFO]     ✅ MATH_Q9
+2026-03-09 18:10:24 [INFO]     ✅ MATH_Q10
+2026-03-09 18:10:24 [INFO]     ✅ MATH_Q11
+2026-03-09 18:10:24 [INFO]     ✅ MATH_Q12
+2026-03-09 18:10:24 [INFO]     ✅ MATH_Q13
+2026-03-09 18:10:24 [INFO]     ✅ MATH_Q14
+2026-03-09 18:10:24 [INFO]       📸 Image flagged for M?_Q14 (no upload)
+2026-03-09 18:10:24 [INFO]     ✅ MATH_Q15
+2026-03-09 18:10:24 [INFO]       📸 Image flagged for M?_Q15 (no upload)
+2026-03-09 18:10:24 [INFO]     ✅ MATH_Q16
+2026-03-09 18:10:25 [INFO] 
+  🕵️  Analyzing pages 25–27 [MATH]...
+2026-03-09 18:11:10 [INFO]   ⚠️  JSON Parse Error (Attempt 1): Expecting ',' delimiter: line 6 column 177 (char 253)
+2026-03-09 18:12:01 [INFO]   ⚠️  JSON Parse Error (Attempt 2): Expecting ',' delimiter: line 6 column 177 (char 253)
+2026-03-09 18:12:53 [INFO]   ⚠️  JSON Parse Error (Attempt 3): Expecting ',' delimiter: line 6 column 177 (char 253)
+2026-03-09 18:12:53 [INFO]     ⚠️  No questions found for pages 25–27
+2026-03-09 18:12:54 [INFO] 
+  🧠 Assigning modules (67 raw questions)...
+2026-03-09 18:12:54 [INFO]   Section split → RW: 51, Math: 16, Unknown: 0
+2026-03-09 18:12:54 [INFO]   RW: No restart detected → all 51 Qs → Module 1
+2026-03-09 18:12:54 [INFO]   Math: No restart detected → all 16 Qs → Module 3
+2026-03-09 18:12:54 [INFO]   🧹 Deduplicating...
+2026-03-09 18:12:54 [INFO] 
+  🔍 Agent 1: Completeness Check...
+2026-03-09 18:12:54 [INFO]     ✅ Module 1 (R&W): 27/27 — complete!
+2026-03-09 18:12:54 [INFO]     ⚠️  Module 2 (R&W): 0/27 — missing [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
+2026-03-09 18:12:54 [INFO]     ⚠️  Module 3 (Math): 16/22 — missing [17, 18, 19, 20, 21, 22]
+2026-03-09 18:12:54 [INFO]     ⚠️  Module 4 (Math): 0/22 — missing [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+2026-03-09 18:12:54 [INFO]     📊 Total: 43 found, 55 missing
+2026-03-09 18:12:54 [INFO] 
+  🔧 Agent 2: Filling 6 gaps...
+2026-03-09 18:12:54 [INFO]     🔎 Searching for M2_Q1 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:12:59 [INFO]     ✅ Recovered M2_Q1 from page 8
+2026-03-09 18:12:59 [INFO]     🔎 Searching for M2_Q2 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:13:03 [INFO]     ✅ Recovered M2_Q2 from page 8
+2026-03-09 18:13:03 [INFO]     🔎 Searching for M2_Q3 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:13:10 [INFO]     ✅ Recovered M2_Q3 from page 8
+2026-03-09 18:13:10 [INFO]     🔎 Searching for M2_Q4 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:13:16 [INFO]     ✅ Recovered M2_Q4 from page 8
+2026-03-09 18:13:16 [INFO]     🔎 Searching for M2_Q5 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:13:25 [INFO]     ✅ Recovered M2_Q5 from page 8
+2026-03-09 18:13:25 [INFO]     🔎 Searching for M2_Q6 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:13:29 [INFO]     ✅ Recovered M2_Q6 from page 9
+2026-03-09 18:13:29 [INFO]     🔎 Searching for M2_Q7 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:13:34 [INFO]     ✅ Recovered M2_Q7 from page 9
+2026-03-09 18:13:34 [INFO]     🔎 Searching for M2_Q8 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:13:39 [INFO]     ✅ Recovered M2_Q8 from page 10
+2026-03-09 18:13:39 [INFO]     🔎 Searching for M2_Q9 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:13:44 [INFO]     ✅ Recovered M2_Q9 from page 10
+2026-03-09 18:13:44 [INFO]     🔎 Searching for M2_Q10 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:13:49 [INFO]     ✅ Recovered M2_Q10 from page 10
+2026-03-09 18:13:49 [INFO]     🔎 Searching for M2_Q11 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:13:54 [INFO]     ✅ Recovered M2_Q11 from page 10
+2026-03-09 18:13:54 [INFO]     🔎 Searching for M2_Q12 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:14:04 [INFO]     ✅ Recovered M2_Q12 from page 8
+2026-03-09 18:14:04 [INFO]     🔎 Searching for M2_Q13 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:14:13 [INFO]     ✅ Recovered M2_Q13 from page 8
+2026-03-09 18:14:13 [INFO]     🔎 Searching for M2_Q14 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:14:23 [INFO]     ✅ Recovered M2_Q14 from page 8
+2026-03-09 18:14:23 [INFO]     🔎 Searching for M2_Q15 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:14:33 [INFO]     ✅ Recovered M2_Q15 from page 8
+2026-03-09 18:14:33 [INFO]     🔎 Searching for M2_Q16 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:14:45 [INFO]     ✅ Recovered M2_Q16 from page 9
+2026-03-09 18:14:45 [INFO]     🔎 Searching for M2_Q17 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:14:54 [INFO]     ✅ Recovered M2_Q17 from page 8
+2026-03-09 18:14:54 [INFO]     🔎 Searching for M2_Q18 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:15:00 [INFO]     ✅ Recovered M2_Q18 from page 12
+2026-03-09 18:15:00 [INFO]     🔎 Searching for M2_Q19 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:15:07 [INFO]     ✅ Recovered M2_Q19 from page 13
+2026-03-09 18:15:07 [INFO]     🔎 Searching for M2_Q20 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:15:13 [INFO]     ✅ Recovered M2_Q20 from page 13
+2026-03-09 18:15:13 [INFO]     🔎 Searching for M2_Q21 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:15:18 [INFO]     ✅ Recovered M2_Q21 from page 13
+2026-03-09 18:15:18 [INFO]     🔎 Searching for M2_Q22 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:15:24 [INFO]     ✅ Recovered M2_Q22 from page 14
+2026-03-09 18:15:24 [INFO]     🔎 Searching for M2_Q23 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:15:31 [INFO]     ✅ Recovered M2_Q23 from page 14
+2026-03-09 18:15:31 [INFO]     🔎 Searching for M2_Q24 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:15:37 [INFO]     ✅ Recovered M2_Q24 from page 14
+2026-03-09 18:15:37 [INFO]     🔎 Searching for M2_Q25 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:15:43 [INFO]     ✅ Recovered M2_Q25 from page 14
+2026-03-09 18:15:43 [INFO]     🔎 Searching for M2_Q26 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:15:49 [INFO]     ✅ Recovered M2_Q26 from page 15
+2026-03-09 18:15:49 [INFO]     🔎 Searching for M2_Q27 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:15:59 [INFO]     ✅ Recovered M2_Q27 from page 8
+2026-03-09 18:15:59 [INFO]     🔎 Searching for M3_Q17 in pages [16, 17, 18, 19, 20, 21, 22, 23]...
+2026-03-09 18:15:59 [INFO] Traceback (most recent call last):
+
+2026-03-09 18:15:59 [INFO]   File "/home/sadrikov49/Desktop/ALFA SAT PROJECT/ALFA_SAT/../llm-pipeline/pipeline.py", line 892, in <module>
+    process_pdf(
+
+2026-03-09 18:15:59 [INFO]   File "/home/sadrikov49/Desktop/ALFA SAT PROJECT/ALFA_SAT/../llm-pipeline/pipeline.py", line 752, in process_pdf
+    recovered = agent2_fill_gaps(
+                ^^^^^^^^^^^^^^^^^
+
+2026-03-09 18:15:59 [INFO]   File "/home/sadrikov49/Desktop/ALFA SAT PROJECT/llm-pipeline/quality_agents.py", line 190, in agent2_fill_gaps
+    prompt = GAP_FILL_PROMPT_MATH.format(q_num=q_num, module=mod)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+2026-03-09 18:15:59 [INFO] IndexError: Replacement index 1 out of range for positional args tuple
+
+2026-03-09 18:15:59 [ERROR] 💥 Uncaught exception:
+2026-03-09 18:15:59 [INFO] Traceback (most recent call last):
+
+2026-03-09 18:15:59 [INFO]   File "/home/sadrikov49/Desktop/ALFA SAT PROJECT/ALFA_SAT/../llm-pipeline/pipeline.py", line 892, in <module>
+    process_pdf(
+
+2026-03-09 18:15:59 [INFO]   File "/home/sadrikov49/Desktop/ALFA SAT PROJECT/ALFA_SAT/../llm-pipeline/pipeline.py", line 752, in process_pdf
+    recovered = agent2_fill_gaps(
+                ^^^^^^^^^^^^^^^^^
+
+2026-03-09 18:15:59 [INFO]   File "/home/sadrikov49/Desktop/ALFA SAT PROJECT/llm-pipeline/quality_agents.py", line 190, in agent2_fill_gaps
+    prompt = GAP_FILL_PROMPT_MATH.format(q_num=q_num, module=mod)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+2026-03-09 18:15:59 [INFO] IndexError: Replacement index 1 out of range for positional args tuple
+
+2026-03-09 18:16:25 [INFO] 🚀 ALFA SAT Pipeline — Gemini 2.5 Flash
+2026-03-09 18:16:25 [INFO]    Model: gemini-2.0-flash
+2026-03-09 18:16:25 [INFO]    API Keys: 1 available
+2026-03-09 18:16:25 [INFO]    DPI: 300
+2026-03-09 18:16:25 [INFO] 
+============================================================
+2026-03-09 18:16:25 [INFO] 📄 Processing: 2025 Nov US-A (V3 Final Fixed)
+2026-03-09 18:16:25 [INFO] 📁 Path: /home/sadrikov49/Desktop/ALFA SAT PROJECT/pdfs/2025 Nov US-A @EliteXSAT.pdf
+2026-03-09 18:16:25 [INFO] 🆔 Test ID: test_v3_final_fixed_v2
+2026-03-09 18:16:25 [INFO] 🔥 LIVE — will write to Firestore
+2026-03-09 18:16:25 [INFO] ============================================================
+2026-03-09 18:16:50 [INFO]   → Rendered 27 pages at 300 DPI
+2026-03-09 18:16:50 [INFO]   🗺️ Built page map: Pivot at page 22
+2026-03-09 18:16:50 [INFO] 
+  🕵️  Analyzing pages 1–3 [R&W]...
+2026-03-09 18:17:16 [INFO]     ✅ RW_Q1
+2026-03-09 18:17:16 [INFO]     ✅ RW_Q2
+2026-03-09 18:17:16 [INFO]     ✅ RW_Q3
+2026-03-09 18:17:16 [INFO]     ✅ RW_Q4
+2026-03-09 18:17:16 [INFO]     ✅ RW_Q5
+2026-03-09 18:17:16 [INFO]     ✅ RW_Q6
+2026-03-09 18:17:16 [INFO]     ✅ RW_Q7
+2026-03-09 18:17:16 [INFO]     ✅ RW_Q8
+2026-03-09 18:17:16 [INFO]     ✅ RW_Q9
+2026-03-09 18:17:16 [INFO]     ✅ RW_Q10
+2026-03-09 18:17:16 [INFO]     ✅ RW_Q11
+2026-03-09 18:17:17 [INFO] 
+  🕵️  Analyzing pages 4–6 [R&W]...
+2026-03-09 18:17:35 [INFO]     ✅ RW_Q11
+2026-03-09 18:17:35 [INFO]     ✅ RW_Q12
+2026-03-09 18:17:35 [INFO]       📸 Image flagged for M?_Q12 (no upload)
+2026-03-09 18:17:35 [INFO]     ✅ RW_Q13
+2026-03-09 18:17:35 [INFO]       📸 Image flagged for M?_Q13 (no upload)
+2026-03-09 18:17:35 [INFO]     ✅ RW_Q14
+2026-03-09 18:17:35 [INFO]     ✅ RW_Q15
+2026-03-09 18:17:35 [INFO]     ✅ RW_Q16
+2026-03-09 18:17:35 [INFO]     ✅ RW_Q17
+2026-03-09 18:17:36 [INFO] 
+  🕵️  Analyzing pages 7–9 [R&W]...
+2026-03-09 18:17:56 [INFO]     ✅ RW_Q18
+2026-03-09 18:17:56 [INFO]     ✅ RW_Q19
+2026-03-09 18:17:56 [INFO]     ✅ RW_Q20
+2026-03-09 18:17:56 [INFO]     ✅ RW_Q21
+2026-03-09 18:17:56 [INFO]     ✅ RW_Q22
+2026-03-09 18:17:56 [INFO]     ✅ RW_Q23
+2026-03-09 18:17:56 [INFO]     ✅ RW_Q24
+2026-03-09 18:17:56 [INFO]     ✅ RW_Q25
+2026-03-09 18:17:56 [INFO]     ✅ RW_Q26
+2026-03-09 18:17:57 [INFO] 
+  🕵️  Analyzing pages 10–12 [R&W]...
+2026-03-09 18:18:02 [INFO]     ✅ RW_Q27
+2026-03-09 18:18:03 [INFO] 
+  🕵️  Analyzing pages 13–15 [R&W]...
+2026-03-09 18:18:26 [INFO]     ✅ RW_Q6
+2026-03-09 18:18:26 [INFO]     ✅ RW_Q7
+2026-03-09 18:18:26 [INFO]     ✅ RW_Q8
+2026-03-09 18:18:26 [INFO]     ✅ RW_Q9
+2026-03-09 18:18:26 [INFO]     ✅ RW_Q10
+2026-03-09 18:18:26 [INFO]     ✅ RW_Q11
+2026-03-09 18:18:26 [INFO]     ✅ RW_Q12
+2026-03-09 18:18:27 [INFO] 
+  🕵️  Analyzing pages 16–18 [R&W]...
+2026-03-09 18:18:48 [INFO]     ✅ RW_Q13
+2026-03-09 18:18:48 [INFO]     ✅ RW_Q14
+2026-03-09 18:18:48 [INFO]     ✅ RW_Q15
+2026-03-09 18:18:48 [INFO]     ✅ RW_Q16
+2026-03-09 18:18:48 [INFO]     ✅ RW_Q17
+2026-03-09 18:18:48 [INFO]     ✅ RW_Q18
+2026-03-09 18:18:48 [INFO]     ✅ RW_Q19
+2026-03-09 18:18:48 [INFO]     ✅ RW_Q20
+2026-03-09 18:18:48 [INFO]     ✅ RW_Q21
+2026-03-09 18:18:49 [INFO] 
+  🕵️  Analyzing pages 19–21 [R&W]...
+2026-03-09 18:19:10 [INFO]     ✅ RW_Q21
+2026-03-09 18:19:10 [INFO]     ✅ RW_Q22
+2026-03-09 18:19:10 [INFO]     ✅ RW_Q23
+2026-03-09 18:19:10 [INFO]     ✅ RW_Q24
+2026-03-09 18:19:10 [INFO]     ✅ RW_Q25
+2026-03-09 18:19:10 [INFO]     ✅ RW_Q26
+2026-03-09 18:19:10 [INFO]     ✅ RW_Q27
+2026-03-09 18:19:11 [INFO] 
+  🕵️  Analyzing pages 22–24 [MATH]...
+2026-03-09 18:20:03 [INFO]   ⚠️  JSON Parse Error (Attempt 1): Unterminated string starting at: line 360 column 20 (char 24152)
+2026-03-09 18:20:54 [INFO]   ⚠️  JSON Parse Error (Attempt 2): Unterminated string starting at: line 302 column 20 (char 24851)
+2026-03-09 18:21:39 [INFO]     ✅ MATH_Q1
+2026-03-09 18:21:39 [INFO]     ✅ MATH_Q2
+2026-03-09 18:21:39 [INFO]     ✅ MATH_Q3
+2026-03-09 18:21:39 [INFO]     ✅ MATH_Q4
+2026-03-09 18:21:39 [INFO]     ✅ MATH_Q5
+2026-03-09 18:21:39 [INFO]       📸 Image flagged for M?_Q5 (no upload)
+2026-03-09 18:21:39 [INFO]     ✅ MATH_Q6
+2026-03-09 18:21:39 [INFO]     ✅ MATH_Q7
+2026-03-09 18:21:39 [INFO]     ✅ MATH_Q8
+2026-03-09 18:21:39 [INFO]     ✅ MATH_Q9
+2026-03-09 18:21:39 [INFO]     ✅ MATH_Q10
+2026-03-09 18:21:39 [INFO]     ✅ MATH_Q11
+2026-03-09 18:21:39 [INFO]     ✅ MATH_Q12
+2026-03-09 18:21:39 [INFO]     ✅ MATH_Q13
+2026-03-09 18:21:39 [INFO]     ✅ MATH_Q14
+2026-03-09 18:21:39 [INFO]       📸 Image flagged for M?_Q14 (no upload)
+2026-03-09 18:21:39 [INFO]     ✅ MATH_Q15
+2026-03-09 18:21:39 [INFO]       📸 Image flagged for M?_Q15 (no upload)
+2026-03-09 18:21:39 [INFO]     ✅ MATH_Q16
+2026-03-09 18:21:40 [INFO] 
+  🕵️  Analyzing pages 25–27 [MATH]...
+2026-03-09 18:22:32 [INFO]   ⚠️  JSON Parse Error (Attempt 1): Expecting ',' delimiter: line 6 column 177 (char 253)
+2026-03-09 18:23:26 [INFO]   ⚠️  JSON Parse Error (Attempt 2): Expecting ',' delimiter: line 6 column 177 (char 253)
+2026-03-09 18:24:19 [INFO]   ⚠️  JSON Parse Error (Attempt 3): Expecting ',' delimiter: line 6 column 177 (char 253)
+2026-03-09 18:24:19 [INFO]     ⚠️  No questions found for pages 25–27
+2026-03-09 18:24:20 [INFO] 
+  🧠 Assigning modules (67 raw questions)...
+2026-03-09 18:24:20 [INFO]   Section split → RW: 51, Math: 16, Unknown: 0
+2026-03-09 18:24:20 [INFO]   RW: No restart detected → all 51 Qs → Module 1
+2026-03-09 18:24:20 [INFO]   Math: No restart detected → all 16 Qs → Module 3
+2026-03-09 18:24:20 [INFO]   🧹 Deduplicating...
+2026-03-09 18:24:20 [INFO] 
+  🔍 Agent 1: Completeness Check...
+2026-03-09 18:24:20 [INFO]     ✅ Module 1 (R&W): 27/27 — complete!
+2026-03-09 18:24:20 [INFO]     ⚠️  Module 2 (R&W): 0/27 — missing [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
+2026-03-09 18:24:20 [INFO]     ⚠️  Module 3 (Math): 16/22 — missing [17, 18, 19, 20, 21, 22]
+2026-03-09 18:24:20 [INFO]     ⚠️  Module 4 (Math): 0/22 — missing [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+2026-03-09 18:24:20 [INFO]     📊 Total: 43 found, 55 missing
+2026-03-09 18:24:20 [INFO] 
+  🔧 Agent 2: Filling 6 gaps...
+2026-03-09 18:24:20 [INFO]     🔎 Searching for M2_Q1 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:24:25 [INFO]     ✅ Recovered M2_Q1 from page 8
+2026-03-09 18:24:25 [INFO]     🔎 Searching for M2_Q2 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:24:29 [INFO]     ✅ Recovered M2_Q2 from page 8
+2026-03-09 18:24:29 [INFO]     🔎 Searching for M2_Q3 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:24:36 [INFO]     ✅ Recovered M2_Q3 from page 8
+2026-03-09 18:24:36 [INFO]     🔎 Searching for M2_Q4 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:24:42 [INFO]     ✅ Recovered M2_Q4 from page 8
+2026-03-09 18:24:42 [INFO]     🔎 Searching for M2_Q5 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:24:51 [INFO]     ✅ Recovered M2_Q5 from page 8
+2026-03-09 18:24:51 [INFO]     🔎 Searching for M2_Q6 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:24:55 [INFO]     ✅ Recovered M2_Q6 from page 9
+2026-03-09 18:24:55 [INFO]     🔎 Searching for M2_Q7 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:25:00 [INFO]     ✅ Recovered M2_Q7 from page 9
+2026-03-09 18:25:00 [INFO]     🔎 Searching for M2_Q8 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:25:05 [INFO]     ✅ Recovered M2_Q8 from page 10
+2026-03-09 18:25:05 [INFO]     🔎 Searching for M2_Q9 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:25:10 [INFO]     ✅ Recovered M2_Q9 from page 10
+2026-03-09 18:25:10 [INFO]     🔎 Searching for M2_Q10 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:25:15 [INFO]     ✅ Recovered M2_Q10 from page 10
+2026-03-09 18:25:15 [INFO]     🔎 Searching for M2_Q11 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:25:20 [INFO]     ✅ Recovered M2_Q11 from page 10
+2026-03-09 18:25:20 [INFO]     🔎 Searching for M2_Q12 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:25:31 [INFO]     ✅ Recovered M2_Q12 from page 8
+2026-03-09 18:25:31 [INFO]     🔎 Searching for M2_Q13 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:25:40 [INFO]     ✅ Recovered M2_Q13 from page 8
+2026-03-09 18:25:40 [INFO]     🔎 Searching for M2_Q14 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:25:50 [INFO]     ✅ Recovered M2_Q14 from page 8
+2026-03-09 18:25:50 [INFO]     🔎 Searching for M2_Q15 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:25:59 [INFO]     ✅ Recovered M2_Q15 from page 8
+2026-03-09 18:25:59 [INFO]     🔎 Searching for M2_Q16 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:26:11 [INFO]     ✅ Recovered M2_Q16 from page 9
+2026-03-09 18:26:11 [INFO]     🔎 Searching for M2_Q17 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:26:20 [INFO]     ✅ Recovered M2_Q17 from page 8
+2026-03-09 18:26:20 [INFO]     🔎 Searching for M2_Q18 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:26:26 [INFO]     ✅ Recovered M2_Q18 from page 12
+2026-03-09 18:26:26 [INFO]     🔎 Searching for M2_Q19 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:26:32 [INFO]     ✅ Recovered M2_Q19 from page 13
+2026-03-09 18:26:32 [INFO]     🔎 Searching for M2_Q20 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:26:38 [INFO]     ✅ Recovered M2_Q20 from page 13
+2026-03-09 18:26:38 [INFO]     🔎 Searching for M2_Q21 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:26:43 [INFO]     ✅ Recovered M2_Q21 from page 13
+2026-03-09 18:26:43 [INFO]     🔎 Searching for M2_Q22 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:26:49 [INFO]     ✅ Recovered M2_Q22 from page 14
+2026-03-09 18:26:49 [INFO]     🔎 Searching for M2_Q23 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:26:55 [INFO]     ✅ Recovered M2_Q23 from page 14
+2026-03-09 18:26:55 [INFO]     🔎 Searching for M2_Q24 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:27:00 [INFO]     ✅ Recovered M2_Q24 from page 14
+2026-03-09 18:27:00 [INFO]     🔎 Searching for M2_Q25 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:27:06 [INFO]     ✅ Recovered M2_Q25 from page 14
+2026-03-09 18:27:06 [INFO]     🔎 Searching for M2_Q26 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:27:12 [INFO]     ✅ Recovered M2_Q26 from page 15
+2026-03-09 18:27:12 [INFO]     🔎 Searching for M2_Q27 in pages [8, 9, 10, 11, 12, 13, 14, 15, 16]...
+2026-03-09 18:27:22 [INFO]     ✅ Recovered M2_Q27 from page 8
+2026-03-09 18:27:22 [INFO]     🔎 Searching for M3_Q17 in pages [16, 17, 18, 19, 20, 21, 22, 23]...
+2026-03-09 18:27:34 [INFO]     ✅ Recovered M3_Q17 from page 17
+2026-03-09 18:27:34 [INFO]     🔎 Searching for M3_Q18 in pages [16, 17, 18, 19, 20, 21, 22, 23]...
+2026-03-09 18:27:52 [INFO]     ✅ Recovered M3_Q18 from page 18
+2026-03-09 18:27:52 [INFO]     🔎 Searching for M3_Q19 in pages [16, 17, 18, 19, 20, 21, 22, 23]...
+2026-03-09 18:28:08 [INFO]     ✅ Recovered M3_Q19 from page 18
+2026-03-09 18:28:08 [INFO]     🔎 Searching for M3_Q20 in pages [16, 17, 18, 19, 20, 21, 22, 23]...
+2026-03-09 18:28:24 [INFO]     ✅ Recovered M3_Q20 from page 18
+2026-03-09 18:28:24 [INFO]     🔎 Searching for M3_Q21 in pages [16, 17, 18, 19, 20, 21, 22, 23]...
+2026-03-09 18:28:59 [INFO]     ✅ Recovered M3_Q21 from page 23
+2026-03-09 18:28:59 [INFO]     🔎 Searching for M3_Q22 in pages [16, 17, 18, 19, 20, 21, 22, 23]...
+2026-03-09 18:29:19 [INFO]     ✅ Recovered M3_Q22 from page 19
+2026-03-09 18:29:19 [INFO]     🔎 Searching for M4_Q1 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:29:24 [INFO]     ✅ Recovered M4_Q1 from page 23
+2026-03-09 18:29:24 [INFO]     🔎 Searching for M4_Q2 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:29:30 [INFO]   ⚠️  JSON Parse Error (Attempt 1): Expecting ',' delimiter: line 6 column 116 (char 193)
+2026-03-09 18:29:36 [INFO]   ⚠️  JSON Parse Error (Attempt 2): Expecting ',' delimiter: line 6 column 116 (char 193)
+2026-03-09 18:29:42 [INFO]   ⚠️  JSON Parse Error (Attempt 3): Expecting ',' delimiter: line 6 column 116 (char 193)
+2026-03-09 18:29:50 [INFO]     ✅ Recovered M4_Q2 from page 24
+2026-03-09 18:29:50 [INFO]     🔎 Searching for M4_Q3 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:29:54 [INFO]     ✅ Recovered M4_Q3 from page 23
+2026-03-09 18:29:54 [INFO]     🔎 Searching for M4_Q4 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:30:00 [INFO]     ✅ Recovered M4_Q4 from page 23
+2026-03-09 18:30:00 [INFO]     🔎 Searching for M4_Q5 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:30:06 [INFO]     ✅ Recovered M4_Q5 from page 24
+2026-03-09 18:30:06 [INFO]     🔎 Searching for M4_Q6 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:30:13 [INFO]     ✅ Recovered M4_Q6 from page 24
+2026-03-09 18:30:13 [INFO]     🔎 Searching for M4_Q7 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:30:17 [INFO]     ✅ Recovered M4_Q7 from page 24
+2026-03-09 18:30:17 [INFO]     🔎 Searching for M4_Q8 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:30:23 [INFO]     ✅ Recovered M4_Q8 from page 25
+2026-03-09 18:30:23 [INFO]     🔎 Searching for M4_Q9 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:30:28 [INFO]     ✅ Recovered M4_Q9 from page 25
+2026-03-09 18:30:28 [INFO]     🔎 Searching for M4_Q10 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:30:38 [INFO]   ⚠️  JSON Parse Error (Attempt 1): Expecting ',' delimiter: line 6 column 102 (char 179)
+2026-03-09 18:30:44 [INFO]   ⚠️  JSON Parse Error (Attempt 2): Expecting ',' delimiter: line 6 column 102 (char 179)
+2026-03-09 18:30:50 [INFO]   ⚠️  JSON Parse Error (Attempt 3): Expecting ',' delimiter: line 6 column 102 (char 179)
+2026-03-09 18:30:56 [INFO]     ✅ Recovered M4_Q10 from page 24
+2026-03-09 18:30:56 [INFO]     🔎 Searching for M4_Q11 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:31:05 [INFO]     ✅ Recovered M4_Q11 from page 23
+2026-03-09 18:31:05 [INFO]     🔎 Searching for M4_Q12 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:31:10 [INFO]     ✅ Recovered M4_Q12 from page 26
+2026-03-09 18:31:10 [INFO]     🔎 Searching for M4_Q13 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:31:22 [INFO]     ✅ Recovered M4_Q13 from page 26
+2026-03-09 18:31:22 [INFO]     🔎 Searching for M4_Q14 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:31:26 [INFO]     ✅ Recovered M4_Q14 from page 26
+2026-03-09 18:31:26 [INFO]     🔎 Searching for M4_Q15 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:31:35 [INFO]     ✅ Recovered M4_Q15 from page 23
+2026-03-09 18:31:35 [INFO]     🔎 Searching for M4_Q16 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:31:39 [INFO]     ✅ Recovered M4_Q16 from page 27
+2026-03-09 18:31:39 [INFO]     🔎 Searching for M4_Q17 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:31:45 [INFO]   ⚠️  JSON Parse Error (Attempt 1): Expecting ',' delimiter: line 5 column 71 (char 129)
+2026-03-09 18:31:49 [INFO]   ⚠️  JSON Parse Error (Attempt 2): Expecting ',' delimiter: line 5 column 71 (char 129)
+2026-03-09 18:31:54 [INFO]   ⚠️  JSON Parse Error (Attempt 3): Expecting ',' delimiter: line 5 column 71 (char 129)
+2026-03-09 18:32:08 [INFO]     ✅ Recovered M4_Q17 from page 24
+2026-03-09 18:32:08 [INFO]     🔎 Searching for M4_Q18 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:32:14 [INFO]     ✅ Recovered M4_Q18 from page 27
+2026-03-09 18:32:14 [INFO]     🔎 Searching for M4_Q19 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:32:19 [INFO]     ✅ Recovered M4_Q19 from page 27
+2026-03-09 18:32:19 [INFO]     🔎 Searching for M4_Q20 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:32:24 [INFO]     ✅ Recovered M4_Q20 from page 27
+2026-03-09 18:32:24 [INFO]     🔎 Searching for M4_Q21 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:32:30 [INFO]     ✅ Recovered M4_Q21 from page 27
+2026-03-09 18:32:30 [INFO]     🔎 Searching for M4_Q22 in pages [23, 24, 25, 26, 27]...
+2026-03-09 18:32:35 [INFO]     ✅ Recovered M4_Q22 from page 27
+2026-03-09 18:32:35 [INFO]     📊 Recovered 55 out of 6 missing questions
+2026-03-09 18:32:35 [INFO]   📊 After gap filling: 98 total questions
+2026-03-09 18:32:35 [INFO] 
+  🔎 Agent 3: Quality Validation...
+2026-03-09 18:32:35 [INFO]     ❌ M3_Q14: FAIL: Empty prompt
+2026-03-09 18:32:35 [INFO]     ❌ M2_Q26: FAIL: Empty option D
+2026-03-09 18:32:35 [INFO]     ❌ M3_Q18: FAIL: Missing domain, FAIL: Missing skill
+2026-03-09 18:32:35 [INFO]     ❌ M4_Q2: FAIL: Missing domain, FAIL: Missing skill
+2026-03-09 18:32:35 [INFO]     ❌ M4_Q7: FAIL: Missing domain, FAIL: Missing skill
+2026-03-09 18:32:35 [INFO]     ❌ M4_Q12: FAIL: Missing domain, FAIL: Missing skill
+2026-03-09 18:32:35 [INFO]     ❌ M4_Q14: FAIL: Missing domain, FAIL: Missing skill
+2026-03-09 18:32:35 [INFO]     ❌ M4_Q16: FAIL: Empty fill-in answer
+2026-03-09 18:32:35 [INFO]     ❌ M4_Q19: FAIL: Empty fill-in answer
+2026-03-09 18:32:35 [INFO] 
+    📊 Quality Report: ✅ 89 pass, ⚠️ 0 warnings, ❌ 9 failures
+2026-03-09 18:32:35 [INFO]   📝 Failed questions saved: ../llm-pipeline/output/failed/test_v3_final_fixed_v2_failed.jsonl (9 questions)
+2026-03-09 18:32:35 [INFO] 
+  🔎 Schema-validating 89 questions...
+2026-03-09 18:32:35 [INFO]   ⚠️  62 questions failed schema validation:
+2026-03-09 18:32:35 [INFO]       M1_Q6: Invalid domain for module 1: 'Command of Evidence'
+2026-03-09 18:32:35 [INFO]       M1_Q7: Invalid domain for module 1: 'Command of Evidence'
+2026-03-09 18:32:35 [INFO]       M1_Q8: Invalid domain for module 1: 'Cross-Text Connections'
+2026-03-09 18:32:35 [INFO]       M1_Q11: Invalid domain for module 1: 'Command of Evidence'
+2026-03-09 18:32:35 [INFO]       M1_Q14: Invalid domain for module 1: 'Command of Evidence'
+2026-03-09 18:32:35 [INFO]       M1_Q15: Invalid domain for module 1: 'Form, Structure, and Sense'
+2026-03-09 18:32:35 [INFO]       M1_Q16: Invalid domain for module 1: 'Boundaries'
+2026-03-09 18:32:35 [INFO]       M1_Q17: Invalid domain for module 1: 'Form, Structure, and Sense'
+2026-03-09 18:32:35 [INFO]       M1_Q21: Invalid domain for module 1: 'Transitions'
+2026-03-09 18:32:35 [INFO]       M1_Q22: Invalid domain for module 1: 'Transitions'
+2026-03-09 18:32:35 [INFO]       M1_Q23: Invalid domain for module 1: 'Rhetorical Synthesis'
+2026-03-09 18:32:35 [INFO]       M1_Q24: Invalid domain for module 1: 'Rhetorical Synthesis'
+2026-03-09 18:32:35 [INFO]       M1_Q25: Invalid domain for module 1: 'Rhetorical Synthesis'
+2026-03-09 18:32:35 [INFO]       M1_Q26: Invalid domain for module 1: 'Rhetorical Synthesis'
+2026-03-09 18:32:35 [INFO]       M1_Q27: Invalid domain for module 1: 'Rhetorical Synthesis'
+2026-03-09 18:32:35 [INFO]       M2_Q1: Invalid domain for module 2: 'Words in Context'
+2026-03-09 18:32:35 [INFO]       M2_Q2: Invalid domain for module 2: 'Transitions'
+2026-03-09 18:32:35 [INFO]       M2_Q3: Invalid skill 'Synthesis' for domain 'Information and Ideas'
+2026-03-09 18:32:35 [INFO]       M2_Q4: Invalid skill 'Synthesis' for domain 'Information and Ideas'
+2026-03-09 18:32:35 [INFO]       M2_Q5: Invalid skill 'Synthesis' for domain 'Information and Ideas'
+2026-03-09 18:32:35 [INFO]       M2_Q6: Invalid skill 'Synthesis' for domain 'Information and Ideas'
+2026-03-09 18:32:35 [INFO]       M2_Q7: Invalid skill 'Synthesis' for domain 'Information and Ideas'
+2026-03-09 18:32:35 [INFO]       M2_Q8: Invalid skill 'Synthesis' for domain 'Information and Ideas'
+2026-03-09 18:32:35 [INFO]       M2_Q9: Invalid skill 'Synthesis' for domain 'Information and Ideas'
+2026-03-09 18:32:35 [INFO]       M2_Q10: Invalid domain for module 2: 'Rhetoric'
+2026-03-09 18:32:35 [INFO]       M2_Q11: Invalid skill 'Synthesis' for domain 'Information and Ideas'
+2026-03-09 18:32:35 [INFO]       M2_Q12: Invalid skill 'Synthesis' for domain 'Information and Ideas'
+2026-03-09 18:32:35 [INFO]       M2_Q13: Invalid skill 'Synthesis' for domain 'Information and Ideas'
+2026-03-09 18:32:35 [INFO]       M2_Q14: Invalid skill 'Synthesis' for domain 'Information and Ideas'
+2026-03-09 18:32:35 [INFO]       M2_Q15: Invalid skill 'Synthesis' for domain 'Information and Ideas'
+2026-03-09 18:32:35 [INFO]       M2_Q16: Invalid skill 'Synthesis' for domain 'Information and Ideas'
+2026-03-09 18:32:35 [INFO]       M2_Q17: Invalid skill 'Synthesis' for domain 'Information and Ideas'
+2026-03-09 18:32:35 [INFO]       M2_Q18: Invalid domain for module 2: 'Text Structure and Purpose'
+2026-03-09 18:32:35 [INFO]       M2_Q19: Invalid skill 'Evaluate Arguments' for domain 'Craft and Structure'
+2026-03-09 18:32:35 [INFO]       M2_Q20: Invalid skill 'Evidence' for domain 'Information and Ideas'
+2026-03-09 18:32:35 [INFO]       M2_Q21: Invalid domain for module 2: 'Evidence'
+2026-03-09 18:32:35 [INFO]       M2_Q22: Invalid domain for module 2: 'Organization'
+2026-03-09 18:32:35 [INFO]       M2_Q23: Invalid domain for module 2: 'Organization'
+2026-03-09 18:32:35 [INFO]       M2_Q24: Invalid domain for module 2: 'Organization'
+2026-03-09 18:32:35 [INFO]       M2_Q25: Invalid domain for module 2: 'Organization'
+2026-03-09 18:32:35 [INFO]       M2_Q27: Invalid skill 'Synthesis' for domain 'Information and Ideas'
+2026-03-09 18:32:35 [INFO]       M3_Q17: Invalid domain for module 3: 'grammar'
+2026-03-09 18:32:35 [INFO]       M3_Q19: Invalid domain for module 3: 'Writing and Language'
+2026-03-09 18:32:35 [INFO]       M3_Q20: Invalid domain for module 3: 'Writing and Language'
+2026-03-09 18:32:35 [INFO]       M3_Q21: Invalid skill 'Factoring Polynomials' for domain 'Algebra'
+2026-03-09 18:32:35 [INFO]       M3_Q22: Invalid domain for module 3: 'Writing and Language'
+2026-03-09 18:32:35 [INFO]       M4_Q1: Invalid skill 'Solving Linear Equations' for domain 'Algebra'
+2026-03-09 18:32:35 [INFO]       M4_Q3: Invalid domain for module 4: 'Geometry'
+2026-03-09 18:32:35 [INFO]       M4_Q4: Invalid domain for module 4: 'Statistics and Probability'
+2026-03-09 18:32:35 [INFO]       M4_Q5: Invalid skill 'Manipulating Polynomials' for domain 'Algebra'
+2026-03-09 18:32:35 [INFO]       M4_Q6: Invalid skill 'Manipulating Polynomials' for domain 'Algebra'
+2026-03-09 18:32:35 [INFO]       M4_Q8: Invalid domain for module 4: 'Geometry'
+2026-03-09 18:32:35 [INFO]       M4_Q9: Invalid domain for module 4: 'Geometry'
+2026-03-09 18:32:35 [INFO]       M4_Q10: Invalid skill 'Functions' for domain 'Algebra'
+2026-03-09 18:32:35 [INFO]       M4_Q11: Invalid domain for module 4: 'Geometry'
+2026-03-09 18:32:35 [INFO]       M4_Q13: Invalid skill 'Solving Equations' for domain 'Algebra'
+2026-03-09 18:32:35 [INFO]       M4_Q15: Invalid domain for module 4: 'Statistics and Probability'
+2026-03-09 18:32:35 [INFO]       M4_Q17: Invalid skill 'Creating equations' for domain 'Algebra'
+2026-03-09 18:32:35 [INFO]       M4_Q18: Invalid domain for module 4: 'Ratios & Proportional Relationships'
+2026-03-09 18:32:35 [INFO]       M4_Q20: Invalid skill 'Factoring Polynomials' for domain 'Algebra'
+2026-03-09 18:32:35 [INFO]       M4_Q21: Invalid skill 'Creating linear inequalities' for domain 'Algebra'
+2026-03-09 18:32:35 [INFO]       M4_Q22: Invalid skill 'Systems of Equations' for domain 'Algebra'
+2026-03-09 18:32:35 [INFO]   📝 Failed questions saved: ../llm-pipeline/output/failed/test_v3_final_fixed_v2_failed.jsonl (62 questions)
+2026-03-09 18:32:35 [INFO]   ✅ 27 questions passed ALL checks
+2026-03-09 18:32:35 [INFO]   💾 Backup saved: ../llm-pipeline/output/test_v3_final_fixed_v2.jsonl (27 questions)
+2026-03-09 18:32:35 [INFO] 
+  📊 Module breakdown:
+2026-03-09 18:32:35 [INFO]       Module 1 (R&W): 12 questions ⚠️  (expected 27)
+2026-03-09 18:32:35 [INFO]       Module 3 (Math): 15 questions ⚠️  (expected 22)
+2026-03-09 18:32:35 [INFO] ❌ Firebase service account key not found: serviceAccountKey.json
+2026-03-09 18:32:35 [INFO] ❌ Cannot write to Firestore — Firebase not initialized.
