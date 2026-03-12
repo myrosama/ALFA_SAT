@@ -67,7 +67,7 @@ const TelegramImages = (() => {
             return url;
         }
 
-        // 3. Try each bot (round-robin with fallback on 429)
+        // 3. Try each bot (round-robin with fallback on 401/429/Unauthorized)
         const maxAttempts = botTokens.length;
         let lastError = null;
 
@@ -81,9 +81,10 @@ const TelegramImages = (() => {
                         `https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`
                     );
 
-                    // Rate limited — try next bot immediately
-                    if (res.status === 429) {
-                        lastError = 'Rate limited';
+                    // Rate limited or Unauthorized at HTTP level — try next bot immediately
+                    if (res.status === 429 || res.status === 401) {
+                        lastError = `HTTP ${res.status}`;
+                        console.warn(`TelegramImages: Bot returned ${res.status}, trying next bot...`);
                         break; // Break retry loop, continue to next bot
                     }
 
@@ -104,7 +105,14 @@ const TelegramImages = (() => {
 
                         return downloadUrl;
                     } else {
-                        // Telegram error (bad file_id etc.) — don't retry
+                        // Telegram-level error — check if it's auth-related (try next bot)
+                        const desc = (data.description || '').toLowerCase();
+                        if (desc.includes('unauthorized') || desc.includes('forbidden') || desc.includes('bot was blocked')) {
+                            console.warn(`TelegramImages: getFile failed (${data.description}), trying next bot...`);
+                            lastError = data.description;
+                            break; // Try next bot
+                        }
+                        // Other Telegram error (bad file_id) — don't retry, give up
                         console.error('TelegramImages: getFile failed:', data.description);
                         return url;
                     }

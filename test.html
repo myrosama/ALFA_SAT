@@ -73,7 +73,7 @@
                 <div class="test-tools">
                     <button class="tool-btn" title="Calculator"><i class="fa-solid fa-calculator"></i></button>
                     <button class="tool-btn" title="Highlighter"><i class="fa-solid fa-highlighter"></i></button>
-                    <!-- Add more tools here if needed -->
+                    <button class="tool-btn report-bug-trigger" id="report-bug-btn" title="Report Issue"><i class="fa-solid fa-bug"></i></button>
                 </div>
             </div>
         </header>
@@ -174,6 +174,45 @@
         </div>
     </div>
 
+    <!-- BUG REPORT MODAL -->
+    <div class="report-backdrop" id="report-backdrop"></div>
+    <div class="report-modal" id="report-modal">
+        <div class="report-modal-header">
+            <h4><i class="fa-solid fa-bug"></i> Report an Issue</h4>
+            <span class="report-context" id="report-context-info"></span>
+        </div>
+        <div class="report-modal-body">
+            <div class="report-form-group">
+                <label for="report-type">Issue Type</label>
+                <select id="report-type">
+                    <option value="wrong-answer">❌ Wrong Answer</option>
+                    <option value="typo">📝 Typo / Text Error</option>
+                    <option value="image-issue">🖼️ Image Missing or Wrong</option>
+                    <option value="other">💬 Other</option>
+                </select>
+            </div>
+            <div class="report-form-group">
+                <label for="report-message">Describe the issue</label>
+                <textarea id="report-message" rows="4" placeholder="e.g. The correct answer should be B, not C because..."></textarea>
+            </div>
+            <div class="report-form-group">
+                <label>Screenshot (optional)</label>
+                <div class="report-screenshot-area">
+                    <input type="file" id="report-screenshot-input" accept="image/*" style="display:none;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('report-screenshot-input').click();"><i class="fa-solid fa-camera"></i> Add Screenshot</button>
+                    <button type="button" class="btn btn-secondary btn-sm danger" id="report-remove-screenshot" style="display:none;"><i class="fa-solid fa-xmark"></i> Remove</button>
+                </div>
+                <img id="report-screenshot-preview" style="display:none; max-width:100%; border-radius:8px; margin-top:8px;" />
+            </div>
+            <div id="report-status" class="report-status"></div>
+        </div>
+        <div class="report-modal-footer">
+            <button class="btn btn-secondary" id="report-cancel-btn">Cancel</button>
+            <button class="btn btn-primary" id="report-submit-btn"><i class="fa-solid fa-paper-plane"></i> Submit Report</button>
+        </div>
+    </div>
+    <!-- END BUG REPORT MODAL -->
+
     <!-- SCRIPTS -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.js"></script>
@@ -183,9 +222,10 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-functions-compat.js"></script>
     <script src="js/firebase-init.js?v=2.2?v=2.2?v=2.2?v=2.2"></script>
     <script src="js/main.js?v=2.2?v=2.2?v=2.2?v=2.2"></script> <!-- General site logic -->
-    <script src="js/config.js?v=2.2?v=2.2?v=2.2?v=2.2"></script>
+    <script src="js/config.js?v=3.0"></script>
     <script src="js/ai-analysis.js?v=2.2?v=2.2?v=2.2?v=2.2"></script>
-    <script src="js/telegram-images.js?v=2.2?v=2.2?v=2.2?v=2.2"></script>
+    <script src="js/telegram-images.js?v=3.0"></script>
+    <script src="js/bug-report.js?v=1.1"></script>
     <script src="js/test-engine.js?v=2.2?v=2.2?v=2.2?v=2.2"></script> <!-- Test page specific logic -->
     <!-- Inline script removed as modal logic is now in test-engine.js -->
 

@@ -1021,3 +1021,187 @@ body.highlighter-active ::selection {
 }
 
 /* +++ END OF TOOLBAR STYLES +++ */
+
+/* ================================================================= */
+/* === BUG REPORT MODAL STYLES                                    === */
+/* ================================================================= */
+
+.report-bug-trigger {
+    position: relative;
+}
+
+.report-bug-trigger i {
+    color: #e3d3f8 !important;
+    transition: color 0.2s;
+}
+
+.report-bug-trigger:hover i {
+    color: #ff6b6b !important;
+}
+
+.report-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(3px);
+    z-index: 4000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+}
+
+.report-backdrop.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.report-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    width: 90%;
+    max-width: 440px;
+    background: var(--white);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    z-index: 4001;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, transform 0.3s, visibility 0.3s;
+    overflow: hidden;
+}
+
+.report-modal.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.report-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: var(--white);
+}
+
+.report-modal-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.report-context {
+    font-size: 0.8rem;
+    opacity: 0.85;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 3px 10px;
+    border-radius: 12px;
+}
+
+.report-modal-body {
+    padding: 20px;
+    max-height: 55vh;
+    overflow-y: auto;
+}
+
+.report-form-group {
+    margin-bottom: 16px;
+}
+
+.report-form-group label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-color);
+    margin-bottom: 6px;
+}
+
+.report-form-group select,
+.report-form-group textarea {
+    width: 100%;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+.report-form-group select:focus,
+.report-form-group textarea:focus {
+    outline: none;
+    border-color: #e74c3c;
+    box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.15);
+}
+
+.report-form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.report-screenshot-area {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.btn-sm {
+    padding: 6px 12px !important;
+    font-size: 0.8rem !important;
+}
+
+.report-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border-color);
+    background: #f8f9fa;
+}
+
+.report-modal-footer .btn {
+    margin-top: 0;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+}
+
+.report-modal-footer .btn-primary {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    border: none;
+}
+
+.report-modal-footer .btn-primary:hover {
+    background: linear-gradient(135deg, #c0392b, #a93226);
+}
+
+.report-status {
+    text-align: center;
+    font-size: 0.85rem;
+    padding: 8px;
+    border-radius: 8px;
+    min-height: 20px;
+}
+
+.report-status.loading {
+    color: #f39c12;
+    background: #fef9e7;
+}
+
+.report-status.success {
+    color: #27ae60;
+    background: #eafaf1;
+}
+
+.report-status.error {
+    color: #e74c3c;
+    background: #fdedec;
+}
+
+/* +++ END BUG REPORT STYLES +++ */

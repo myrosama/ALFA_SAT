@@ -141,6 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const testDoc = await db.collection('tests').doc(id).get();
             if (testDoc.exists) {
                 testName = testDoc.data().name || "Practice Test";
+                window.__alfaTestName = testName; // Expose for bug-report.js
             }
             console.log(`Fetching questions for test ID: ${id}`);
 
@@ -250,47 +251,59 @@ document.addEventListener('DOMContentLoaded', () => {
         startTimer(timerDuration);
     }
     function renderAllMath() {
+        if (typeof katex === 'undefined') return;
+        
         try {
-            // 1. Render existing .ql-formula spans (from editor/pipeline)
+            // 1. Render .ql-formula spans (from editor/pipeline)
             document.querySelectorAll('.ql-formula').forEach(span => {
                 const latex = span.dataset.value;
                 if (!latex) return;
                 if (span.querySelector('.katex')) return;
-                if (MQ && span) {
-                    MQ.StaticMath(span).latex(latex);
-                } else {
-                    span.textContent = `[Math: ${latex}]`;
+                
+                try {
+                    katex.render(latex, span, {
+                        throwOnError: false,
+                        displayMode: false
+                    });
+                } catch (e) {
+                    console.error("KaTeX render error:", e, "for latex:", latex);
+                    // Fallback to MathQuill if katex fails or for legacy compatibility
+                    if (window.MQ && span) {
+                        try { window.MQ.StaticMath(span).latex(latex); } catch (mqE) { }
+                    }
                 }
             });
 
-            // 2. Fix raw LaTeX that leaked into displayed text (e.g. "36^{\circ}")
-            // Only scan inside question/option areas to avoid breaking other content
+            // 2. Fix raw LaTeX that leaked into displayed text
             const scanAreas = document.querySelectorAll('.question-text, .option-text, .pane-content');
             scanAreas.forEach(area => {
                 const walker = document.createTreeWalker(area, NodeFilter.SHOW_TEXT, null, false);
                 const nodesToFix = [];
                 let node;
                 while (node = walker.nextNode()) {
-                    // Match patterns like x^{\circ}, \frac{1}{2}, etc.
-                    if (/\\[a-zA-Z]+\{|\^\{|_\{/.test(node.textContent)) {
+                    if (/\\[a-zA-Z]+\{|\^\{|_\{|\$|\{.*?\}/.test(node.textContent)) {
                         nodesToFix.push(node);
                     }
                 }
                 nodesToFix.forEach(textNode => {
                     const text = textNode.textContent;
-                    // Replace raw LaTeX with ql-formula wrapper
-                    const html = text.replace(/((?:[A-Za-z0-9.]+)?(?:\\[a-zA-Z]+\{[^}]*\}|[\^_]\{[^}]*\})+(?:[A-Za-z0-9.]*(?:[\^_]\{[^}]*\})*)*)/g, (match) => {
-                        return `<span class="ql-formula" data-value="${match}">\ufeff<span contenteditable="false"><span class="katex">${match}</span></span>\ufeff</span>`;
+                    // Improved regex to catch $...$ or raw LaTeX patterns
+                    const html = text.replace(/\$([^\$]+?)\$|((?:[A-Za-z0-9.]+)?(?:\\[a-zA-Z]+\{[^}]*\}|[\^_]\{[^}]*\})+(?:[A-Za-z0-9.]*(?:[\^_]\{[^}]*\})*)*)/g, (match, p1, p2) => {
+                        const latex = (p1 || p2).trim();
+                        return `<span class="ql-formula" data-value="${latex}">\ufeff<span contenteditable="false"><span class="katex"></span></span>\ufeff</span>`;
                     });
+                    
                     if (html !== text) {
                         const temp = document.createElement('span');
                         temp.innerHTML = html;
                         textNode.parentNode.replaceChild(temp, textNode);
-                        // Re-render the new ql-formula spans
+                        
                         temp.querySelectorAll('.ql-formula').forEach(span => {
                             const latex = span.dataset.value;
-                            if (latex && MQ) {
-                                try { MQ.StaticMath(span).latex(latex); } catch (e) { }
+                            if (latex) {
+                                try {
+                                    katex.render(latex, span, { throwOnError: false, displayMode: false });
+                                } catch (e) { }
                             }
                         });
                     }
