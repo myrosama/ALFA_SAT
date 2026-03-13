@@ -1190,3 +1190,38 @@ body {
 }
 
 /* +++ END Proctored Code Modal Styles +++ */
+/* --- KaTeX / Math Normalization --- */
+.katex { font-size: 1.05em !important; line-height: 1 !important; }
+.ql-formula { display: inline-block; vertical-align: baseline; margin: 0 1px; }
+.katex-html { vertical-align: middle; }
+.question-text .katex, .option-text .katex, .pane-content .katex { white-space: nowrap; }
+
+/* --- Aggressive KaTeX Normalization --- */
+.question-text .katex, 
+.option-text .katex, 
+.pane-content .katex, 
+.ql-editor .katex {
+    font-size: 1.15em !important; /* Boost size slightly more for Poppins */
+    line-height: normal !important;
+    text-indent: 0 !important;
+    vertical-align: baseline !important;
+    white-space: nowrap !important;
+}
+
+.katex-html {
+    vertical-align: middle !important;
+}
+
+/* Fix for tiny math variables in Poppins containers */
+.katex .mathnormal {
+    font-family: KaTeX_Main, Times New Roman, serif !important;
+    font-style: italic !important;
+}
+
+/* Ensure ql-formula blocks are inline and aligned */
+.ql-formula {
+    display: inline-block !important;
+    vertical-align: baseline !important;
+    padding: 0 1px !important;
+    background: transparent !important;
+}

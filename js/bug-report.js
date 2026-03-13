@@ -233,9 +233,8 @@ CRITICAL: If the issue requires extracting a completely missing passage from the
         return docRef.id;
     }
 
-    // --- Send to Telegram (with inline approve/reject buttons) ---
+    // --- Send to Telegram (via Render Webhook for reliability) ---
     async function sendToTelegram(ctx, issueType, userMessage, aiResult, reportId) {
-        const priorityEmoji = { LOW: '🟡', MEDIUM: '🟠', HIGH: '🔴' };
         const typeLabels = {
             'wrong-answer': '❌ Wrong Answer',
             'typo': '📝 Typo / Text Error',
@@ -243,100 +242,73 @@ CRITICAL: If the issue requires extracting a completely missing passage from the
             'other': '💬 Other'
         };
 
-        // If reportId not provided from Firestore, build a fallback ID
-        reportId = reportId || `rpt_${Date.now()}`;
-
-        // Escape markdown special chars in user message
-        const safeMsg = userMessage.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
-
-        // Escape test name for MarkdownV2
-        const safeTestName = (ctx.testName || '').replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
-        const safeTestId = (ctx.testId || '').replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
-        const safeErrorLoc = (aiResult.error_location || 'Not specified').replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
-
-        const message = `🐛 *BUG REPORT*
+        const webhookUrl = 'https://bug-report-webhook.onrender.com/send-bug-report';
+        
+        // Construct the message for the webhook (server handles MarkdownV2/fallback)
+        const payload = {
+            report_id: reportId || `manual_rpt_${Date.now()}`,
+            message: `🐛 *BUG REPORT*
 ━━━━━━━━━━━━━━━
-📋 *Test:* ${safeTestName}
-🆔 *Test ID:* ${safeTestId}
+📋 *Test:* ${ctx.testName}
+🆔 *Test ID:* ${ctx.testId}
 📝 *Section:* ${ctx.section} — ${ctx.module}
 ❓ *Question:* Q${ctx.questionNumber}
 🏷️ *Type:* ${typeLabels[issueType] || issueType}
-${priorityEmoji[aiResult.priority] || '⚪'} *Priority:* ${aiResult.priority}
+Priority: ${aiResult.priority}
 
 💬 *Student says:*
-"${safeMsg}"
+"${userMessage}"
 
 📍 *Error Location:*
-${safeErrorLoc}
+${aiResult.error_location || 'Not specified'}
 
 🤖 *AI Analysis:*
-${(aiResult.analysis || '').replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')}
+${aiResult.analysis || ''}
 
 🔧 *Suggested Fix:*
-${(aiResult.suggested_fix || '').replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')}
+${aiResult.suggested_fix || ''}
 
 ✅ Valid report: ${aiResult.valid ? 'Yes' : 'Likely not'}
-${aiResult.fix_payload?.requires_pdf_sync ? '⚠️ *REQUIRES LOCAL PDF SYNC*' : '⚡ *Auto-Fix Ready*'}`;
-
-        const url = `https://api.telegram.org/bot${BUG_REPORT_BOT_TOKEN}/sendMessage`;
-
-        // Build inline keyboard with Approve / Dismiss buttons
-        const inlineKeyboard = {
-            inline_keyboard: [[
-                { text: '✅ Approve Fix', callback_data: `approve_${reportId}` },
-                { text: '❌ Dismiss', callback_data: `dismiss_${reportId}` }
-            ]]
+${aiResult.fix_payload?.requires_pdf_sync ? '⚠️ *REQUIRES LOCAL PDF SYNC*' : '⚡ *Auto-Fix Ready*'}
+ID: ${reportId}`,
+            questionNumber: ctx.questionNumber,
+            screenshot_base64: screenshotBase64,
+            screenshot_filename: screenshotFileName
         };
 
         try {
-            await fetch(url, {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout for Render cold start
+
+            const res = await fetch(webhookUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    chat_id: BUG_REPORT_ADMIN_CHAT_ID,
-                    text: message,
-                    parse_mode: 'MarkdownV2',
-                    reply_markup: inlineKeyboard
-                })
+                body: JSON.stringify(payload),
+                signal: controller.signal
             });
+            clearTimeout(timeoutId);
+            
+            if (!res.ok) throw new Error(`Webhook error: ${res.status}`);
+            console.log("Bug report sent successfully via webhook");
         } catch (err) {
-            console.error('Telegram send failed, retrying with plain text:', err);
-            // Fallback: send without markdown if MarkdownV2 fails
+            const isTimeout = err.name === 'AbortError';
+            console.error(isTimeout ? 'Webhook request timed out' : 'Webhook notification failed', err);
+            
+            // Minimal fallback if webhook is down or timed out
             try {
+                const url = `https://api.telegram.org/bot${BUG_REPORT_BOT_TOKEN}/sendMessage`;
+                const errorMsg = isTimeout ? "RENDER COLD START / TIMEOUT" : "WEBHOOK ERROR / CORS";
+                
                 await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         chat_id: BUG_REPORT_ADMIN_CHAT_ID,
-                        text: `🐛 BUG REPORT\n${ctx.section} — ${ctx.module} — Q${ctx.questionNumber}\nType: ${typeLabels[issueType] || issueType}\n\nStudent: "${userMessage}"\n\nAI: ${aiResult.analysis}\nFix: ${aiResult.suggested_fix}\nID: ${reportId}`,
-                        reply_markup: inlineKeyboard
+                        text: `⚠️ ${errorMsg}: Bug Report Q${ctx.questionNumber} for ${ctx.testId}. Student: ${userMessage.slice(0, 50)}...`
                     })
                 });
-            } catch (err2) {
-                console.error('Telegram fallback also failed:', err2);
-            }
-        }
-
-        // Send screenshot if attached
-        if (screenshotBase64) {
-            try {
-                const byteString = atob(screenshotBase64.split(',')[1]);
-                const mimeString = screenshotBase64.split(',')[0].split(':')[1].split(';')[0];
-                const ab = new ArrayBuffer(byteString.length);
-                const ia = new Uint8Array(ab);
-                for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
-                const blob = new Blob([ab], { type: mimeString });
-
-                const formData = new FormData();
-                formData.append('chat_id', BUG_REPORT_ADMIN_CHAT_ID);
-                formData.append('photo', blob, screenshotFileName || 'screenshot.png');
-                formData.append('caption', `📎 Screenshot for Q${ctx.questionNumber} report`);
-
-                await fetch(`https://api.telegram.org/bot${BUG_REPORT_BOT_TOKEN}/sendPhoto`, {
-                    method: 'POST', body: formData
-                });
-            } catch (err) {
-                console.error('Telegram screenshot send failed:', err);
+            } catch (fallbackErr) {
+                console.error("Critical: Telegram fallback also failed", fallbackErr);
             }
         }
     }
