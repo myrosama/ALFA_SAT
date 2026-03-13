@@ -60,6 +60,36 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- +++ NEW: AI Fix Assistant Panel +++ -->
+            <div class="editor-panel" id="ai-fix-panel" style="display: none;">
+                <div class="panel-header" style="background: linear-gradient(135deg, #6A0DAD, #8a2be2); color: white;">
+                    <h3 style="color: white; font-size: 0.95rem; margin:0; display:flex; align-items:center; gap:8px;"><i class="fa-solid fa-robot"></i> AI Fix Assistant</h3>
+                    <button id="close-ai-fix-btn" class="btn-icon" style="color: white; margin:0; padding:4px;"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="panel-content" style="display: flex; flex-direction: column; gap: 15px; padding: 15px;">
+                    <p style="font-size: 0.85rem; color: var(--dark-gray); margin: 0; line-height: 1.4;">Instruct the AI to fix formatting, extract text, or correct errors in this question. It will update the fields automatically.</p>
+                    
+                    <div class="input-group" style="flex-grow: 1; display: flex; flex-direction: column; height: 100%;">
+                        <label style="font-size: 0.8rem;">Prompt / Instructions</label>
+                        <textarea id="ai-fix-instruction" style="flex-grow: 1; min-height: 150px; resize: none; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-family: inherit; font-size:0.9rem;" placeholder="e.g., 'Wrap all fractions in KaTeX format', 'Extract the real question from the passage', or 'Fix typos'"></textarea>
+                    </div>
+
+                    <div id="ai-fix-loading" class="hidden" style="text-align: center; padding: 10px 0;">
+                        <div class="loading-spinner" style="margin: 0 auto; width: 25px; height: 25px; border-width: 3px;"></div>
+                        <p style="font-size: 0.85rem; margin-top: 10px; color: var(--primary-purple); font-weight: 500;">AI is working...</p>
+                    </div>
+                    
+                    <div id="ai-fix-error" class="error-message" style="display: none; font-size:0.8rem; margin:0;"></div>
+
+                    <div class="form-actions" style="margin-top: auto; padding-top: 10px; border-top: 1px solid var(--border-color);">
+                        <button type="button" class="btn btn-primary" id="run-ai-fix-btn" style="width: 100%; margin:0;">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Ask AI to Fix
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- +++ END AI Fix Assistant Panel +++ -->
         </main>
 
         <footer class="editor-footer" id="editor-footer">

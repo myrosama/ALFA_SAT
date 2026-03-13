@@ -12,8 +12,8 @@
 
     // --- DOM References (set after DOMContentLoaded) ---
     let reportBtn, reportModal, reportBackdrop, reportForm;
-    let reportType, reportMessage, reportScreenshotInput, reportScreenshotPreview;
-    let reportSubmitBtn, reportCancelBtn, reportRemoveScreenshot;
+    let reportType, reportMessage, reportScreenshotPreview, autoScreenshotStatus;
+    let reportSubmitBtn, reportCancelBtn;
     let reportStatusEl;
 
     // --- Helpers to get current question context from test-engine ---
@@ -59,7 +59,7 @@
     }
 
     // --- Modal Controls ---
-    function openReportModal() {
+    async function openReportModal() {
         if (reportModalOpen) return;
         reportModalOpen = true;
         const ctx = getCurrentQuestionContext();
@@ -75,6 +75,42 @@
         reportType.value = 'wrong-answer';
         clearScreenshot();
         setReportStatus('', '');
+        
+        // Auto screen capture
+        if (autoScreenshotStatus) {
+            autoScreenshotStatus.innerHTML = '<span class="status-badge loading"><i class="fa-solid fa-spinner fa-spin"></i> Capturing screen...</span>';
+        }
+        
+        try {
+            // Give modal animation a tiny bit to get out of the way, or just capture the main test area immediately
+            // Better to capture just the test main area to avoid the modal covering it if we wait!
+            const testMain = document.querySelector('.test-main');
+            if (testMain) {
+                const canvas = await html2canvas(testMain, {
+                    scale: 1, // Keep it relatively small for the upload payload
+                    useCORS: true,
+                    logging: false,
+                    backgroundColor: '#ffffff'
+                });
+                screenshotBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                screenshotFileName = `Q${ctx.questionNumber}_auto_screenshot.jpg`;
+                
+                if (reportScreenshotPreview) {
+                    reportScreenshotPreview.src = screenshotBase64;
+                    reportScreenshotPreview.style.display = 'block';
+                }
+                if (autoScreenshotStatus) {
+                    autoScreenshotStatus.innerHTML = '<span class="status-badge success"><i class="fa-solid fa-check"></i> Captured successfully</span>';
+                }
+            } else {
+                throw new Error("Test main element not found");
+            }
+        } catch (err) {
+            console.error("Auto screenshot failed:", err);
+            if (autoScreenshotStatus) {
+                autoScreenshotStatus.innerHTML = '<span class="status-badge error"><i class="fa-solid fa-triangle-exclamation"></i> Screen capture failed</span>';
+            }
+        }
     }
 
     function closeReportModal() {
@@ -90,24 +126,9 @@
             reportScreenshotPreview.style.display = 'none';
             reportScreenshotPreview.src = '';
         }
-        if (reportRemoveScreenshot) reportRemoveScreenshot.style.display = 'none';
-        if (reportScreenshotInput) reportScreenshotInput.value = '';
-    }
-
-    function handleScreenshotSelect(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        screenshotFileName = file.name;
-        const reader = new FileReader();
-        reader.onload = function (ev) {
-            screenshotBase64 = ev.target.result;
-            if (reportScreenshotPreview) {
-                reportScreenshotPreview.src = screenshotBase64;
-                reportScreenshotPreview.style.display = 'block';
-            }
-            if (reportRemoveScreenshot) reportRemoveScreenshot.style.display = 'inline-block';
-        };
-        reader.readAsDataURL(file);
+        if (autoScreenshotStatus) {
+            autoScreenshotStatus.innerHTML = '<span class="status-badge"><i class="fa-solid fa-camera"></i> Waiting...</span>';
+        }
     }
 
     function setReportStatus(msg, type) {
@@ -124,7 +145,8 @@ A student has reported an issue with a question. Analyze the report and determin
 1. Is the report likely valid?
 2. What specific fix should be applied?
 3. Priority: LOW (cosmetic), MEDIUM (confusing), HIGH (wrong answer/missing content)
-4. The exact location of the error (which part of the question or passage)
+4. The exact location of the error.
+5. Provide a machine-readable fix payload that can modify the question data directly if approved.
 
 QUESTION CONTEXT:
 - Test: "${ctx.testName}" (ID: ${ctx.testId})
@@ -138,7 +160,21 @@ STUDENT REPORT:
 - Student message: "${userMessage}"
 
 Respond in this exact JSON format:
-{"valid": true/false, "priority": "LOW/MEDIUM/HIGH", "analysis": "your brief analysis", "error_location": "exact location of the error (e.g. passage paragraph 2, option C, question prompt)", "suggested_fix": "what should be changed"}`;
+{
+  "valid": true/false,
+  "priority": "LOW" | "MEDIUM" | "HIGH",
+  "analysis": "your brief analysis of the bug",
+  "error_location": "exact location of the error",
+  "suggested_fix": "human readable explanation of the fix",
+  "fix_payload": {
+    "action": "update",
+    "field": "field_name_(e.g._prompt/_correctAnswer/_passage)",
+    "newValue": "the strictly corrected text or answer letter",
+    "requires_pdf_sync": boolean
+  }
+}
+
+CRITICAL: If the issue requires extracting a completely missing passage from the original PDF that you cannot see, set requires_pdf_sync to true, and leave newValue empty. For typos, wrong correctAnswers, formatting (like unclosed tags or missing KaTeX $ signs), fix them directly in newValue.`;
 
         try {
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${AI_API_KEY}`, {
@@ -162,12 +198,43 @@ Respond in this exact JSON format:
             return { valid: true, priority: 'MEDIUM', analysis: text.substring(0, 300), suggested_fix: 'Manual review needed' };
         } catch (err) {
             console.error('AI analysis failed:', err);
-            return { valid: true, priority: 'MEDIUM', analysis: 'AI analysis unavailable — forwarding report as-is.', suggested_fix: 'Please review manually.' };
+            return {
+                valid: true,
+                priority: 'MEDIUM',
+                analysis: 'AI analysis unavailable — forwarding report as-is.',
+                suggested_fix: 'Please review manually.',
+                fix_payload: { action: "manual_review", requires_pdf_sync: false }
+            };
         }
     }
 
+    // --- Save Report to Firestore ---
+    async function saveReportToFirestore(ctx, issueType, userMessage, aiResult) {
+        if (!firebase.auth().currentUser) throw new Error("User must be logged in to report a bug");
+        
+        const reportData = {
+            testId: ctx.testId,
+            testName: ctx.testName,
+            module: ctx.module,
+            section: ctx.section,
+            questionNumber: parseInt(ctx.questionNumber) || ctx.questionNumber,
+            issueType: issueType,
+            userMessage: userMessage,
+            status: "pending",
+            priority: aiResult.priority || "MEDIUM",
+            aiAnalysis: aiResult.analysis || "",
+            aiSuggestedFix: aiResult.suggested_fix || "",
+            fixPayload: aiResult.fix_payload || { action: "none" },
+            submittedBy: firebase.auth().currentUser.uid,
+            submittedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        const docRef = await db.collection("bug_reports").add(reportData);
+        return docRef.id;
+    }
+
     // --- Send to Telegram (with inline approve/reject buttons) ---
-    async function sendToTelegram(ctx, issueType, userMessage, aiResult) {
+    async function sendToTelegram(ctx, issueType, userMessage, aiResult, reportId) {
         const priorityEmoji = { LOW: '🟡', MEDIUM: '🟠', HIGH: '🔴' };
         const typeLabels = {
             'wrong-answer': '❌ Wrong Answer',
@@ -176,8 +243,8 @@ Respond in this exact JSON format:
             'other': '💬 Other'
         };
 
-        // Build a unique report ID from timestamp
-        const reportId = `rpt_${Date.now()}`;
+        // If reportId not provided from Firestore, build a fallback ID
+        reportId = reportId || `rpt_${Date.now()}`;
 
         // Escape markdown special chars in user message
         const safeMsg = userMessage.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
@@ -208,7 +275,8 @@ ${(aiResult.analysis || '').replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')}
 🔧 *Suggested Fix:*
 ${(aiResult.suggested_fix || '').replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')}
 
-✅ Valid report: ${aiResult.valid ? 'Yes' : 'Likely not'}`;
+✅ Valid report: ${aiResult.valid ? 'Yes' : 'Likely not'}
+${aiResult.fix_payload?.requires_pdf_sync ? '⚠️ *REQUIRES LOCAL PDF SYNC*' : '⚡ *Auto-Fix Ready*'}`;
 
         const url = `https://api.telegram.org/bot${BUG_REPORT_BOT_TOKEN}/sendMessage`;
 
@@ -240,7 +308,7 @@ ${(aiResult.suggested_fix || '').replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')}
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         chat_id: BUG_REPORT_ADMIN_CHAT_ID,
-                        text: `🐛 BUG REPORT\n${ctx.section} — ${ctx.module} — Q${ctx.questionNumber}\nType: ${typeLabels[issueType] || issueType}\n\nStudent: "${userMessage}"\n\nAI: ${aiResult.analysis}\nFix: ${aiResult.suggested_fix}`,
+                        text: `🐛 BUG REPORT\n${ctx.section} — ${ctx.module} — Q${ctx.questionNumber}\nType: ${typeLabels[issueType] || issueType}\n\nStudent: "${userMessage}"\n\nAI: ${aiResult.analysis}\nFix: ${aiResult.suggested_fix}\nID: ${reportId}`,
                         reply_markup: inlineKeyboard
                     })
                 });
@@ -294,9 +362,19 @@ ${(aiResult.suggested_fix || '').replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')}
         // Step 1: AI Analysis
         const aiResult = await analyzeWithAI(ctx, issueType, userMessage);
 
-        // Step 2: Send to Telegram (with inline buttons)
+        // Step 2: Save metadata to Firestore
+        setReportStatus('Saving report securely...', 'loading');
+        let reportId = `manual_rpt_${Date.now()}`;
+        try {
+            reportId = await saveReportToFirestore(ctx, issueType, userMessage, aiResult);
+        } catch (err) {
+            console.error('Failed to save to Firestore:', err);
+            // Fallback to manual ID if firestore fails (e.g. not logged in during testing)
+        }
+
+        // Step 3: Send to Telegram (with inline buttons)
         setReportStatus('Sending report to admin...', 'loading');
-        await sendToTelegram(ctx, issueType, userMessage, aiResult);
+        await sendToTelegram(ctx, issueType, userMessage, aiResult, reportId);
 
         // Done!
         reportSubmitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Report Sent!';
@@ -316,18 +394,15 @@ ${(aiResult.suggested_fix || '').replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&')}
         reportBackdrop = document.getElementById('report-backdrop');
         reportType = document.getElementById('report-type');
         reportMessage = document.getElementById('report-message');
-        reportScreenshotInput = document.getElementById('report-screenshot-input');
         reportScreenshotPreview = document.getElementById('report-screenshot-preview');
+        autoScreenshotStatus = document.getElementById('auto-screenshot-status');
         reportSubmitBtn = document.getElementById('report-submit-btn');
         reportCancelBtn = document.getElementById('report-cancel-btn');
-        reportRemoveScreenshot = document.getElementById('report-remove-screenshot');
         reportStatusEl = document.getElementById('report-status');
 
         if (reportBtn) reportBtn.addEventListener('click', openReportModal);
         if (reportCancelBtn) reportCancelBtn.addEventListener('click', closeReportModal);
         if (reportBackdrop) reportBackdrop.addEventListener('click', closeReportModal);
         if (reportSubmitBtn) reportSubmitBtn.addEventListener('click', handleSubmit);
-        if (reportScreenshotInput) reportScreenshotInput.addEventListener('change', handleScreenshotSelect);
-        if (reportRemoveScreenshot) reportRemoveScreenshot.addEventListener('click', clearScreenshot);
     });
 })();

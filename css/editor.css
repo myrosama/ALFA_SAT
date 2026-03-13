@@ -21,6 +21,11 @@
     grid-template-columns: 1fr 1.25fr;
     gap: 15px;
     overflow: hidden;
+    transition: grid-template-columns 0.3s ease;
+}
+
+.editor-main-content.ai-panel-open {
+    grid-template-columns: 1fr 1.25fr 300px;
 }
 
 .editor-panel {

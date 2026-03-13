@@ -1216,6 +1216,172 @@ Return *only* a single, valid JSON object with these fields.
     }
     // +++ END AI HELPER LOGIC +++
 
+    // +++ NEW: AI FIX ASSISTANT LOGIC +++
+    const aiFixPanel = document.getElementById('ai-fix-panel');
+    const closeAiFixBtn = document.getElementById('close-ai-fix-btn');
+    const runAiFixBtn = document.getElementById('run-ai-fix-btn');
+    const aiFixInstruction = document.getElementById('ai-fix-instruction');
+    const aiFixLoading = document.getElementById('ai-fix-loading');
+    const aiFixError = document.getElementById('ai-fix-error');
+    const mainEditorContent = document.querySelector('.editor-main-content');
+
+    // Toggle the panel on demand
+    function openAiFixPanel() {
+        if (!currentQuestion) {
+            alert("Please select a question slot first.");
+            return;
+        }
+        aiFixPanel.style.display = 'flex';
+        mainEditorContent.classList.add('ai-panel-open');
+    }
+
+    function closeAiFixPanel() {
+        aiFixPanel.style.display = 'none';
+        mainEditorContent.classList.remove('ai-panel-open');
+        aiFixError.style.display = 'none';
+        aiFixInstruction.value = '';
+    }
+
+    if (closeAiFixBtn) closeAiFixBtn.addEventListener('click', closeAiFixPanel);
+
+    // Provide a way to open the panel (e.g., from the question menu or a floating button)
+    // We will inject a button into the editor toolbar when a question loads.
+    const origShowEditor = showEditorForQuestion;
+    showEditorForQuestion = function(module, qNumber) {
+        origShowEditor(module, qNumber);
+        
+        // Wait for render, then inject the button if it doesn't exist
+        setTimeout(() => {
+            const toolbar = editorContainer.querySelector('.editor-toolbar');
+            if (toolbar && !document.getElementById('open-ai-fix-btn')) {
+                const fixBtnGroup = document.createElement('div');
+                fixBtnGroup.className = 'tool-group';
+                fixBtnGroup.innerHTML = `<label>&nbsp;</label><button type="button" class="btn btn-secondary" id="open-ai-fix-btn" style="padding: 6px 10px; margin: 0; display: flex; align-items: center; justify-content: center; gap: 5px; background: linear-gradient(135deg, #6A0DAD, #8a2be2); color: white; border: none; flex-grow: 1;"><i class="fa-solid fa-robot"></i> AI Fix</button>`;
+                toolbar.appendChild(fixBtnGroup);
+                document.getElementById('open-ai-fix-btn').addEventListener('click', openAiFixPanel);
+            }
+        }, 300);
+    };
+
+    if (runAiFixBtn) runAiFixBtn.addEventListener('click', async () => {
+        if (!currentQuestion) return;
+        
+        const instruction = aiFixInstruction.value.trim();
+        if (!instruction) {
+            aiFixError.textContent = "Please provide some instructions for the AI.";
+            aiFixError.style.display = 'block';
+            return;
+        }
+
+        const apiKey = (typeof AI_API_KEY !== 'undefined') ? AI_API_KEY : "";
+        if (apiKey === "" || apiKey === "PASTE_YOUR_GOOGLE_AI_API_KEY_HERE") {
+            aiFixError.textContent = "API Key is missing from js/config.js";
+            aiFixError.style.display = 'block';
+            return;
+        }
+
+        const questionForm = editorContainer.querySelector('#question-form');
+        const currentData = {
+            passage: editors.passage.root.innerHTML,
+            prompt: editors.prompt.root.innerHTML,
+            options: {
+                A: (editors.options && editors.options.A) ? editors.options.A.root.innerHTML : "",
+                B: (editors.options && editors.options.B) ? editors.options.B.root.innerHTML : "",
+                C: (editors.options && editors.options.C) ? editors.options.C.root.innerHTML : "",
+                D: (editors.options && editors.options.D) ? editors.options.D.root.innerHTML : ""
+            },
+            explanation: editors.explanation.root.innerHTML,
+            format: questionForm.querySelector('#q-format').value
+        };
+
+        const isMath = currentModule > 2;
+
+        const systemInstruction = `You are an expert SAT question editor. You will be provided with the current HTML state of an SAT question (passage, prompt, options, and explanation).
+Your task is to apply the following ADMIN INSTRUCTION to the question content.
+ADMIN INSTRUCTION: "${instruction}"
+
+RULES FOR MATH FORMATTING:
+- ALL math formulas, variables (like x, y), numbers, and equations MUST be wrapped in inline LaTeX delimiters: $...$
+- Block equations should be wrapped in $$...$$
+- Do NOT use plain text for variables or equations.
+- Do NOT output nested HTML span tags or ql-formula tags. JUST output the LaTeX delimiters ($ or $$) within the HTML text.
+
+RETURN:
+Return ONLY a valid JSON object representing the updated question state. Do not include any HTML markdown wrappers string like \`\`\`json or surrounding text.
+The JSON must have this exact structure (all strings containing HTML):
+{
+  "passage": "updated html...",
+  "prompt": "updated html...",
+  "options": {
+    "A": "updated html...", 
+    "B": "updated html...", 
+    "C": "updated html...", 
+    "D": "updated html..."
+  },
+  "explanation": "updated html..."
+}`;
+
+        runAiFixBtn.style.display = 'none';
+        aiFixLoading.style.display = 'block';
+        aiFixError.style.display = 'none';
+
+        try {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [
+                    {
+                        role: "user",
+                        parts: [
+                            { text: systemInstruction },
+                            { text: "CURRENT QUESTION DATA:\n" + JSON.stringify(currentData, null, 2) }
+                        ]
+                    }
+                ],
+                generationConfig: {
+                    responseMimeType: "application/json"
+                }
+            };
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                let errorBody = await response.json().catch(() => ({}));
+                throw new Error(`API Error: ${errorBody.error?.message || response.statusText}`);
+            }
+
+            const result = await response.json();
+            const jsonText = result.candidates[0].content.parts[0].text;
+            const updatedData = JSON.parse(jsonText);
+
+            // Apply the updates using dangerouslyPasteHTML so we maintain whatever structure the AI returns
+            if (updatedData.passage !== undefined) editors.passage.clipboard.dangerouslyPasteHTML(updatedData.passage);
+            if (updatedData.prompt !== undefined) editors.prompt.clipboard.dangerouslyPasteHTML(updatedData.prompt);
+            if (updatedData.options && updatedData.options.A !== undefined && editors.options && editors.options.A) editors.options.A.clipboard.dangerouslyPasteHTML(updatedData.options.A);
+            if (updatedData.options && updatedData.options.B !== undefined && editors.options && editors.options.B) editors.options.B.clipboard.dangerouslyPasteHTML(updatedData.options.B);
+            if (updatedData.options && updatedData.options.C !== undefined && editors.options && editors.options.C) editors.options.C.clipboard.dangerouslyPasteHTML(updatedData.options.C);
+            if (updatedData.options && updatedData.options.D !== undefined && editors.options && editors.options.D) editors.options.D.clipboard.dangerouslyPasteHTML(updatedData.options.D);
+            if (updatedData.explanation !== undefined) editors.explanation.clipboard.dangerouslyPasteHTML(updatedData.explanation);
+            
+            // Re-render math to show new KaTeX spans if AI wrote $...$
+            setTimeout(renderAllMath, 100);
+
+            aiFixInstruction.value = ''; // clear instructions
+
+        } catch (err) {
+            console.error(err);
+            aiFixError.textContent = err.message || "Failed to parse AI response.";
+            aiFixError.style.display = 'block';
+        } finally {
+            runAiFixBtn.style.display = 'block';
+            aiFixLoading.style.display = 'none';
+        }
+    });
+    // +++ END AI FIX ASSISTANT LOGIC +++
+
     // +++ QUESTION PREVIEW LOGIC +++
     const previewModal = document.getElementById('preview-modal');
     const previewBackdrop = document.getElementById('preview-modal-backdrop');
