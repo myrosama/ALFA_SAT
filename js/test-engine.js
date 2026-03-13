@@ -250,27 +250,94 @@ document.addEventListener('DOMContentLoaded', () => {
         const timerDuration = moduleTimers[currentModuleIndex] > 0 ? moduleTimers[currentModuleIndex] : 1800;
         startTimer(timerDuration);
     }
+    /**
+     * Extract LaTeX segments from text using balanced-brace parsing.
+     * Handles nested braces like \frac{\sqrt{2}}{2} correctly.
+     */
+    function extractLatexSegments(text) {
+        const segments = [];
+        let i = 0;
+        while (i < text.length) {
+            // Check for $...$ delimited LaTeX
+            if (text[i] === '$') {
+                const end = text.indexOf('$', i + 1);
+                if (end !== -1) {
+                    const latex = text.slice(i + 1, end);
+                    segments.push({ type: 'formula', value: latex.trim(), start: i, end: end + 1 });
+                    i = end + 1;
+                    continue;
+                }
+            }
+            // Check for \command pattern (backslash followed by letters)
+            if (text[i] === '\\' && i + 1 < text.length && /[a-zA-Z]/.test(text[i + 1])) {
+                const cmdStart = i;
+                i++; // skip backslash
+                while (i < text.length && /[a-zA-Z]/.test(text[i])) i++;
+                let hasBraces = false;
+                while (i < text.length && text[i] === '{') {
+                    hasBraces = true;
+                    let depth = 1;
+                    i++; // skip opening {
+                    while (i < text.length && depth > 0) {
+                        if (text[i] === '{') depth++;
+                        else if (text[i] === '}') depth--;
+                        i++;
+                    }
+                }
+                const latex = text.slice(cmdStart, i);
+                const knownSymbols = ['\\pi', '\\theta', '\\alpha', '\\beta', '\\gamma', '\\delta',
+                                      '\\sigma', '\\mu', '\\lambda', '\\infty', '\\times', '\\div',
+                                      '\\pm', '\\leq', '\\geq', '\\neq', '\\approx', '\\cdot',
+                                      '\\cos', '\\sin', '\\tan', '\\log', '\\ln'];
+                if (hasBraces || knownSymbols.includes(latex)) {
+                    segments.push({ type: 'formula', value: latex, start: cmdStart, end: i });
+                } else {
+                    i = cmdStart + 1;
+                    continue;
+                }
+                continue;
+            }
+            // Check for ^{...} or _{...} patterns
+            if ((text[i] === '^' || text[i] === '_') && i + 1 < text.length && text[i + 1] === '{') {
+                const cmdStart = i;
+                i++; // skip ^ or _
+                let depth = 1;
+                i++; // skip opening {
+                while (i < text.length && depth > 0) {
+                    if (text[i] === '{') depth++;
+                    else if (text[i] === '}') depth--;
+                    i++;
+                }
+                const latex = text.slice(cmdStart, i);
+                segments.push({ type: 'formula', value: latex, start: cmdStart, end: i });
+                continue;
+            }
+            i++;
+        }
+        if (segments.length === 0) return [];
+        const result = [];
+        let lastEnd = 0;
+        for (const seg of segments) {
+            if (seg.start > lastEnd) { result.push({ type: 'text', value: text.slice(lastEnd, seg.start) }); }
+            result.push({ type: 'formula', value: seg.value });
+            lastEnd = seg.end;
+        }
+        if (lastEnd < text.length) { result.push({ type: 'text', value: text.slice(lastEnd) }); }
+        return result;
+    }
+
     function renderAllMath() {
         if (typeof katex === 'undefined') return;
-        
         try {
-            // 1. Render .ql-formula spans (from editor/pipeline)
+            // 1. Render standard .ql-formula spans
             document.querySelectorAll('.ql-formula').forEach(span => {
                 const latex = span.dataset.value;
-                if (!latex) return;
-                if (span.querySelector('.katex')) return;
-                
+                if (!latex || span.querySelector('.katex')) return;
                 try {
-                    katex.render(latex, span, {
-                        throwOnError: false,
-                        displayMode: false
-                    });
+                    katex.render(latex, span, { throwOnError: false, displayMode: false });
                 } catch (e) {
                     console.error("KaTeX render error:", e, "for latex:", latex);
-                    // Fallback to MathQuill if katex fails or for legacy compatibility
-                    if (window.MQ && span) {
-                        try { window.MQ.StaticMath(span).latex(latex); } catch (mqE) { }
-                    }
+                    if (window.MQ && span) { try { window.MQ.StaticMath(span).latex(latex); } catch (mqE) { } }
                 }
             });
 
@@ -281,32 +348,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 const nodesToFix = [];
                 let node;
                 while (node = walker.nextNode()) {
-                    if (/\\[a-zA-Z]+\{|\^\{|_\{|\$|\{.*?\}/.test(node.textContent)) {
+                    if (/\\[a-zA-Z]+\{|\^\{|_\{|\$|\\leq|\\geq|\\neq|\\pi|\\theta/.test(node.textContent)) {
                         nodesToFix.push(node);
                     }
                 }
                 nodesToFix.forEach(textNode => {
                     const text = textNode.textContent;
-                    // Improved regex to catch $...$ or raw LaTeX patterns
-                    const html = text.replace(/\$([^\$]+?)\$|((?:[A-Za-z0-9.]+)?(?:\\[a-zA-Z]+\{[^}]*\}|[\^_]\{[^}]*\})+(?:[A-Za-z0-9.]*(?:[\^_]\{[^}]*\})*)*)/g, (match, p1, p2) => {
-                        const latex = (p1 || p2).trim();
-                        return `<span class="ql-formula" data-value="${latex}">\ufeff<span contenteditable="false"><span class="katex"></span></span>\ufeff</span>`;
-                    });
+                    const segments = extractLatexSegments(text);
+                    if (segments.length === 0) return;
                     
-                    if (html !== text) {
-                        const temp = document.createElement('span');
-                        temp.innerHTML = html;
-                        textNode.parentNode.replaceChild(temp, textNode);
-                        
-                        temp.querySelectorAll('.ql-formula').forEach(span => {
-                            const latex = span.dataset.value;
-                            if (latex) {
-                                try {
-                                    katex.render(latex, span, { throwOnError: false, displayMode: false });
-                                } catch (e) { }
+                    const container = document.createElement('span');
+                    segments.forEach(seg => {
+                        if (seg.type === 'formula') {
+                            const span = document.createElement('span');
+                            span.className = 'ql-formula';
+                            span.dataset.value = seg.value;
+                            try {
+                                katex.render(seg.value, span, { throwOnError: false, displayMode: false });
+                            } catch (e) {
+                                span.textContent = seg.value;
                             }
-                        });
-                    }
+                            container.appendChild(span);
+                        } else {
+                            container.appendChild(document.createTextNode(seg.value));
+                        }
+                    });
+                    textNode.parentNode.replaceChild(container, textNode);
                 });
             });
         } catch (e) { console.error("renderAllMath error:", e); }

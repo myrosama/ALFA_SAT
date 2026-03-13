@@ -196,13 +196,11 @@
                 <textarea id="report-message" rows="4" placeholder="e.g. The correct answer should be B, not C because..."></textarea>
             </div>
             <div class="report-form-group">
-                <label>Screenshot (optional)</label>
-                <div class="report-screenshot-area">
-                    <input type="file" id="report-screenshot-input" accept="image/*" style="display:none;">
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('report-screenshot-input').click();"><i class="fa-solid fa-camera"></i> Add Screenshot</button>
-                    <button type="button" class="btn btn-secondary btn-sm danger" id="report-remove-screenshot" style="display:none;"><i class="fa-solid fa-xmark"></i> Remove</button>
+                <label>Screenshot</label>
+                <div class="report-screenshot-area" id="auto-screenshot-status">
+                    <span class="status-badge loading"><i class="fa-solid fa-spinner fa-spin"></i> Capturing screen...</span>
                 </div>
-                <img id="report-screenshot-preview" style="display:none; max-width:100%; border-radius:8px; margin-top:8px;" />
+                <img id="report-screenshot-preview" style="display:none; max-width:100%; border-radius:8px; margin-top:8px; border: 1px solid #ddd;" />
             </div>
             <div id="report-status" class="report-status"></div>
         </div>
@@ -214,6 +212,7 @@
     <!-- END BUG REPORT MODAL -->
 
     <!-- SCRIPTS -->
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.13.18/dist/katex.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
@@ -225,7 +224,8 @@
     <script src="js/config.js?v=3.0"></script>
     <script src="js/ai-analysis.js?v=2.2?v=2.2?v=2.2?v=2.2"></script>
     <script src="js/telegram-images.js?v=3.0"></script>
-    <script src="js/bug-report.js?v=1.1"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="js/bug-report.js?v=1.2"></script>
     <script src="js/test-engine.js?v=2.2?v=2.2?v=2.2?v=2.2"></script> <!-- Test page specific logic -->
     <!-- Inline script removed as modal logic is now in test-engine.js -->
 
