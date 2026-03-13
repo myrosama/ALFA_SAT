@@ -257,73 +257,29 @@ document.addEventListener('DOMContentLoaded', () => {
     function extractLatexSegments(text) {
         const segments = [];
         let i = 0;
-        while (i < text.length) {
-            // Check for $...$ delimited LaTeX
-            if (text[i] === '$') {
-                const end = text.indexOf('$', i + 1);
-                if (end !== -1) {
-                    const latex = text.slice(i + 1, end);
-                    segments.push({ type: 'formula', value: latex.trim(), start: i, end: end + 1 });
-                    i = end + 1;
-                    continue;
-                }
+        
+        // Match patterns: $...$, \command{...}, \command, ^{...}, ^2, _{...}, _n
+        // This regex is slightly more aggressive to catch non-braced SAT math
+        const latexRegex = /(\$[^\$]+\$|\\\(.*?\\\)|\\(?:[a-zA-Z]+)(?:\{.*?\})*|[\^_]\{.*?\}|[\^_][a-zA-Z0-9]|\\[a-zA-Z]+|\\leq|\\geq|\\neq|\\pi|\\theta|\\alpha|\\beta|\\gamma|\\delta|\\sigma|\\mu|\\lambda|\\infty|\\times|\\div|\\pm|\\approx|\\cdot|\\cos|\\sin|\\tan|\\log|\\ln)/g;
+        
+        let match;
+        let lastIdx = 0;
+        while ((match = latexRegex.exec(text)) !== null) {
+            if (match.index > lastIdx) {
+                segments.push({ type: 'text', value: text.slice(lastIdx, match.index) });
             }
-            // Check for \command pattern (backslash followed by letters)
-            if (text[i] === '\\' && i + 1 < text.length && /[a-zA-Z]/.test(text[i + 1])) {
-                const cmdStart = i;
-                i++; // skip backslash
-                while (i < text.length && /[a-zA-Z]/.test(text[i])) i++;
-                let hasBraces = false;
-                while (i < text.length && text[i] === '{') {
-                    hasBraces = true;
-                    let depth = 1;
-                    i++; // skip opening {
-                    while (i < text.length && depth > 0) {
-                        if (text[i] === '{') depth++;
-                        else if (text[i] === '}') depth--;
-                        i++;
-                    }
-                }
-                const latex = text.slice(cmdStart, i);
-                const knownSymbols = ['\\pi', '\\theta', '\\alpha', '\\beta', '\\gamma', '\\delta',
-                                      '\\sigma', '\\mu', '\\lambda', '\\infty', '\\times', '\\div',
-                                      '\\pm', '\\leq', '\\geq', '\\neq', '\\approx', '\\cdot',
-                                      '\\cos', '\\sin', '\\tan', '\\log', '\\ln'];
-                if (hasBraces || knownSymbols.includes(latex)) {
-                    segments.push({ type: 'formula', value: latex, start: cmdStart, end: i });
-                } else {
-                    i = cmdStart + 1;
-                    continue;
-                }
-                continue;
-            }
-            // Check for ^{...} or _{...} patterns
-            if ((text[i] === '^' || text[i] === '_') && i + 1 < text.length && text[i + 1] === '{') {
-                const cmdStart = i;
-                i++; // skip ^ or _
-                let depth = 1;
-                i++; // skip opening {
-                while (i < text.length && depth > 0) {
-                    if (text[i] === '{') depth++;
-                    else if (text[i] === '}') depth--;
-                    i++;
-                }
-                const latex = text.slice(cmdStart, i);
-                segments.push({ type: 'formula', value: latex, start: cmdStart, end: i });
-                continue;
-            }
-            i++;
+            let val = match[0];
+            // Remove $ or \( delimiters for KaTeX
+            if (val.startsWith('$') && val.endsWith('$')) val = val.slice(1, -1);
+            if (val.startsWith('\\(') && val.endsWith('\\)')) val = val.slice(2, -2);
+            
+            segments.push({ type: 'formula', value: val });
+            lastIdx = latexRegex.lastIndex;
         }
-        if (segments.length === 0) return [];
-        const result = [];
-        let lastEnd = 0;
-        for (const seg of segments) {
-            if (seg.start > lastEnd) { result.push({ type: 'text', value: text.slice(lastEnd, seg.start) }); }
-            result.push({ type: 'formula', value: seg.value });
-            lastEnd = seg.end;
+        if (lastIdx < text.length) {
+            segments.push({ type: 'text', value: text.slice(lastIdx) });
         }
-        if (lastEnd < text.length) { result.push({ type: 'text', value: text.slice(lastEnd) }); }
-        return result;
+        return segments;
     }
 
     function renderAllMath() {
@@ -344,11 +300,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // 2. Fix raw LaTeX that leaked into displayed text
             const scanAreas = document.querySelectorAll('.question-text, .option-text, .pane-content');
             scanAreas.forEach(area => {
+                // Use a more inclusive regex for detection
                 const walker = document.createTreeWalker(area, NodeFilter.SHOW_TEXT, null, false);
                 const nodesToFix = [];
                 let node;
                 while (node = walker.nextNode()) {
-                    if (/\\[a-zA-Z]+\{|\^\{|_\{|\$|\\leq|\\geq|\\neq|\\pi|\\theta/.test(node.textContent)) {
+                    if (/\\|\$|\^|_|\\leq|\\geq|\\pi|\\theta/.test(node.textContent)) {
                         nodesToFix.push(node);
                     }
                 }
@@ -356,6 +313,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const text = textNode.textContent;
                     const segments = extractLatexSegments(text);
                     if (segments.length === 0) return;
+                    
+                    console.log(`[MathEngine] Rendering ${segments.filter(s=>s.type==='formula').length} formula(s) in: "${text.substring(0,30)}..."`);
                     
                     const container = document.createElement('span');
                     segments.forEach(seg => {

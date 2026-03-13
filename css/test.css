@@ -1205,3 +1205,23 @@ body.highlighter-active ::selection {
 }
 
 /* +++ END BUG REPORT STYLES +++ */
+/* --- KaTeX / Math Normalization --- */
+.question-text .katex, .option-text .katex, .pane-content .katex {
+    font-size: 1.15em !important;
+    vertical-align: baseline !important;
+    white-space: nowrap !important;
+}
+
+.katex-html {
+    vertical-align: middle !important;
+}
+
+.katex .mathnormal {
+    font-family: KaTeX_Main, Times New Roman, serif !important;
+    font-style: italic !important;
+}
+
+.ql-formula {
+    display: inline-block !important;
+    vertical-align: baseline !important;
+}
