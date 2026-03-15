@@ -417,6 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.classList.toggle('active', parseInt(btn.dataset.module) === currentModule);
         });
     }
+    window.switchModule = switchModule; // EXPOSE GLOBALLY for module-uploader.js
 
     /**
      * Fetches question data and displays the editor form.
@@ -665,6 +666,7 @@ document.addEventListener('DOMContentLoaded', () => {
         questionForm.querySelector('#delete-question-btn').addEventListener('click', handleDeleteQuestion);
         setupImageResizing(); // Setup resizing for the loaded image container
     }
+    window.showEditorForQuestion = showEditorForQuestion; // EXPOSE GLOBALLY for module-uploader.js
 
     /**
      * Handles the save button click for a question.
@@ -1077,9 +1079,11 @@ Return *only* a single, valid JSON object with these fields.
             }
 
             const result = await response.json();
+            const candidate = result?.candidates?.[0];
+            const part = candidate?.content?.parts?.[0];
 
-            if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts[0].text) {
-                const jsonText = result.candidates[0].content.parts[0].text;
+            if (part && part.text) {
+                const jsonText = part.text;
                 const parsedData = JSON.parse(jsonText);
 
                 // Success! Fill the form.
@@ -1088,7 +1092,11 @@ Return *only* a single, valid JSON object with these fields.
 
             } else {
                 console.error("Invalid response structure:", result);
-                throw new Error("Invalid response structure from API.");
+                let msg = "Invalid response from AI.";
+                if (result?.promptFeedback?.blockReason) {
+                    msg = `AI blocked the request: ${result.promptFeedback.blockReason}`;
+                }
+                throw new Error(msg);
             }
 
         } catch (error) {
@@ -1189,6 +1197,7 @@ Return *only* a single, valid JSON object with these fields.
      * @param {string} aiText - The text from the AI.
      */
     function findBestOption(select, aiText) {
+        if (!select || !select.options || select.options.length === 0) return "";
         let bestMatch = select.options[0].value;
         let bestScore = 0;
 
@@ -1354,7 +1363,15 @@ The JSON must have this exact structure (all strings containing HTML):
             }
 
             const result = await response.json();
-            const jsonText = result.candidates[0].content.parts[0].text;
+            const candidate = result?.candidates?.[0];
+            const part = candidate?.content?.parts?.[0];
+
+            if (!part || !part.text) {
+                console.error("AI Fix invalid response:", result);
+                throw new Error("AI failed to provide a valid response. It might be blocked or overloaded.");
+            }
+            
+            const jsonText = part.text;
             const updatedData = JSON.parse(jsonText);
 
             // Apply the updates using dangerouslyPasteHTML so we maintain whatever structure the AI returns

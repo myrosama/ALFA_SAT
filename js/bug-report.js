@@ -244,32 +244,32 @@ CRITICAL: If the issue requires extracting a completely missing passage from the
 
         const webhookUrl = 'https://bug-report-webhook.onrender.com/send-bug-report';
         
-        // Construct the message for the webhook (server handles MarkdownV2/fallback)
+        // Construct the message for the webhook (server handles Telegram HTML)
         const payload = {
             report_id: reportId || `manual_rpt_${Date.now()}`,
-            message: `🐛 *BUG REPORT*
+            message: `<b>🐛 BUG REPORT</b>
 ━━━━━━━━━━━━━━━
-📋 *Test:* ${ctx.testName}
-🆔 *Test ID:* ${ctx.testId}
-📝 *Section:* ${ctx.section} — ${ctx.module}
-❓ *Question:* Q${ctx.questionNumber}
-🏷️ *Type:* ${typeLabels[issueType] || issueType}
+📋 <b>Test:</b> ${ctx.testName}
+🆔 <b>Test ID:</b> ${ctx.testId}
+📝 <b>Section:</b> ${ctx.section} — ${ctx.module}
+❓ <b>Question:</b> Q${ctx.questionNumber}
+🏷️ <b>Type:</b> ${typeLabels[issueType] || issueType}
 Priority: ${aiResult.priority}
 
-💬 *Student says:*
+💬 <b>Student says:</b>
 "${userMessage}"
 
-📍 *Error Location:*
+📍 <b>Error Location:</b>
 ${aiResult.error_location || 'Not specified'}
 
-🤖 *AI Analysis:*
+🤖 <b>AI Analysis:</b>
 ${aiResult.analysis || ''}
 
-🔧 *Suggested Fix:*
+🔧 <b>Suggested Fix:</b>
 ${aiResult.suggested_fix || ''}
 
 ✅ Valid report: ${aiResult.valid ? 'Yes' : 'Likely not'}
-${aiResult.fix_payload?.requires_pdf_sync ? '⚠️ *REQUIRES LOCAL PDF SYNC*' : '⚡ *Auto-Fix Ready*'}
+${aiResult.fix_payload?.requires_pdf_sync ? '⚠️ <b>REQUIRES LOCAL PDF SYNC</b>' : '⚡ <b>Auto-Fix Ready</b>'}
 ID: ${reportId}`,
             questionNumber: ctx.questionNumber,
             screenshot_base64: screenshotBase64,
@@ -288,11 +288,14 @@ ID: ${reportId}`,
             });
             clearTimeout(timeoutId);
             
-            if (!res.ok) throw new Error(`Webhook error: ${res.status}`);
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || `Webhook error: ${res.status}`);
+            }
             console.log("Bug report sent successfully via webhook");
         } catch (err) {
             const isTimeout = err.name === 'AbortError';
-            console.error(isTimeout ? 'Webhook request timed out' : 'Webhook notification failed', err);
+            console.error(isTimeout ? 'Webhook request timed out' : `Webhook notification failed: ${err.message}`, err);
             
             // Minimal fallback if webhook is down or timed out
             try {
