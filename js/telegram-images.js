@@ -42,7 +42,20 @@ const TelegramImages = (() => {
     async function resolveTelegramUrl(url) {
         if (!url || !url.startsWith('tg://')) return url;
 
-        const fileId = url.substring(5); // Strip "tg://"
+        let rawId = url.substring(5); // Strip "tg://"
+        let preferredBotIndex = -1;
+        let fileId = rawId;
+
+        // Check for indexed format "tg://index:file_id"
+        const colonIndex = rawId.indexOf(':');
+        if (colonIndex !== -1) {
+            const indexPart = rawId.substring(0, colonIndex);
+            if (!isNaN(indexPart) && indexPart !== "") {
+                preferredBotIndex = parseInt(indexPart);
+                fileId = rawId.substring(colonIndex + 1);
+            }
+        }
+
         const cacheKey = `tg_cache_${fileId}`;
 
         // 1. Check localStorage cache
@@ -55,79 +68,70 @@ const TelegramImages = (() => {
                 }
                 localStorage.removeItem(cacheKey); // Expired
             }
-        } catch (e) {
-            // Cache read failed, continue to API call
-        }
+        } catch (e) {}
 
-        // 2. Ensure tokens are loaded from Firestore
         await ensureTokensLoaded();
+        if (botTokens.length === 0) return url;
 
-        if (botTokens.length === 0) {
-            console.error('TelegramImages: No bot tokens available');
-            return url;
+        // 2. Determine bot order
+        let botsToTry = [];
+        if (preferredBotIndex >= 0 && preferredBotIndex < botTokens.length) {
+            // Try preferred bot first, then others
+            botsToTry.push(preferredBotIndex);
+            for (let i = 0; i < botTokens.length; i++) {
+                if (i !== preferredBotIndex) botsToTry.push(i);
+            }
+        } else {
+            // No index (legacy) — try round-robin order
+            for (let i = 0; i < botTokens.length; i++) {
+                botsToTry.push((roundRobinIndex + i) % botTokens.length);
+            }
         }
 
-        // 3. Try each bot (round-robin with fallback on 401/429/Unauthorized)
-        const maxAttempts = botTokens.length;
         let lastError = null;
-
-        for (let botAttempt = 0; botAttempt < maxAttempts; botAttempt++) {
-            const token = getNextToken();
+        for (const botIdx of botsToTry) {
+            const token = botTokens[botIdx];
             const MAX_RETRIES = 2;
 
             for (let retry = 0; retry <= MAX_RETRIES; retry++) {
                 try {
-                    const res = await fetch(
-                        `https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`
-                    );
-
-                    // Rate limited or Unauthorized at HTTP level — try next bot immediately
+                    const res = await fetch(`https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`);
+                    
                     if (res.status === 429 || res.status === 401) {
                         lastError = `HTTP ${res.status}`;
-                        console.warn(`TelegramImages: Bot returned ${res.status}, trying next bot...`);
-                        break; // Break retry loop, continue to next bot
+                        break; 
                     }
 
                     const data = await res.json();
-
                     if (data.ok && data.result.file_path) {
                         const downloadUrl = `https://api.telegram.org/file/bot${token}/${data.result.file_path}`;
-
-                        // Cache the resolved URL
                         try {
                             localStorage.setItem(cacheKey, JSON.stringify({
                                 url: downloadUrl,
                                 expires: Date.now() + CACHE_TTL_MS
                             }));
-                        } catch (e) {
-                            // localStorage full or unavailable
-                        }
-
+                        } catch (e) {}
                         return downloadUrl;
                     } else {
-                        // Telegram-level error — check if it's auth-related (try next bot)
                         const desc = (data.description || '').toLowerCase();
-                        if (desc.includes('unauthorized') || desc.includes('forbidden') || desc.includes('bot was blocked')) {
-                            console.warn(`TelegramImages: getFile failed (${data.description}), trying next bot...`);
+                        if (desc.includes('unauthorized') || desc.includes('forbidden') || desc.includes('bot was blocked') || desc.includes('wrong file_id')) {
                             lastError = data.description;
                             break; // Try next bot
                         }
-                        // Other Telegram error (bad file_id) — don't retry, give up
                         console.error('TelegramImages: getFile failed:', data.description);
                         return url;
                     }
                 } catch (err) {
                     lastError = err;
                     if (retry < MAX_RETRIES) {
-                        const waitMs = 1000 * Math.pow(2, retry);
-                        await new Promise(r => setTimeout(r, waitMs));
+                        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retry)));
                     }
                 }
             }
         }
 
         console.error('TelegramImages: All bots failed:', lastError);
-        return url; // Fallback
+        return url;
     }
 
     /**
@@ -280,6 +284,7 @@ const TelegramImages = (() => {
         const maxAttempts = botTokens.length;
 
         for (let botAttempt = 0; botAttempt < maxAttempts; botAttempt++) {
+            const botIdx = roundRobinIndex % botTokens.length;
             const token = getNextToken();
             try {
                 const response = await fetch(
@@ -287,28 +292,21 @@ const TelegramImages = (() => {
                     { method: 'POST', body: formData }
                 );
 
-                // If unauthorized (401) or rate-limited (429), try the next token
                 if (response.status === 401 || response.status === 429) {
-                    console.warn(`Telegram token failed with ${response.status}. Trying next...`);
                     lastError = `Status ${response.status}`;
                     continue;
                 }
 
                 const data = await response.json();
-
                 if (data.ok) {
                     const photoArray = data.result.photo;
                     const fileId = photoArray[photoArray.length - 1].file_id;
-                    return `tg://${fileId}`;
+                    return `tg://${botIdx}:${fileId}`;
                 } else {
                     lastError = data.description;
-                    console.warn('Upload failed on this token:', data.description);
-                    // Still continue to next token if it's a Telegram-level error
                 }
             } catch (error) {
                 lastError = error.message;
-                console.warn('Network error on this token:', error.message);
-                // Continue to next token
             }
         }
 
