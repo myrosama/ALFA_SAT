@@ -384,6 +384,22 @@ async function runAutomation(targetModule) {
                 // Let the editor's auto-save (triggered on modal close) finish its cycle first to prevent collision
                 await new Promise(r => setTimeout(r, 1500));
                 
+                // Upload image if this question has one
+                if (qData.box.hasImage && qData.box.imageBBox && typeof window._setQuestionImage === 'function') {
+                    updateModProgress(qIdx, totalQuestions, `Uploading image for Q${currentQNumber}...`);
+                    try {
+                        const tgUrl = await cropAndUploadImage(pageImg.canvas, qData.box.imageBBox);
+                        if (tgUrl) {
+                            window._setQuestionImage(tgUrl);
+                            await new Promise(r => setTimeout(r, 500));
+                        } else {
+                            logModError(`Image upload failed for Q${currentQNumber} (Telegram returned null).`);
+                        }
+                    } catch (imgErr) {
+                        logModError(`Image upload error for Q${currentQNumber}: ${imgErr.message}`);
+                    }
+                }
+                
                 // If Math, run AI Fix explicitly
                 if (targetModule > 2) {
                     updateModProgress(qIdx, totalQuestions, `Running AI Fix (KaTeX wrap) for Q${currentQNumber}...`);
@@ -452,6 +468,8 @@ Return a valid JSON array of objects. Each object should represent a single ques
 - "questionNumber": the integer number printed next to the question (e.g., 3).
 - "ymin", "xmin", "ymax", "xmax": exactly these 4 integer values between 0 and 1000 representing scaled coordinates relative to the image dimensions.
 - "isValid": a boolean (true/false) that is true ONLY if the box successfully captures the FULL context, the prompt, and ALL 4 answer choices (if multiple choice). Mark it false if it is cut off or missing choices.
+- "hasImage": a boolean. true if the question contains a graph, chart, figure, table, or any visual diagram that is essential to answering the question. false if it is text-only.
+- "imageBBox": if "hasImage" is true, provide the bounding box of JUST the image/graph/chart as {"ymin": ..., "xmin": ..., "ymax": ..., "xmax": ...} using the same 0-1000 coordinate system relative to the FULL PAGE. If "hasImage" is false, set this to null.
 
 Do not include \`\`\`json or markdown, just the raw JSON array.
 If no questions are found, return an empty array [].`;
@@ -512,6 +530,38 @@ async function cropImage(sourceCanvas, box) {
     cropCtx.drawImage(sourceCanvas, x0, y0, w, h, 0, 0, w, h);
     
     return cropCanvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+}
+
+async function cropAndUploadImage(sourceCanvas, imageBBox) {
+    // Crop the image/graph sub-region from the page canvas
+    const x0 = Math.floor((imageBBox.xmin / 1000) * sourceCanvas.width);
+    const y0 = Math.floor((imageBBox.ymin / 1000) * sourceCanvas.height);
+    const x1 = Math.ceil((imageBBox.xmax / 1000) * sourceCanvas.width);
+    const y1 = Math.ceil((imageBBox.ymax / 1000) * sourceCanvas.height);
+    
+    const w = x1 - x0;
+    const h = y1 - y0;
+    
+    if (w <= 0 || h <= 0) {
+        console.warn("Invalid image crop dimensions, skipping image upload.");
+        return null;
+    }
+    
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = w;
+    cropCanvas.height = h;
+    const cropCtx = cropCanvas.getContext('2d');
+    cropCtx.drawImage(sourceCanvas, x0, y0, w, h, 0, 0, w, h);
+    
+    // Convert canvas to Blob for Telegram upload
+    const blob = await new Promise(resolve => cropCanvas.toBlob(resolve, 'image/jpeg', 0.9));
+    if (!blob) return null;
+    
+    const file = new File([blob], 'question_image.jpg', { type: 'image/jpeg' });
+    
+    // Upload via shared TelegramImages utility
+    const tgUrl = await TelegramImages.uploadImage(file);
+    return tgUrl; // e.g. "tg://0:AgACAgIAAxk..."
 }
 
 async function runExtractionOnCroppedImage(targetModule, base64Image) {
@@ -605,48 +655,71 @@ async function runExtractionOnCroppedImage(targetModule, base64Image) {
 }
 
 async function runAiFixMathFormatting() {
-    return new Promise((resolve) => {
-        const fixBtn = document.getElementById('open-ai-fix-btn');
-        if (!fixBtn) {
-            logModError("AI Fix button not found. Is this a Math module?");
+    return new Promise(async (resolve) => {
+        // Instead of trying to find the dynamically-injected 'open-ai-fix-btn',
+        // we directly open the AI Fix panel. These elements are static in the HTML.
+        const aiFixPanel = document.getElementById('ai-fix-panel');
+        const instructionInput = document.getElementById('ai-fix-instruction');
+        const runBtn = document.getElementById('run-ai-fix-btn');
+        const loadingDiv = document.getElementById('ai-fix-loading');
+        const mainEditorContent = document.querySelector('.editor-main-content');
+        
+        if (!aiFixPanel || !instructionInput || !runBtn) {
+            logModError("AI Fix panel elements not found in HTML.");
             resolve(false);
             return;
         }
         
-        // Open panel
-        fixBtn.click();
+        // Open the panel directly (replicating what openAiFixPanel() does in editor.js)
+        aiFixPanel.style.display = 'flex';
+        if (mainEditorContent) mainEditorContent.classList.add('ai-panel-open');
         
-        // Inject Instruction
-        const instructionInput = document.getElementById('ai-fix-instruction');
-        const runBtn = document.getElementById('run-ai-fix-btn');
-        const loadingDiv = document.getElementById('ai-fix-loading');
+        // Small delay to let the panel render
+        await new Promise(r => setTimeout(r, 300));
         
-        if (!instructionInput || !runBtn || !loadingDiv) {
-             resolve(false);
-             return;
-        }
-        
+        // Set instruction
         instructionInput.value = "Wrap all the equations, math expressions, functions, numbers and variables (like x, y) to the katex format using $...$ delimiters. Do not add plain text for them. If it's a block equation use $$...$$";
         
-        // Monitor for completion
+        // Monitor for completion by watching the runBtn's style.display.
+        // editor.js handler: hides runBtn (display='none') on start, shows it (display='block') on finish.
+        let aiStarted = false;
         const observer = new MutationObserver((mutations, obs) => {
-            if (loadingDiv.style.display === 'none' && runBtn.style.display !== 'none') {
+            // Phase 1: Detect that AI started (runBtn hidden)
+            if (!aiStarted && runBtn.style.display === 'none') {
+                aiStarted = true;
+            }
+            // Phase 2: Detect completion (runBtn shown again after being hidden)
+            if (aiStarted && runBtn.style.display === 'block') {
                 obs.disconnect();
                 // Close panel
-                document.getElementById('close-ai-fix-btn')?.click();
+                aiFixPanel.style.display = 'none';
+                if (mainEditorContent) mainEditorContent.classList.remove('ai-panel-open');
+                instructionInput.value = '';
+                // Trigger a save after the fix
+                setTimeout(() => {
+                    document.getElementById('save-question-btn')?.click();
+                }, 300);
                 resolve(true);
             }
         });
         
-        observer.observe(loadingDiv, { attributes: true, attributeFilter: ['style'] });
+        observer.observe(runBtn, { attributes: true, attributeFilter: ['style'] });
+        if (loadingDiv) observer.observe(loadingDiv, { attributes: true, attributeFilter: ['style'] });
         
-        // Trigger Fix
+        // Trigger Fix by clicking the static run button
         runBtn.click();
         
-        // Safety timeout
+        // Safety timeout (45s for API call)
         setTimeout(() => {
             observer.disconnect();
+            // Clean up panel
+            aiFixPanel.style.display = 'none';
+            if (mainEditorContent) mainEditorContent.classList.remove('ai-panel-open');
+            if (!aiStarted) {
+                logModError("AI Fix never started - the click handler may not have fired.");
+            }
             resolve(false);
-        }, 30000);
+        }, 45000);
     });
 }
+
