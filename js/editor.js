@@ -856,6 +856,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Expose a global setter so module-uploader can programmatically set an image
+    window._setQuestionImage = function(tgUrl) {
+        currentImageTgUrl = tgUrl;
+        if (tgUrl) {
+            renderStimulus({ imageUrl: tgUrl, imageWidth: '100%' });
+        } else {
+            renderStimulus({});
+        }
+    };
+
 
     // +++ NEW: AI HELPER LOGIC +++
 
