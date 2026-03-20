@@ -1096,7 +1096,11 @@ Return *only* a single, valid JSON object with these fields.
             const part = candidate?.content?.parts?.[0];
 
             if (part && part.text) {
-                const jsonText = part.text;
+                let jsonText = part.text;
+                const match = jsonText.match(/\{[\s\S]*\}/);
+                if (match) {
+                    jsonText = match[0];
+                }
                 const parsedData = JSON.parse(jsonText);
 
                 // Success! Fill the form.
@@ -1269,7 +1273,7 @@ Return *only* a single, valid JSON object with these fields.
     // Provide a way to open the panel (e.g., from the question menu or a floating button)
     // We will inject a button into the editor toolbar when a question loads.
     const origShowEditor = showEditorForQuestion;
-    showEditorForQuestion = function(module, qNumber) {
+    window.showEditorForQuestion = showEditorForQuestion = function(module, qNumber) {
         origShowEditor(module, qNumber);
         
         // Wait for render, then inject the button if it doesn't exist
@@ -1384,7 +1388,11 @@ The JSON must have this exact structure (all strings containing HTML):
                 throw new Error("AI failed to provide a valid response. It might be blocked or overloaded.");
             }
             
-            const jsonText = part.text;
+            let jsonText = part.text;
+            const match = jsonText.match(/\{[\s\S]*\}/);
+            if (match) {
+                jsonText = match[0];
+            }
             const updatedData = JSON.parse(jsonText);
 
             // Apply the updates using dangerouslyPasteHTML so we maintain whatever structure the AI returns
