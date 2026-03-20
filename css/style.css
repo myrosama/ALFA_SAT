@@ -690,6 +690,26 @@ body {
     font-size: 0.8rem;
 }
 
+.filter-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.08);
+    color: inherit;
+    border-radius: 12px;
+    min-width: 22px;
+    height: 22px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0 6px;
+    transition: background-color 0.25s ease;
+}
+
+.filter-btn.active .filter-count {
+    background-color: rgba(255, 255, 255, 0.25);
+    color: var(--white);
+}
+
 /* --- Dashboard Test Sections --- */
 .test-section {
     margin-bottom: 35px;
@@ -790,6 +810,53 @@ body {
 
 .test-card.premium-card .card-btn:hover {
     background: linear-gradient(135deg, #b8960e, #a67c00);
+}
+
+/* Ensure premium cards look like regular completed cards when finished */
+.test-card.premium-card.completed {
+    border-left: 3px solid #28a745;
+}
+
+.test-card.premium-card.completed .card-btn.btn-view-results {
+    background: none;
+    background-color: var(--primary-blue);
+}
+
+.test-card.premium-card.completed .card-btn.btn-view-results:hover {
+    background: none;
+    background-color: #002244;
+}
+
+/* See More Button */
+.see-more-container {
+    text-align: center;
+    margin-top: 25px;
+    width: 100%;
+}
+
+.see-more-btn {
+    background-color: var(--white);
+    color: var(--primary-blue);
+    border: 1px solid var(--border-color);
+    padding: 10px 20px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-radius: 25px;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.see-more-btn:hover {
+    background-color: var(--light-gray);
+    color: var(--primary-purple);
+    border-color: var(--primary-purple);
+    transform: translateY(-2px);
+}
+
+.see-more-btn i {
+    font-size: 0.8rem;
 }
 
 /* Finished Section */
