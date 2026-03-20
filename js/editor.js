@@ -667,6 +667,9 @@ document.addEventListener('DOMContentLoaded', () => {
         setupImageResizing(); // Setup resizing for the loaded image container
     }
     window.showEditorForQuestion = showEditorForQuestion; // EXPOSE GLOBALLY for module-uploader.js
+    window._fillEditorForm = fillEditorForm; // EXPOSE for module-uploader direct API calls
+    window._handleFormSubmit = handleFormSubmit; // EXPOSE for module-uploader auto-save
+    window._QUESTION_DOMAINS = QUESTION_DOMAINS; // EXPOSE for module-uploader prompt building
 
     /**
      * Handles the save button click for a question.

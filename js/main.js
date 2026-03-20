@@ -1608,21 +1608,26 @@ OUTPUT: Return a valid JSON array. Each object MUST include sectionType and ques
                 const inProgressData = localStorage.getItem(inProgressKey);
                 const category = test.testCategory || 'custom';
 
+                const testObj = { test, completionData, inProgressData: !!inProgressData };
+
                 if (completionData) {
                     finished.push({ test, completionData });
-                } else if (inProgressData) {
-                    inProgress.push({ test });
                 } else {
-                    // Not started — categorize by type
-                    if (category === 'real_exam') realExamTests.push({ test });
-                    else if (category === 'premium') premiumTests.push({ test });
-                    else otherTests.push({ test });
+                    if (category === 'real_exam') realExamTests.push(testObj);
+                    else if (category === 'premium') premiumTests.push(testObj);
+                    else otherTests.push(testObj);
+
+                    if (inProgressData) {
+                        inProgress.push(testObj);
+                    }
                 }
             });
 
             // Also add orphaned completed tests (from proctored sessions)
+            let orphanedFinishedCount = 0;
             completedTestsMap.forEach((completionData, ctTestId) => {
                 if (!allAvailableTests.has(ctTestId)) {
+                    orphanedFinishedCount++;
                     finished.push({
                         test: { id: ctTestId, name: completionData.testName || 'Practice Test' },
                         completionData
@@ -1630,29 +1635,50 @@ OUTPUT: Return a valid JSON array. Each object MUST include sectionType and ques
                 }
             });
 
-            // --- FINISHED ---
-            if (finished.length > 0 && finishedGrid) {
-                finishedSection.style.display = 'block';
-                
-                // Sort finished tests by completion date (newest first)
-                finished.sort((a, b) => {
-                    const timeA = a.completionData.completedAt?.toDate ? a.completionData.completedAt.toDate().getTime() : (a.completionData.completedAt || 0);
-                    const timeB = b.completionData.completedAt?.toDate ? b.completionData.completedAt.toDate().getTime() : (b.completionData.completedAt || 0);
-                    return timeB - timeA;
-                });
+            // Calculate Counts for Filter Badges
+            const finalTotalTests = testsArray.length + orphanedFinishedCount;
+            
+            const countAllEl = document.getElementById('count-all');
+            const countRealExamEl = document.getElementById('count-real-exam');
+            const countPremiumEl = document.getElementById('count-premium');
+            const countFinishedEl = document.getElementById('count-finished');
 
-                finished.forEach(({ test, completionData }) => {
+            if (countAllEl) countAllEl.textContent = finalTotalTests;
+            if (countRealExamEl) countRealExamEl.textContent = realExamTests.length;
+            if (countPremiumEl) countPremiumEl.textContent = premiumTests.length;
+            if (countFinishedEl) countFinishedEl.textContent = finished.length;
+
+            // Generic Card Builder
+            function buildTestCard(testObj) {
+                const { test, completionData, inProgressData } = testObj;
+                const category = test.testCategory || 'custom';
+                const isRealExam = category === 'real_exam';
+                const isPremium = category === 'premium';
+                
+                const card = document.createElement('div');
+                card.classList.add('test-card');
+                card.dataset.category = category;
+                
+                if (isRealExam) card.classList.add('real-exam-card');
+                if (isPremium) card.classList.add('premium-card');
+
+                let badgeHtml = '';
+                if (isRealExam) badgeHtml = `<span class="card-badge free-badge"><i class="fa-solid fa-gift"></i> FREE</span>`;
+                if (isPremium) badgeHtml = `<span class="card-badge premium-badge"><i class="fa-solid fa-crown"></i> Premium</span>`;
+                const badgesContainer = badgeHtml ? `<div class="card-badges">${badgeHtml}</div>` : '';
+
+                if (completionData) {
+                    card.classList.add('completed');
                     const isPending = completionData.proctorCode && completionData.scoringStatus !== 'published';
                     let dateStr = '';
                     if (completionData.completedAt) {
                         const d = completionData.completedAt.toDate ? completionData.completedAt.toDate() : new Date(completionData.completedAt);
                         dateStr = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
                     }
-                    const card = document.createElement('div');
-                    card.classList.add('test-card', 'completed');
-                    card.dataset.category = test.testCategory || 'custom';
+                    
                     card.innerHTML = `
                         <div class="card-content">
+                            ${badgesContainer}
                             <h4>${test.name || 'Unnamed Test'}</h4>
                             <p>${dateStr ? `Completed on ${dateStr}` : 'A full-length adaptive test.'}</p>
                             <div class="test-status ${isPending ? 'pending' : 'completed'}">
@@ -1662,96 +1688,70 @@ OUTPUT: Return a valid JSON array. Each object MUST include sectionType and ques
                         </div>
                         <a href="results.html?resultId=${completionData.resultId}" class="btn card-btn btn-view-results">${isPending ? 'View Status' : 'View Results'}</a>
                     `;
-                    finishedGrid.appendChild(card);
-                });
-            }
-
-            // --- IN PROGRESS ---
-            if (inProgress.length > 0 && inProgressGrid) {
-                inProgressSection.style.display = 'block';
-                inProgress.forEach(({ test }) => {
-                    const card = document.createElement('div');
-                    card.classList.add('test-card', 'in-progress');
-                    card.dataset.category = test.testCategory || 'custom';
+                } else if (inProgressData) {
+                    card.classList.add('in-progress');
                     card.innerHTML = `
                         <div class="card-content">
+                            ${badgesContainer}
                             <h4>${test.name || 'Unnamed Test'}</h4>
                             <p>${test.description || 'A full-length adaptive test.'}</p>
                             <span class="test-status not-started">In Progress</span>
                         </div>
                         <a href="test.html?id=${test.id}" class="btn btn-primary card-btn">Continue Test</a>
                     `;
-                    inProgressGrid.appendChild(card);
-                });
-            }
-
-            // --- REAL EXAM TESTS (FREE) ---
-            if (realExamTests.length > 0 && realExamGrid) {
-                realExamSection.style.display = 'block';
-                realExamTests.forEach(({ test }) => {
-                    const card = document.createElement('div');
-                    card.classList.add('test-card', 'not-started', 'real-exam-card');
-                    card.dataset.category = 'real_exam';
+                } else {
+                    card.classList.add('not-started');
                     card.innerHTML = `
                         <div class="card-content">
-                            <div class="card-badges">
-                                <span class="card-badge free-badge"><i class="fa-solid fa-gift"></i> FREE</span>
-                            </div>
+                            ${badgesContainer}
                             <h4>${test.name || 'Unnamed Test'}</h4>
-                            <p>${test.description || 'Real SAT exam questions for practice.'}</p>
+                            <p>${test.description || (isRealExam ? 'Real SAT exam questions for practice.' : isPremium ? 'AI-generated SAT-style questions.' : 'A full-length adaptive test.')}</p>
                             <span class="test-status not-started">Not Started</span>
                         </div>
                         <a href="test.html?id=${test.id}" class="btn btn-primary card-btn">Start Test</a>
                     `;
-                    realExamGrid.appendChild(card);
-                });
+                }
+                return card;
+            }
+
+            // --- IN PROGRESS ---
+            if (inProgress.length > 0 && inProgressGrid) {
+                inProgressSection.style.display = 'block';
+                inProgress.forEach(testObj => inProgressGrid.appendChild(buildTestCard(testObj)));
+            }
+
+            // --- REAL EXAM TESTS ---
+            if (realExamTests.length > 0 && realExamGrid) {
+                realExamSection.style.display = 'block';
+                realExamTests.forEach(testObj => realExamGrid.appendChild(buildTestCard(testObj)));
             }
 
             // --- PREMIUM TESTS ---
             if (premiumTests.length > 0 && premiumGrid) {
                 premiumSection.style.display = 'block';
-                premiumTests.forEach(({ test }) => {
-                    const isUnlocked = test.whitelist && test.whitelist.includes(userId);
-                    const card = document.createElement('div');
-                    card.classList.add('test-card', 'not-started', 'premium-card');
-                    card.dataset.category = 'premium';
-                    card.innerHTML = `
-                        <div class="card-content">
-                            <div class="card-badges">
-                                <span class="card-badge premium-badge"><i class="fa-solid fa-crown"></i> Premium</span>
-                            </div>
-                            <h4>${test.name || 'Unnamed Test'}</h4>
-                            <p>${test.description || 'AI-generated SAT-style questions.'}</p>
-                            <span class="test-status not-started">Not Started</span>
-                        </div>
-                        <a href="test.html?id=${test.id}" class="btn btn-primary card-btn">Start Test</a>
-                    `;
-                    premiumGrid.appendChild(card);
-                });
+                premiumTests.forEach(testObj => premiumGrid.appendChild(buildTestCard(testObj)));
             }
 
             // --- OTHER/CUSTOM TESTS ---
             if (otherTests.length > 0 && otherGrid) {
                 otherSection.style.display = 'block';
-                otherTests.forEach(({ test }) => {
-                    const card = document.createElement('div');
-                    card.classList.add('test-card', 'not-started');
-                    card.dataset.category = 'custom';
-                    card.innerHTML = `
-                        <div class="card-content">
-                            <h4>${test.name || 'Unnamed Test'}</h4>
-                            <p>${test.description || 'A full-length adaptive test.'}</p>
-                            <span class="test-status not-started">Not Started</span>
-                        </div>
-                        <a href="test.html?id=${test.id}" class="btn btn-primary card-btn">Start Test</a>
-                    `;
-                    otherGrid.appendChild(card);
+                otherTests.forEach(testObj => otherGrid.appendChild(buildTestCard(testObj)));
+            }
+
+            // --- FINISHED ---
+            if (finished.length > 0 && finishedGrid) {
+                finishedSection.style.display = 'block';
+                // Sort finished tests by completion date (newest first)
+                finished.sort((a, b) => {
+                    const timeA = a.completionData.completedAt?.toDate ? a.completionData.completedAt.toDate().getTime() : (a.completionData.completedAt || 0);
+                    const timeB = b.completionData.completedAt?.toDate ? b.completionData.completedAt.toDate().getTime() : (b.completionData.completedAt || 0);
+                    return timeB - timeA;
                 });
+                finished.forEach(testObj => finishedGrid.appendChild(buildTestCard(testObj)));
             }
 
             // If no tests at all
-            const totalTests = finished.length + inProgress.length + realExamTests.length + premiumTests.length + otherTests.length;
-            if (totalTests === 0) {
+            if (finalTotalTests === 0) {
                 loadingContainer.style.display = 'block';
                 loadingContainer.querySelector('.test-grid').innerHTML = '<p>No practice tests are available at the moment.</p>';
             }
@@ -1778,98 +1778,143 @@ OUTPUT: Return a valid JSON array. Each object MUST include sectionType and ques
             other: document.getElementById('other-section')
         };
 
-        // Track which sections have content
-        const hasContent = {};
-        Object.entries(sections).forEach(([key, el]) => {
-            hasContent[key] = el && el.querySelector('.test-grid')?.children?.length > 0;
-        });
+        const hasContent = {
+            finished: sections.finished && sections.finished.querySelector('.test-grid')?.children?.length > 0,
+            inProgress: sections.inProgress && sections.inProgress.querySelector('.test-grid')?.children?.length > 0,
+            realExam: sections.realExam && sections.realExam.querySelector('.test-grid')?.children?.length > 0,
+            premium: sections.premium && sections.premium.querySelector('.test-grid')?.children?.length > 0,
+            other: sections.other && sections.other.querySelector('.test-grid')?.children?.length > 0
+        };
 
-        // On "All" tab, limit finished section to 3 cards
-        limitFinishedCards(3);
+        function applyViewState(section, mode) {
+            if (!section) return;
+            const grid = section.querySelector('.test-grid');
+            if (!grid) return;
+
+            // Remove existing see-more container if any
+            const existingSeeMore = section.querySelector('.see-more-container');
+            if (existingSeeMore) existingSeeMore.remove();
+
+            const cards = Array.from(grid.querySelectorAll('.test-card'));
+            let visibleCards = [];
+
+            if (mode === 'all') {
+                // In generic grids under "All", hide completed ones.
+                cards.forEach(card => {
+                    if (card.classList.contains('completed')) {
+                        card.style.display = 'none';
+                        card.classList.add('filtered-out');
+                    } else {
+                        card.classList.remove('filtered-out');
+                        visibleCards.push(card);
+                    }
+                });
+                setupPagination(grid, visibleCards, 6);
+            } else if (mode === 'all-finished') {
+                // The finished grid under "All" limits to 3
+                cards.forEach(card => {
+                    card.classList.remove('filtered-out');
+                    visibleCards.push(card);
+                });
+                setupPagination(grid, visibleCards, 3);
+            } else if (mode === 'individual') {
+                // Show absolutely everything in this grid without pagination
+                cards.forEach(card => {
+                    card.style.display = '';
+                    card.classList.remove('filtered-out');
+                });
+            }
+        }
+
+        function setupPagination(grid, cardsArr, batchSize) {
+            if (cardsArr.length <= batchSize) {
+                cardsArr.forEach(c => c.style.display = '');
+                return;
+            }
+
+            let currentlyVisible = batchSize;
+            cardsArr.forEach((c, i) => {
+                c.style.display = i < currentlyVisible ? '' : 'none';
+            });
+
+            const btnContainer = document.createElement('div');
+            btnContainer.className = 'see-more-container';
+            const seeMoreBtn = document.createElement('button');
+            seeMoreBtn.className = 'btn btn-secondary see-more-btn';
+            seeMoreBtn.innerHTML = `See More <i class="fa-solid fa-chevron-down"></i>`;
+            btnContainer.appendChild(seeMoreBtn);
+            
+            grid.parentNode.insertBefore(btnContainer, grid.nextSibling);
+
+            seeMoreBtn.addEventListener('click', () => {
+                const nextLimit = currentlyVisible + batchSize;
+                cardsArr.forEach((card, i) => {
+                    if (i >= currentlyVisible && i < nextLimit) {
+                        card.style.display = '';
+                        card.style.animation = 'fadeInUp 0.3s ease forwards';
+                    }
+                });
+                currentlyVisible = nextLimit;
+                if (currentlyVisible >= cardsArr.length) {
+                    btnContainer.remove();
+                }
+            });
+        }
+
+        function updateDashboardView(filter) {
+            // Hide all sections initially
+            Object.values(sections).forEach(el => {
+                if (el) el.style.display = 'none';
+            });
+
+            if (filter === 'all') {
+                if (hasContent.inProgress) sections.inProgress.style.display = 'block';
+                if (hasContent.realExam) {
+                    sections.realExam.style.display = 'block';
+                    applyViewState(sections.realExam, 'all');
+                    // Hide section entirely if no non-completed cards exist
+                    const visibleCards = sections.realExam.querySelectorAll('.test-card:not(.filtered-out)');
+                    if (visibleCards.length === 0) sections.realExam.style.display = 'none';
+                }
+                if (hasContent.premium) {
+                    sections.premium.style.display = 'block';
+                    applyViewState(sections.premium, 'all');
+                    const visibleCards = sections.premium.querySelectorAll('.test-card:not(.filtered-out)');
+                    if (visibleCards.length === 0) sections.premium.style.display = 'none';
+                }
+                if (hasContent.other) {
+                    sections.other.style.display = 'block';
+                    applyViewState(sections.other, 'all');
+                    const visibleCards = sections.other.querySelectorAll('.test-card:not(.filtered-out)');
+                    if (visibleCards.length === 0) sections.other.style.display = 'none';
+                }
+                if (hasContent.finished) {
+                    sections.finished.style.display = 'block';
+                    applyViewState(sections.finished, 'all-finished');
+                }
+            } else {
+                let mapKey = filter;
+                if (filter === 'real_exam') mapKey = 'realExam';
+                if (filter === 'premium') mapKey = 'premium';
+                if (filter === 'finished') mapKey = 'finished';
+
+                if (hasContent[mapKey] && sections[mapKey]) {
+                    sections[mapKey].style.display = 'block';
+                    applyViewState(sections[mapKey], 'individual');
+                }
+            }
+        }
 
         filterBtns.forEach(btn => {
             btn.addEventListener('click', () => {
-                // Update active state
                 filterBtns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-
-                const filter = btn.dataset.filter;
-
-                if (filter === 'all') {
-                    // Show all sections that have content
-                    Object.entries(sections).forEach(([key, el]) => {
-                        if (el) el.style.display = hasContent[key] ? 'block' : 'none';
-                    });
-                    // Reset finished card visibility and limit to 3
-                    resetFinishedCards();
-                    limitFinishedCards(3);
-
-                } else if (filter === 'finished') {
-                    // Show ALL finished cards only
-                    Object.values(sections).forEach(el => { if (el) el.style.display = 'none'; });
-                    if (hasContent.finished) {
-                        sections.finished.style.display = 'block';
-                        resetFinishedCards();
-                        limitFinishedCards(0); // 0 = show all
-                    }
-
-                } else if (filter === 'real_exam') {
-                    Object.values(sections).forEach(el => { if (el) el.style.display = 'none'; });
-                    if (hasContent.realExam) sections.realExam.style.display = 'block';
-                    // Show finished real exams
-                    if (hasContent.finished) {
-                        sections.finished.style.display = 'block';
-                        filterFinishedCardsByCategory('real_exam');
-                        limitFinishedCards(0);
-                    }
-
-                } else if (filter === 'premium') {
-                    Object.values(sections).forEach(el => { if (el) el.style.display = 'none'; });
-                    if (hasContent.premium) sections.premium.style.display = 'block';
-                    if (hasContent.finished) {
-                        sections.finished.style.display = 'block';
-                        filterFinishedCardsByCategory('premium');
-                        limitFinishedCards(0);
-                    }
-                }
+                updateDashboardView(btn.dataset.filter);
             });
         });
 
-        /** Reset all finished cards to visible */
-        function resetFinishedCards() {
-            const finishedGrid = document.getElementById('finished-grid');
-            if (!finishedGrid) return;
-            finishedGrid.querySelectorAll('.test-card').forEach(card => {
-                card.style.display = '';
-                card.classList.remove('hidden-overflow');
-            });
-        }
-
-        /** Filter finished cards by category, hide non-matching */
-        function filterFinishedCardsByCategory(category) {
-            const finishedGrid = document.getElementById('finished-grid');
-            if (!finishedGrid) return;
-            finishedGrid.querySelectorAll('.test-card').forEach(card => {
-                card.style.display = (card.dataset.category === category) ? '' : 'none';
-            });
-        }
-
-        /** Limit visible finished cards to `max`. 0 = show all. */
-        function limitFinishedCards(max) {
-            const finishedGrid = document.getElementById('finished-grid');
-            if (!finishedGrid || max === 0) return;
-
-            const cards = finishedGrid.querySelectorAll('.test-card');
-            let visibleCount = 0;
-            cards.forEach(card => {
-                if (card.style.display === 'none') return; // already hidden by filter
-                visibleCount++;
-                if (visibleCount > max) {
-                    card.style.display = 'none';
-                    card.classList.add('hidden-overflow');
-                }
-            });
-        }
+        // Initialize view based on active tab (default 'all')
+        updateDashboardView('all');
     }
 
 }); // --- END OF DOMContentLoaded ---
