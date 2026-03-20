@@ -377,8 +377,22 @@ async function runAutomation(targetModule) {
             
             updateModProgress(qIdx, totalQuestions, `AI extracting fields for Q${currentQNumber}...`);
             
-            // Re-use Gemini Extraction Logic
-            const extractionSuccess = await runExtractionOnCroppedImage(targetModule, croppedBase64);
+            // Re-use Gemini Extraction Logic with automatic retry
+            let extractionSuccess = false;
+            let retryCount = 0;
+            const maxRetries = 2;
+            
+            while (!extractionSuccess && retryCount <= maxRetries) {
+                if (modStopRequested) return handleStop();
+                if (retryCount > 0) {
+                    logModError(`Retrying Q${currentQNumber} (Attempt ${retryCount + 1}/${maxRetries + 1})...`);
+                    updateModProgress(qIdx, totalQuestions, `AI extracting fields for Q${currentQNumber} (Retry ${retryCount})...`);
+                    await new Promise(r => setTimeout(r, 2000));
+                }
+                
+                extractionSuccess = await runExtractionOnCroppedImage(targetModule, croppedBase64, currentQNumber);
+                retryCount++;
+            }
             
             if (extractionSuccess) {
                 // Let the editor's auto-save (triggered on modal close) finish its cycle first to prevent collision
@@ -392,7 +406,7 @@ async function runAutomation(targetModule) {
                 }
                 successCount++;
             } else {
-                logModError(`Extraction failed for Q${currentQNumber}. Please check the console for API errors or see if the API Key limit was reached.`);
+                logModError(`Extraction permanently failed for Q${currentQNumber} after retries.`);
             }
             
             // Explicitly Save Question just in case it didn't trigger
@@ -518,7 +532,7 @@ async function cropImage(sourceCanvas, box) {
     return cropCanvas.toDataURL('image/jpeg', 0.9).split(',')[1];
 }
 
-async function runExtractionOnCroppedImage(targetModule, base64Image) {
+async function runExtractionOnCroppedImage(targetModule, base64Image, currentQNumber) {
     // This utilizes the global `callGeminiToParseQuestion` logic if it is exposed.
     // However, since `callGeminiToParseQuestion` in editor.js accesses private variables
     // like `currentQuestion`, `currentModule`, and manipulates UI modal elements (`aiModal`),
@@ -533,11 +547,18 @@ async function runExtractionOnCroppedImage(targetModule, base64Image) {
         const aiModal = document.getElementById('ai-modal');
         const aiModalBackdrop = document.getElementById('ai-modal-backdrop');
         const aiHelperBtn = document.getElementById('ai-helper-btn');
+        const aiCancelBtn = document.getElementById('ai-cancel-btn');
+        const errorMsgEl = document.getElementById('ai-error-msg');
         
         if (!aiUploadInput || !aiImportBtn || !aiHelperBtn) {
             logModError("Missing editor DOM elements for AI extraction hook.");
             resolve(false);
             return;
+        }
+        
+        // Ensure modal is cleanly reset from prior runs
+        if (errorMsgEl && errorMsgEl.classList.contains('visible')) {
+            aiCancelBtn?.click();
         }
         
         // 1. Convert base64 to File object to mimic user upload
@@ -570,14 +591,19 @@ async function runExtractionOnCroppedImage(targetModule, base64Image) {
                 // Now monitor for completion (when modal closes)
                 const completionObserver = new MutationObserver((mutations, obs2) => {
                     // editor.js removes the 'visible' class when done or failed
-                    if (!aiModal.classList.contains('visible') || document.getElementById('ai-error-msg')?.classList.contains('visible')) {
+                    if (!aiModal.classList.contains('visible') || errorMsgEl?.classList.contains('visible')) {
                         obs2.disconnect();
                         aiModal.style.opacity = ''; // Restore opacity
                         aiModalBackdrop.style.opacity = '';
                         
-                        const hasError = document.getElementById('ai-error-msg')?.classList.contains('visible');
+                        const hasError = errorMsgEl?.classList.contains('visible');
                         if (hasError) {
-                             logModError("AI Import reported an internal error (check API key / quota).");
+                             const realErr = errorMsgEl.textContent || "Unknown Internal UI Error";
+                             logModError(`AI Import Error on Q${currentQNumber || '?'}: ${realErr}`);
+                             
+                             // Close modal so retry can cleanly reopen it
+                             aiCancelBtn?.click();
+                             
                              resolve(false);
                         } else {
                              resolve(true); // Success
@@ -586,7 +612,9 @@ async function runExtractionOnCroppedImage(targetModule, base64Image) {
                 });
                 
                 completionObserver.observe(aiModal, { attributes: true, attributeFilter: ['class'] });
-                completionObserver.observe(document.getElementById('ai-error-msg'), { attributes: true, attributeFilter: ['class'] });
+                if (errorMsgEl) {
+                    completionObserver.observe(errorMsgEl, { attributes: true, attributeFilter: ['class'] });
+                }
                 
                 // Trigger import
                 aiImportBtn.click();
@@ -594,6 +622,9 @@ async function runExtractionOnCroppedImage(targetModule, base64Image) {
                 // Timeout for safety (e.g. 30s)
                 setTimeout(() => {
                     completionObserver.disconnect();
+                    aiModal.style.opacity = '';
+                    aiModalBackdrop.style.opacity = '';
+                    aiCancelBtn?.click(); // Clean up frozen modal
                     resolve(false); 
                 }, 30000);
             }
