@@ -188,15 +188,15 @@ body.test-body {
     color: #333;
 }
 
-/* Sans-serif for questions and options (matching editor preview) */
+/* Serif font for questions and options (matching official Bluebook SAT style) */
 .question-text,
 .option-text {
-    font-family: var(--font-family-sans);
+    font-family: var(--font-family-serif);
 }
 
 .question-text {
     font-size: 18px;
-    font-weight: 500;
+    font-weight: 400; /* Removed bolding for math questions */
     margin-bottom: 20px;
     /* Space below prompt */
 }
