@@ -318,9 +318,9 @@ async function runAutomation(targetModule) {
         return handleStop();
     }
     
-    // Filter out invalid boxes according to Gemini's isValid flag
+    // Filter out invalid boxes (but allow isValid=false in case the bounding box is simply clipped but extractable)
     allQuestionBoxes = allQuestionBoxes.filter(item => {
-        if (!item.box || item.box.isValid !== true || typeof item.box.questionNumber !== 'number') return false;
+        if (!item.box || typeof item.box.questionNumber !== 'number') return false;
         
         // Strict coordinate check to prevent 'NaN' transparent canvas bugs and "No Image Selected" errors
         const b = item.box;
@@ -372,8 +372,8 @@ async function runAutomation(targetModule) {
             return handleStop();
         }
         
-        // This triggers a UI update
-        showEditorForQuestion(targetModule, currentQNumber);
+        // This triggers a UI update and safely waits for Firebase cold-start fetches
+        await window.showEditorForQuestion(targetModule, currentQNumber);
         
         try {
             // Crop image
