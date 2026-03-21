@@ -1135,6 +1135,13 @@ Return *only* a single, valid JSON object with these fields.
         aiErrorMsg.textContent = `Error: ${message}`;
         aiErrorMsg.classList.add('visible');
     }
+    
+    // EXPOSE TO MODULE UPLOADER TO BYPASS FRAGILE DOM FILE INPUT
+    window._triggerAiImport = function(base64) {
+        aiImageBase64 = base64;
+        aiImportBtn.disabled = false;
+        aiImportBtn.click();
+    };
 
     /**
      * Fills the active editor form with data from the AI.

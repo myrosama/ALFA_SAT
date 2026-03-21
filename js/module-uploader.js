@@ -319,9 +319,16 @@ async function runAutomation(targetModule) {
     }
     
     // Filter out invalid boxes according to Gemini's isValid flag
-    allQuestionBoxes = allQuestionBoxes.filter(item => 
-        item.box && item.box.isValid === true && typeof item.box.questionNumber === 'number'
-    );
+    allQuestionBoxes = allQuestionBoxes.filter(item => {
+        if (!item.box || item.box.isValid !== true || typeof item.box.questionNumber !== 'number') return false;
+        
+        // Strict coordinate check to prevent 'NaN' transparent canvas bugs and "No Image Selected" errors
+        const b = item.box;
+        if (typeof b.ymin !== 'number' || typeof b.xmin !== 'number' || typeof b.ymax !== 'number' || typeof b.xmax !== 'number') return false;
+        if (b.ymax <= b.ymin || b.xmax <= b.xmin) return false;
+        
+        return true;
+    });
     
     if (allQuestionBoxes.length === 0) {
         logModError("AI found no valid, complete questions in this PDF.");
@@ -380,29 +387,75 @@ async function runAutomation(targetModule) {
             // Re-use Gemini Extraction Logic with automatic retry
             let extractionSuccess = false;
             let retryCount = 0;
-            const maxRetries = 2;
+            const maxRetries = 3;
             
             while (!extractionSuccess && retryCount <= maxRetries) {
                 if (modStopRequested) return handleStop();
+                
                 if (retryCount > 0) {
-                    logModError(`Retrying Q${currentQNumber} (Attempt ${retryCount + 1}/${maxRetries + 1})...`);
                     updateModProgress(qIdx, totalQuestions, `AI extracting fields for Q${currentQNumber} (Retry ${retryCount})...`);
-                    await new Promise(r => setTimeout(r, 2000));
                 }
                 
-                extractionSuccess = await runExtractionOnCroppedImage(targetModule, croppedBase64, currentQNumber);
-                retryCount++;
+                const result = await runExtractionOnCroppedImage(targetModule, croppedBase64, currentQNumber);
+                
+                if (result && result.success) {
+                    extractionSuccess = true;
+                } else {
+                    retryCount++;
+                    if (retryCount <= maxRetries) {
+                        let sleepMs = 2500;
+                        const errStr = result && result.error ? result.error : "";
+                        
+                        if (errStr.includes("retry in")) {
+                            const match = errStr.match(/retry in (\d+\.?\d*)s/);
+                            if (match) {
+                                sleepMs = (parseFloat(match[1]) + 2) * 1000;
+                            } else {
+                                sleepMs = 35000;
+                            }
+                            logModError(`Rate limited! Sleeping for ${Math.ceil(sleepMs/1000)}s before retry ${retryCount}...`);
+                            updateModProgress(qIdx, totalQuestions, `Waiting out API Ban (${Math.ceil(sleepMs/1000)}s)...`);
+                        } else if (errStr.includes("429") || errStr.toLowerCase().includes("quota")) {
+                            sleepMs = 35000;
+                            logModError(`Quota limit reached! Sleeping for 35s before retry ${retryCount}...`);
+                            updateModProgress(qIdx, totalQuestions, `Waiting out API Quota (35s)...`);
+                        } else {
+                            logModError(`Retrying Q${currentQNumber} in 2.5s (Attempt ${retryCount + 1}/${maxRetries + 1})...`);
+                        }
+                        
+                        await new Promise(r => setTimeout(r, sleepMs));
+                    }
+                }
             }
             
             if (extractionSuccess) {
                 // Let the editor's auto-save (triggered on modal close) finish its cycle first to prevent collision
                 await new Promise(r => setTimeout(r, 1500));
                 
+                // --- ADDED IMAGE SUPPORT ---
+                if (qData.box.hasImage && qData.box.imageBBox) {
+                    try {
+                        const tgUrl = await cropAndUploadImage(pageImg.canvas, qData.box.imageBBox);
+                        if (tgUrl) {
+                            window._setQuestionImage(tgUrl);
+                            await new Promise(r => setTimeout(r, 500));
+                        } else {
+                            logModError(`Image upload failed for Q${currentQNumber} (Telegram returned null).`);
+                        }
+                    } catch (imgErr) {
+                        logModError(`Image upload error for Q${currentQNumber}: ${imgErr.message}`);
+                    }
+                }
+                
                 // If Math, run AI Fix explicitly
                 if (targetModule > 2) {
+                    await new Promise(r => setTimeout(r, 1000)); // Rate limit buffer between extraction and KaTeX
                     updateModProgress(qIdx, totalQuestions, `Running AI Fix (KaTeX wrap) for Q${currentQNumber}...`);
-                    const fixResult = await runAiFixMathFormatting();
-                    if (!fixResult) logModError(`Math fix timed out or failed for Q${currentQNumber}`);
+                    const fixResult = await runAiFixMathFormatting(currentQNumber, 0);
+                    if (!fixResult) {
+                         // Still didn't work after retries, but we will still save it raw
+                    }
+                    await new Promise(r => setTimeout(r, 1000));
                 }
                 successCount++;
             } else {
@@ -464,8 +517,14 @@ async function detectQuestionBoxesWithGemini(base64Image) {
 A question typically includes the passage/context (if any), the prompt, the graphic/chart (if any), and all answer choices.
 Return a valid JSON array of objects. Each object should represent a single question area and must contain exactly these fields: 
 - "questionNumber": the integer number printed next to the question (e.g., 3).
-- "ymin", "xmin", "ymax", "xmax": exactly these 4 integer values between 0 and 1000 representing scaled coordinates relative to the image dimensions.
+- "ymin", "xmin", "ymax", "xmax": exactly these 4 integer values between 0 and 1000 representing scaled coordinates relative to the image dimensions. YOU MUST PROVIDE THESE EXACT NUMERIC KEYS. Do not omit them or wrap them in arrays structure.
 - "isValid": a boolean (true/false) that is true ONLY if the box successfully captures the FULL context, the prompt, and ALL 4 answer choices (if multiple choice). Mark it false if it is cut off or missing choices.
+- "hasImage": a boolean. true if the question contains a graph, chart, figure, table, or any visual diagram that is essential to answering the question. false if it is text-only.
+- "imageBBox": if "hasImage" is true, provide the bounding box of JUST the image/graph/chart as {"ymin": ..., "xmin": ..., "ymax": ..., "xmax": ...} using the same 0-1000 coordinate system relative to the FULL PAGE. If "hasImage" is false, set this to null.
+
+CRITICAL: YOU MUST EXTRACT EVERY SINGLE QUESTION VISIBLE ON THIS PAGE! Do not skip any questions!
+CRITICAL: The JSON output MUST be complete and syntactically correct. Do not truncate the JSON.
+CRITICAL: Ensure all required fields ("questionNumber", "ymin", "xmin", "ymax", "xmax", "isValid", "hasImage", "imageBBox") are present for every object.
 
 Do not include \`\`\`json or markdown, just the raw JSON array.
 If no questions are found, return an empty array [].`;
@@ -520,7 +579,7 @@ async function cropImage(sourceCanvas, box) {
     const w = x1 - x0;
     const h = y1 - y0;
     
-    if (w <= 0 || h <= 0) throw new Error("Invalid crop box dimensions");
+    if (isNaN(w) || isNaN(h) || w <= 0 || h <= 0) throw new Error("Invalid or NaN crop box dimensions from Gemini hallucination");
     
     const cropCanvas = document.createElement('canvas');
     cropCanvas.width = w;
@@ -530,6 +589,31 @@ async function cropImage(sourceCanvas, box) {
     cropCtx.drawImage(sourceCanvas, x0, y0, w, h, 0, 0, w, h);
     
     return cropCanvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+}
+
+async function cropAndUploadImage(sourceCanvas, imageBBox) {
+    const x0 = Math.floor((imageBBox.xmin / 1000) * sourceCanvas.width);
+    const y0 = Math.floor((imageBBox.ymin / 1000) * sourceCanvas.height);
+    const x1 = Math.ceil((imageBBox.xmax / 1000) * sourceCanvas.width);
+    const y1 = Math.ceil((imageBBox.ymax / 1000) * sourceCanvas.height);
+    
+    const w = x1 - x0;
+    const h = y1 - y0;
+    
+    if (w <= 0 || h <= 0) return null;
+    
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = w;
+    cropCanvas.height = h;
+    const cropCtx = cropCanvas.getContext('2d');
+    cropCtx.drawImage(sourceCanvas, x0, y0, w, h, 0, 0, w, h);
+    
+    const blob = await new Promise(resolve => cropCanvas.toBlob(resolve, 'image/jpeg', 0.9));
+    if (!blob) return null;
+    
+    const file = new File([blob], 'question_image.jpg', { type: 'image/jpeg' });
+    const tgUrl = await TelegramImages.uploadImage(file);
+    return tgUrl;
 }
 
 async function runExtractionOnCroppedImage(targetModule, base64Image, currentQNumber) {
@@ -552,7 +636,7 @@ async function runExtractionOnCroppedImage(targetModule, base64Image, currentQNu
         
         if (!aiUploadInput || !aiImportBtn || !aiHelperBtn) {
             logModError("Missing editor DOM elements for AI extraction hook.");
-            resolve(false);
+            resolve({ success: false, error: "Missing DOM elements" });
             return;
         }
         
@@ -561,85 +645,68 @@ async function runExtractionOnCroppedImage(targetModule, base64Image, currentQNu
             aiCancelBtn?.click();
         }
         
-        // 1. Convert base64 to File object to mimic user upload
-        const byteString = atob(base64Image);
-        const ab = new ArrayBuffer(byteString.length);
-        const ia = new Uint8Array(ab);
-        for (let i = 0; i < byteString.length; i++) {
-            ia[i] = byteString.charCodeAt(i);
-        }
-        const blob = new Blob([ab], { type: 'image/jpeg' });
-        const dummyFile = new File([blob], "crop.jpeg", { type: "image/jpeg" });
-        
-        // Use DataTransfer to programmatically set the file input
-        const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(dummyFile);
-        aiUploadInput.files = dataTransfer.files;
-        
-        // 2. We don't want the modal to visibly pop up and interrupt the user.
-        // But we must open it because the original code requires the modal to be visible to function correctly.
+        // 1. We don't want the modal to visibly pop up and interrupt the user.
         aiModal.style.opacity = '0';
         aiModalBackdrop.style.opacity = '0';
         aiHelperBtn.click(); // Open modal
         
-        // Monitor mutations on the import button to wait for the FileReader in `editor.js` to finish
-        const observer = new MutationObserver((mutations, obs) => {
-            if (!aiImportBtn.disabled) {
-                // FileReader finished, base64 is loaded in `editor.js`.
-                obs.disconnect();
-                
-                // Now monitor for completion (when modal closes)
-                const completionObserver = new MutationObserver((mutations, obs2) => {
-                    // editor.js removes the 'visible' class when done or failed
-                    if (!aiModal.classList.contains('visible') || errorMsgEl?.classList.contains('visible')) {
-                        obs2.disconnect();
-                        aiModal.style.opacity = ''; // Restore opacity
-                        aiModalBackdrop.style.opacity = '';
-                        
-                        const hasError = errorMsgEl?.classList.contains('visible');
-                        if (hasError) {
-                             const realErr = errorMsgEl.textContent || "Unknown Internal UI Error";
-                             logModError(`AI Import Error on Q${currentQNumber || '?'}: ${realErr}`);
-                             
-                             // Close modal so retry can cleanly reopen it
-                             aiCancelBtn?.click();
-                             
-                             resolve(false);
-                        } else {
-                             resolve(true); // Success
-                        }
-                    }
-                });
-                
-                completionObserver.observe(aiModal, { attributes: true, attributeFilter: ['class'] });
-                if (errorMsgEl) {
-                    completionObserver.observe(errorMsgEl, { attributes: true, attributeFilter: ['class'] });
-                }
-                
-                // Trigger import
-                aiImportBtn.click();
-                
-                // Timeout for safety (e.g. 30s)
-                setTimeout(() => {
-                    completionObserver.disconnect();
-                    aiModal.style.opacity = '';
+        // Let the modal 10ms transition animation complete before attaching observers
+        setTimeout(() => {
+            // 2. Monitor for completion (when modal closes or error appears)
+            const completionObserver = new MutationObserver((mutations, obs2) => {
+                // editor.js removes the 'visible' class when done or failed
+                if (!aiModal.classList.contains('visible') || errorMsgEl?.classList.contains('visible')) {
+                    obs2.disconnect();
+                    aiModal.style.opacity = ''; // Restore opacity
                     aiModalBackdrop.style.opacity = '';
-                    aiCancelBtn?.click(); // Clean up frozen modal
-                    resolve(false); 
-                }, 30000);
+                    
+                    const hasError = errorMsgEl?.classList.contains('visible');
+                    if (hasError) {
+                         const realErr = errorMsgEl.textContent || "Unknown Internal UI Error";
+                         logModError(`AI Import Error on Q${currentQNumber || '?'}: ${realErr}`);
+                         
+                         // Close modal so retry can cleanly reopen it
+                         aiCancelBtn?.click();
+                         
+                         resolve({ success: false, error: realErr });
+                    } else {
+                         resolve({ success: true }); // Success
+                    }
+                }
+            });
+            
+            completionObserver.observe(aiModal, { attributes: true, attributeFilter: ['class'] });
+            if (errorMsgEl) {
+                completionObserver.observe(errorMsgEl, { attributes: true, attributeFilter: ['class'] });
             }
-        });
-        
-        // Start watching for FileReader to complete enabling the import button
-        observer.observe(aiImportBtn, { attributes: true, attributeFilter: ['disabled'] });
-        
-        // 3. Trigger the file input change event to kick off `editor.js` FileReader
-        const event = new Event('change', { bubbles: true });
-        aiUploadInput.dispatchEvent(event);
+            
+            // 3. Trigger import bypassing FileReader security restrictions
+            if (typeof window._triggerAiImport === 'function') {
+                window._triggerAiImport(base64Image);
+            } else {
+                logModError("window._triggerAiImport is not exposed in editor.js!");
+                resolve({ success: false, error: "No _triggerAiImport hook" });
+                return;
+            }
+            
+            // Timeout for safety (e.g. 30s)
+            setTimeout(() => {
+                completionObserver.disconnect();
+                aiModal.style.opacity = '';
+                aiModalBackdrop.style.opacity = '';
+                aiCancelBtn?.click(); // Clean up frozen modal
+                resolve({ success: false, error: "Timeout after 35s" }); 
+            }, 35000);
+        }, 50);
     });
 }
 
-async function runAiFixMathFormatting() {
+async function runAiFixMathFormatting(currentQNumber, retryAttempt = 0) {
+    if (retryAttempt > 2) {
+        logModError(`KaTeX AI Fix permanently failed for Q${currentQNumber} after 3 attempts.`);
+        return false;
+    }
+
     return new Promise((resolve) => {
         const fixBtn = document.getElementById('open-ai-fix-btn');
         if (!fixBtn) {
@@ -648,40 +715,74 @@ async function runAiFixMathFormatting() {
             return;
         }
         
-        // Open panel
+        // This button opens the math fix modal
         fixBtn.click();
         
-        // Inject Instruction
+        // Then we must click 'Run AI Fix'
         const instructionInput = document.getElementById('ai-fix-instruction');
         const runBtn = document.getElementById('run-ai-fix-btn');
         const loadingDiv = document.getElementById('ai-fix-loading');
+        const errorMsgEl = document.getElementById('ai-fix-error');
         
         if (!instructionInput || !runBtn || !loadingDiv) {
-             resolve(false);
-             return;
+            logModError("AI fix modal internals not found.");
+            resolve(false);
+            return;
         }
         
         instructionInput.value = "Wrap all the equations, math expressions, functions, numbers and variables (like x, y) to the katex format using $...$ delimiters. Do not add plain text for them. If it's a block equation use $$...$$";
+
         
-        // Monitor for completion
-        const observer = new MutationObserver((mutations, obs) => {
-            if (loadingDiv.style.display === 'none' && runBtn.style.display !== 'none') {
-                obs.disconnect();
-                // Close panel
-                document.getElementById('close-ai-fix-btn')?.click();
-                resolve(true);
-            }
-        });
-        
-        observer.observe(loadingDiv, { attributes: true, attributeFilter: ['style'] });
-        
-        // Trigger Fix
-        runBtn.click();
-        
-        // Safety timeout
+        // Let the modal open
         setTimeout(() => {
-            observer.disconnect();
-            resolve(false);
-        }, 30000);
+            // Clean up error state if this is a retry
+            if (errorMsgEl) errorMsgEl.style.display = 'none';
+        
+            const observer = new MutationObserver(async (mutations, obs) => {
+                if (loadingDiv.style.display === 'none' && runBtn.style.display !== 'none') {
+                    obs.disconnect();
+                    
+                    const hasError = errorMsgEl && errorMsgEl.style.display === 'block';
+                    if (hasError) {
+                         const errText = errorMsgEl.textContent || "Unknown KaTeX Error";
+                         logModError(`KaTeX AI Fix Error on Q${currentQNumber}: ${errText}`);
+                         document.getElementById('close-ai-fix-btn')?.click(); // Close current modal window
+                         
+                         // Determine rate limit timeout
+                         let sleepMs = 2500;
+                         if (errText.includes("retry in")) {
+                             const match = errText.match(/retry in (\d+\.?\d*)s/);
+                             if (match) {
+                                 sleepMs = (parseFloat(match[1]) + 2) * 1000;
+                             } else {
+                                 sleepMs = 35000;
+                             }
+                             logModError(`KaTeX rate limited! Sleeping for ${Math.ceil(sleepMs/1000)}s...`);
+                         } else if (errText.includes("429") || errText.toLowerCase().includes("quota")) {
+                             sleepMs = 35000;
+                             logModError(`KaTeX quota limited! Sleeping for 35s...`);
+                         }
+                         
+                         await new Promise(r => setTimeout(r, sleepMs));
+                         const success = await runAiFixMathFormatting(currentQNumber, retryAttempt + 1);
+                         resolve(success);
+                    } else {
+                         document.getElementById('close-ai-fix-btn')?.click();
+                         resolve(true);
+                    }
+                }
+            });
+            
+            observer.observe(loadingDiv, { attributes: true, attributeFilter: ['style'] });
+            
+            // Trigger Fix
+            runBtn.click();
+            
+            // Safety timeout
+            setTimeout(() => {
+                observer.disconnect();
+                resolve(false);
+            }, 30000);
+        }, 300);
     });
 }
