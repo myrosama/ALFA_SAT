@@ -121,8 +121,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const stimulusPane = document.getElementById('review-stimulus-pane');
     const stimulusPaneContent = stimulusPane.querySelector('.pane-content');
 
-    const qNumberDisplay = document.getElementById('q-number-display');
-    const qResultDisplay = document.getElementById('question-result-display');
+    const mathHeader = document.getElementById('math-review-header');
+    const rwHeader = document.getElementById('rw-review-header');
+
+    const mqNumberDisplay = document.getElementById('math-q-number-display');
+    const mqResultDisplay = document.getElementById('math-question-result-display');
+    const rwNumberDisplay = document.getElementById('rw-q-number-display');
+    const rwResultDisplay = document.getElementById('rw-question-result-display');
+
     const qPromptContent = document.getElementById('review-question-content');
     const qOptionsContent = document.getElementById('review-options-content');
     const qExplanationContent = document.getElementById('explanation-content');
@@ -136,16 +142,88 @@ document.addEventListener('DOMContentLoaded', () => {
     let resultData = null;
     let questionData = null;
 
-    /** Renders all MathQuill static math blocks. */
+    /**
+     * Extract LaTeX segments from text using balanced-brace parsing.
+     * Handles nested braces like \frac{\sqrt{2}}{2} correctly.
+     */
+    function extractLatexSegments(text) {
+        const segments = [];
+        let i = 0;
+        
+        // Match patterns: $...$, \command{...}, \command, ^{...}, ^2, _{...}, _n
+        // This regex is slightly more aggressive to catch non-braced SAT math
+        const latexRegex = /(\$[^\$]+\$|\\\(.*?\\\)|\\(?:[a-zA-Z]+)(?:\{.*?\})*|[\^_]\{.*?\}|[\^_][a-zA-Z0-9]|\\[a-zA-Z]+|\\leq|\\geq|\\neq|\\pi|\\theta|\\alpha|\\beta|\\gamma|\\delta|\\sigma|\\mu|\\lambda|\\infty|\\times|\\div|\\pm|\\approx|\\cdot|\\cos|\\sin|\\tan|\\log|\\ln)/g;
+        
+        let match;
+        let lastIdx = 0;
+        while ((match = latexRegex.exec(text)) !== null) {
+            if (match.index > lastIdx) {
+                segments.push({ type: 'text', value: text.slice(lastIdx, match.index) });
+            }
+            let val = match[0];
+            // Remove $ or \( delimiters for KaTeX
+            if (val.startsWith('$') && val.endsWith('$')) val = val.slice(1, -1);
+            if (val.startsWith('\\(') && val.endsWith('\\)')) val = val.slice(2, -2);
+            
+            segments.push({ type: 'formula', value: val });
+            lastIdx = latexRegex.lastIndex;
+        }
+        if (lastIdx < text.length) {
+            segments.push({ type: 'text', value: text.slice(lastIdx) });
+        }
+        return segments;
+    }
+
     function renderAllMath() {
+        if (typeof katex === 'undefined') return;
         try {
+            // 1. Render standard .ql-formula spans
             document.querySelectorAll('.ql-formula').forEach(span => {
                 const latex = span.dataset.value;
-                if (latex && MQ && span) {
-                    MQ.StaticMath(span).latex(latex);
-                } else if (latex && span) {
-                    span.textContent = `[Math: ${latex}]`;
+                if (!latex || span.querySelector('.katex')) return;
+                try {
+                    katex.render(latex, span, { throwOnError: false, displayMode: false });
+                } catch (e) {
+                    console.error("KaTeX render error:", e, "for latex:", latex);
+                    if (window.MQ && span) { try { window.MQ.StaticMath(span).latex(latex); } catch (mqE) { } }
                 }
+            });
+
+            // 2. Fix raw LaTeX that leaked into displayed text
+            const scanAreas = document.querySelectorAll('.question-text, .option-text, .pane-content, .review-explanation');
+            scanAreas.forEach(area => {
+                // Use a more inclusive regex for detection
+                const walker = document.createTreeWalker(area, NodeFilter.SHOW_TEXT, null, false);
+                const nodesToFix = [];
+                let node;
+                while (node = walker.nextNode()) {
+                    if (/\\|\$|\^|_|\\leq|\\geq|\\pi|\\theta/.test(node.textContent)) {
+                        nodesToFix.push(node);
+                    }
+                }
+                nodesToFix.forEach(textNode => {
+                    const text = textNode.textContent;
+                    const segments = extractLatexSegments(text);
+                    if (segments.length === 0) return;
+                    
+                    const container = document.createElement('span');
+                    segments.forEach(seg => {
+                        if (seg.type === 'formula') {
+                            const span = document.createElement('span');
+                            span.className = 'ql-formula';
+                            span.dataset.value = seg.value;
+                            try {
+                                katex.render(seg.value, span, { throwOnError: false, displayMode: false });
+                            } catch (e) {
+                                span.textContent = seg.value;
+                            }
+                            container.appendChild(span);
+                        } else {
+                            container.appendChild(document.createTextNode(seg.value));
+                        }
+                    });
+                    textNode.parentNode.replaceChild(container, textNode);
+                });
             });
         } catch (e) { console.error("renderAllMath error:", e); }
     }
@@ -367,9 +445,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (headerTitle) headerTitle.textContent = `Review: ${sectionType}`;
         if (headerSubtitle) headerSubtitle.textContent = `Module ${moduleNum}, Question ${questionData.questionNumber}`;
-        if (qNumberDisplay) qNumberDisplay.textContent = questionData.questionNumber;
 
         if (testMain) testMain.classList.toggle('math-layout-active', isMath);
+        if (mathHeader) mathHeader.classList.toggle('hidden', !isMath);
+        if (rwHeader) rwHeader.classList.toggle('hidden', isMath);
+
+        const activeNumberDisplay = isMath ? mqNumberDisplay : rwNumberDisplay;
+        const activeResultDisplay = isMath ? mqResultDisplay : rwResultDisplay;
+
+        if (activeNumberDisplay) activeNumberDisplay.textContent = questionData.questionNumber;
 
         const isStimulusEmpty = (!questionData.passage || questionData.passage.trim() === '' || questionData.passage === '<p><br></p>') && !questionData.imageUrl;
         if (stimulusPane) stimulusPane.classList.toggle('is-empty', isStimulusEmpty);
@@ -388,11 +472,11 @@ document.addEventListener('DOMContentLoaded', () => {
             ? isFillinCorrect(userAnswer, questionData.fillInAnswer)
             : userAnswer === questionData.correctAnswer;
 
-        if (qResultDisplay) {
+        if (activeResultDisplay) {
             if (isCorrect) {
-                qResultDisplay.innerHTML = `<span class="correct"><i class="fa-solid fa-check"></i> Correct</span>`;
+                activeResultDisplay.innerHTML = `<span class="correct"><i class="fa-solid fa-check"></i> Correct</span>`;
             } else {
-                qResultDisplay.innerHTML = `<span class="incorrect"><i class="fa-solid fa-xmark"></i> Incorrect</span>`;
+                activeResultDisplay.innerHTML = `<span class="incorrect"><i class="fa-solid fa-xmark"></i> Incorrect</span>`;
             }
         }
 

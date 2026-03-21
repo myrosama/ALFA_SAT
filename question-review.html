@@ -8,11 +8,11 @@
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/png" href="assets/logo.png">
     <!-- Core styles -->
-    <link rel="stylesheet" href="css/style.css?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2">
+    <link rel="stylesheet" href="css/style.css?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2">
     <!-- Test styles (for layout) -->
-    <link rel="stylesheet" href="css/test.css?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2">
+    <link rel="stylesheet" href="css/test.css?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2">
     <!-- This page's specific styles -->
-    <link rel="stylesheet" href="css/question-review.css?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2">
+    <link rel="stylesheet" href="css/question-review.css?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2">
 
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400&display=swap"
         rel="stylesheet">
@@ -56,6 +56,15 @@
 
             <!-- Content will be injected here -->
             <div class="main-content-body" id="review-content-body" style="visibility: hidden;">
+                
+                <!-- HEADER FOR MATH (Only visible in Math Layout) -->
+                <div class="question-header-bar hidden" id="math-review-header">
+                    <div class="q-number-display" id="math-q-number-display">?</div>
+                    <div id="math-question-result-display">
+                        <!-- e.g., <span class="correct"><i class="fa-solid fa-check"></i> Correct</span> -->
+                    </div>
+                </div>
+
                 <!-- STIMULUS PANE -->
                 <div class="stimulus-pane" id="review-stimulus-pane">
                     <div class="pane-content">
@@ -66,9 +75,9 @@
                 <!-- QUESTION PANE -->
                 <div class="question-pane" id="review-question-pane">
 
-                    <div class="question-header-bar" id="review-question-header">
-                        <div class="q-number-display" id="q-number-display">?</div>
-                        <div id="question-result-display">
+                    <div class="question-header-bar" id="rw-review-header">
+                        <div class="q-number-display" id="rw-q-number-display">?</div>
+                        <div id="rw-question-result-display">
                             <!-- e.g., <span class="correct"><i class="fa-solid fa-check"></i> Correct</span> -->
                         </div>
                     </div>
@@ -117,11 +126,11 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
-    <script src="js/firebase-init.js?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script>
-    <script src="js/main.js?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script> <!-- For auth state/logout button -->
-    <script src="js/config.js?v=3.0?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script>
-    <script src="js/telegram-images.js?v=3.0?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script>
-    <script src="js/question-review.js?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script> <!-- This page's specific logic -->
+    <script src="js/firebase-init.js?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script>
+    <script src="js/main.js?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script> <!-- For auth state/logout button -->
+    <script src="js/config.js?v=3.0?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script>
+    <script src="js/telegram-images.js?v=3.0?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script>
+    <script src="js/question-review.js?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script> <!-- This page's specific logic -->
 
 </body>
 

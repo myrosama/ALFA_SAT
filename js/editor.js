@@ -986,15 +986,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // This is the "Master Prompt"
         const textPrompt = `You are an expert SAT question parser. Analyze this image of an SAT question.
-The image may contain a reading passage, a question prompt, and multiple-choice options.
+The image may contain a reading passage, a question prompt, and multiple-choice options, OR it may be a "Grid-In" / "Fill-In" math question without options.
 Extract the following information:
-1.  **passage**: The full text of the reading passage, if one exists. If not, this should be an empty string. Handle text formatting like bold and underline by wrapping them in <b></b> or <u></u> tags. For math, this is usually empty.
-2.  **prompt**: The text of the question itself, including any inline text from the passage. Handle all text formatting. For math, include all parts of the question, but *not* the multiple choice options.
-3.  **options**: A JSON object of the four multiple-choice options, like {"A": "Text...", "B": "Text...", "C": "Text...", "D": "Text..."}. Handle all text formatting, especially math formulas.
-4.  **correctAnswer**: The correct option letter ("A", "B", "C", or "D"). Infer this from visual cues in the image, such as a checkmark, a circle, or bolding on the correct answer. If no cue, select the most logical answer.
-5.  **domain**: Categorize this question into one of the following domains: ${domainList}.
-6.  **skill**: Based on the domain, categorize this into the most specific skill from the provided list. (e.g., if domain is 'Craft and Structure', skill could be 'Words in Context').
-7.  **explanation**: Write a clear, concise explanation for why the correct answer is right and the others are wrong.
+1.  **format**: Return "mcq" if there are multiple choice options (A, B, C, D). Return "fill-in" if there are no options and it requires a manually typed math answer.
+2.  **passage**: The full text of the reading passage, if one exists. If not, this should be an empty string. Handle text formatting like bold and underline by wrapping them in <b></b> or <u></u> tags. For math, this is usually empty.
+3.  **prompt**: The text of the question itself, including any inline text from the passage. Make sure to wrap ALL equations, variables (like x, y), numbers, and mathematical expressions in KaTeX format using $...$ delimiters. Do NOT skip the $...$ formatting for math. If it's a block equation use $$...$$.
+4.  **options**: If "mcq", a JSON object of the four options: {"A": "Text...", "B": "Text...", "C": "Text...", "D": "Text..."}. Handle KaTeX formatting. If "fill-in", omit this field.
+5.  **correctAnswer**: If "mcq", the correct option letter ("A", "B", "C", or "D"). Infer this from visual cues (checkmark/circle). If "fill-in", write the correct exact numeric answer(s) (e.g., "5", "3/4", "-0.5, -1/2").
+6.  **domain**: Categorize this question into one of the following domains: ${domainList}.
+7.  **skill**: Based on the domain, categorize this into the most specific skill from the provided list. (e.g., if domain is 'Craft and Structure', skill could be 'Words in Context').
+8.  **explanation**: Write a clear, concise explanation for why the correct answer is right and the others are wrong.
 
 Return *only* a single, valid JSON object with these fields.
 `;
@@ -1003,6 +1004,7 @@ Return *only* a single, valid JSON object with these fields.
         const jsonSchema = {
             "type": "OBJECT",
             "properties": {
+                "format": { "type": "STRING", "enum": ["mcq", "fill-in"] },
                 "passage": { "type": "STRING" },
                 "prompt": { "type": "STRING" },
                 "options": {
@@ -1012,15 +1014,14 @@ Return *only* a single, valid JSON object with these fields.
                         "B": { "type": "STRING" },
                         "C": { "type": "STRING" },
                         "D": { "type": "STRING" }
-                    },
-                    "required": ["A", "B", "C", "D"]
+                    }
                 },
-                "correctAnswer": { "type": "STRING", "enum": ["A", "B", "C", "D"] },
+                "correctAnswer": { "type": "STRING" },
                 "domain": { "type": "STRING" },
                 "skill": { "type": "STRING" },
                 "explanation": { "type": "STRING" }
             },
-            "required": ["prompt", "options", "correctAnswer", "explanation", "domain", "skill"]
+            "required": ["format", "prompt", "correctAnswer", "explanation", "domain", "skill"]
         };
 
         callGeminiToParseQuestion(textPrompt, jsonSchema, aiImageBase64);
@@ -1182,12 +1183,6 @@ Return *only* a single, valid JSON object with these fields.
             editors.explanation.clipboard.dangerouslyPasteHTML(expHtml);
         }
 
-        // 2. Set Correct Answer
-        if (data.correctAnswer) {
-            const radio = questionForm.querySelector(`input[name="correct-answer"][value="${data.correctAnswer}"]`);
-            if (radio) radio.checked = true;
-        }
-
         // 3. Set Dropdowns (Domain & Skill)
         // This logic finds the *closest* match from the AI in the dropdown.
         if (data.domain && domainSelect) {
@@ -1204,9 +1199,22 @@ Return *only* a single, valid JSON object with these fields.
             }
         }
 
-        // 4. Set Format (Assume MCQ for now, as that's what we asked for)
-        formatSelect.value = 'mcq';
-        formatSelect.dispatchEvent(new Event('change'));
+        // 4. Set Format dynamically based on AI classification
+        if (data.format === 'fill-in') {
+            formatSelect.value = 'fill-in';
+            formatSelect.dispatchEvent(new Event('change'));
+            if (data.correctAnswer && editors.fillIn) {
+                editors.fillIn.clipboard.dangerouslyPasteHTML(`<p>${data.correctAnswer}</p>`);
+            }
+        } else {
+            formatSelect.value = 'mcq';
+            formatSelect.dispatchEvent(new Event('change'));
+            // 2. Set Correct Answer Radio (for MCQ)
+            if (data.correctAnswer) {
+                const radio = questionForm.querySelector(`input[name="correct-answer"][value="${data.correctAnswer}"]`);
+                if (radio) radio.checked = true;
+            }
+        }
 
         // 5. Auto-save the form
         // We wrap this in a timeout to be 100% sure the skill dropdown has populated

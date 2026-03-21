@@ -427,7 +427,7 @@ body.test-body {
     flex-shrink: 0;
 }
 
-#math-question-header {
+#math-question-header, #math-review-header {
     width: 100%;
     max-width: var(--math-content-max-width);
     margin-bottom: 0;
