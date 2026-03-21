@@ -1280,8 +1280,8 @@ Return *only* a single, valid JSON object with these fields.
     // Provide a way to open the panel (e.g., from the question menu or a floating button)
     // We will inject a button into the editor toolbar when a question loads.
     const origShowEditor = showEditorForQuestion;
-    window.showEditorForQuestion = showEditorForQuestion = function(module, qNumber) {
-        origShowEditor(module, qNumber);
+    window.showEditorForQuestion = showEditorForQuestion = async function(module, qNumber) {
+        await origShowEditor(module, qNumber);
         
         // Wait for render, then inject the button if it doesn't exist
         setTimeout(() => {
