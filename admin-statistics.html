@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistics — ALFA SAT Admin</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/png" href="assets/logo.png">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/admin-statistics.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+</head>
+
+<body class="dashboard-body">
+
+    <!-- Header — same structure as admin.html -->
+    <header class="main-header">
+        <div class="header-content">
+            <div class="brand">
+                <img src="assets/logo.png" alt="ALFA SAT Logo" class="logo-small">
+                <span>ALFA SAT Statistics</span>
+            </div>
+            <nav>
+                <a href="admin.html"><i class="fa-solid fa-arrow-left"></i> Back to Admin</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="dashboard-main">
+
+        <!-- Welcome Banner — matches admin.html -->
+        <div class="admin-welcome">
+            <h2>Statistics & Analytics</h2>
+            <p>Detailed insights across all tests, users, and study groups.</p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="stats-tabs">
+            <button class="stats-tab active" data-tab="overview">
+                <i class="fa-solid fa-chart-pie"></i> Overview
+            </button>
+            <button class="stats-tab" data-tab="tests">
+                <i class="fa-solid fa-list-check"></i> Per-Test
+            </button>
+            <button class="stats-tab" data-tab="users">
+                <i class="fa-solid fa-users"></i> Per-User
+            </button>
+            <button class="stats-tab" data-tab="groups">
+                <i class="fa-solid fa-user-group"></i> Study Groups
+            </button>
+        </div>
+
+        <!-- Loading state -->
+        <div id="stats-loading" class="loading-state">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            <p>Loading statistics...</p>
+        </div>
+
+        <!-- TAB: Overview -->
+        <div class="tab-content active" id="tab-overview" style="display:none;">
+            <div class="overview-cards" id="overview-cards"></div>
+            <div class="charts-row">
+                <div class="chart-card">
+                    <h3><i class="fa-solid fa-chart-line"></i> Completions Over Time</h3>
+                    <div class="chart-container"><canvas id="chart-completions"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <h3><i class="fa-solid fa-chart-bar"></i> Score Distribution</h3>
+                    <div class="chart-container"><canvas id="chart-scores"></canvas></div>
+                </div>
+            </div>
+            <div class="charts-row">
+                <div class="chart-card">
+                    <h3><i class="fa-solid fa-bullseye"></i> R&W vs Math Average</h3>
+                    <div class="chart-container"><canvas id="chart-rw-math"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <h3><i class="fa-solid fa-layer-group"></i> Top Tests by Completions</h3>
+                    <div class="chart-container"><canvas id="chart-top-tests"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: Per-Test -->
+        <div class="tab-content" id="tab-tests">
+            <div class="search-bar">
+                <div class="search-wrapper">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" class="search-input" id="test-search" placeholder="Search tests...">
+                </div>
+            </div>
+            <table class="data-table" id="tests-table">
+                <thead>
+                    <tr>
+                        <th style="width:30px;"></th>
+                        <th>Test Name</th>
+                        <th>Completions</th>
+                        <th>Avg Score</th>
+                        <th>Highest</th>
+                        <th>Lowest</th>
+                        <th>Avg R&W</th>
+                        <th>Avg Math</th>
+                    </tr>
+                </thead>
+                <tbody id="tests-table-body"></tbody>
+            </table>
+        </div>
+
+        <!-- TAB: Per-User -->
+        <div class="tab-content" id="tab-users">
+            <div class="search-bar">
+                <div class="search-wrapper">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" class="search-input" id="user-search"
+                        placeholder="Search users by name or email...">
+                </div>
+            </div>
+            <table class="data-table" id="users-table">
+                <thead>
+                    <tr>
+                        <th style="width:30px;"></th>
+                        <th>User</th>
+                        <th>Tests Taken</th>
+                        <th>Avg Score</th>
+                        <th>Best Score</th>
+                        <th>Avg R&W</th>
+                        <th>Avg Math</th>
+                        <th>Last Active</th>
+                    </tr>
+                </thead>
+                <tbody id="users-table-body"></tbody>
+            </table>
+        </div>
+
+        <!-- TAB: Study Groups -->
+        <div class="tab-content" id="tab-groups">
+            <div class="groups-header">
+                <h3 style="color:var(--primary-blue); margin:0;"><i class="fa-solid fa-user-group"></i> Study Groups
+                </h3>
+                <button class="btn-create-group" id="btn-create-group">
+                    <i class="fa-solid fa-plus"></i> Create Group
+                </button>
+            </div>
+            <div id="groups-container"></div>
+        </div>
+    </main>
+
+    <!-- Group Modal -->
+    <div class="modal-overlay" id="group-modal">
+        <div class="modal-box">
+            <h3><i class="fa-solid fa-user-group"></i> <span id="group-modal-title">Create Study Group</span></h3>
+            <div class="modal-input-group">
+                <label for="group-name-input">Group Name</label>
+                <input type="text" id="group-name-input" placeholder="e.g., SAT Prep Class A">
+            </div>
+            <div class="modal-input-group">
+                <label for="group-members-input">Member User IDs</label>
+                <textarea id="group-members-input" placeholder="Paste user IDs, one per line"></textarea>
+                <small>Each line should be a Firebase User ID. Students can find their ID in their profile
+                    menu.</small>
+            </div>
+            <div class="modal-input-group">
+                <label>Assign Tests to Group</label>
+                <div class="test-checkbox-grid" id="group-tests-grid"></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-modal-cancel" id="group-modal-cancel">Cancel</button>
+                <button class="btn-modal-save" id="group-modal-save">Save Group</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
+
+    <script src="js/firebase-init.js"></script>
+    <script src="js/admin-statistics.js"></script>
+</body>
+
+</html>
