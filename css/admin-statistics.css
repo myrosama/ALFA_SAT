@@ -582,7 +582,8 @@
 
 /* --- Responsive --- */
 @media (max-width: 900px) {
-    .charts-row, .expand-grid { grid-template-columns: 1fr; }
+    .charts-row, .expand-grid { grid-template-columns: 1fr !important; }
+    .expand-mini-card[style*="grid-column"] { grid-column: span 1 !important; }
     .overview-cards { grid-template-columns: repeat(2, 1fr); }
     .test-checkbox-grid { grid-template-columns: 1fr; }
 }

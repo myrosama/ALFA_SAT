@@ -119,10 +119,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             resultData = resultDoc.data();
 
-            // Security check
+            // Security check — allow result owner OR admin
             if (resultData.userId !== user.uid) {
-                showError("Access Denied. You do not have permission to view this result.");
-                return;
+                const adminDoc = await db.collection('admins').doc(user.uid).get();
+                if (!adminDoc.exists) {
+                    showError("Access Denied. You do not have permission to view this result.");
+                    return;
+                }
             }
 
             // --- PROCTORED TEST CHECK ---
