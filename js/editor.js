@@ -1027,7 +1027,7 @@ Return *only* a single, valid JSON object with these fields.
         callGeminiToParseQuestion(textPrompt, jsonSchema, aiImageBase64);
     });
 
-    async function callGeminiToParseQuestion(prompt, schema, base64ImageData) {
+    async function callGeminiToParseQuestion(prompt, schema, base64ImageData, _retryCount = 0) {
         aiPreviewContainer.classList.add('hidden');
         aiLoadingContainer.classList.remove('hidden');
         aiImportBtn.disabled = true;
@@ -1035,12 +1035,9 @@ Return *only* a single, valid JSON object with these fields.
         aiCancelBtn.disabled = true;
         aiErrorMsg.classList.remove('visible');
 
-        // +++ THIS IS THE FIX +++
-        // Read the key from the config.js file (which must be loaded in the HTML)
-        const apiKey = (typeof AI_API_KEY !== 'undefined') ? AI_API_KEY : "";
-        if (apiKey === "" || apiKey === "PASTE_YOUR_GOOGLE_AI_API_KEY_HERE") {
+        const apiKey = GeminiKeyManager.getKey();
+        if (!apiKey) {
             showAiError("API Key is missing from js/config.js. Please add it.");
-            // Reset modal state
             aiLoadingContainer.classList.add('hidden');
             aiPreviewContainer.classList.remove('hidden');
             aiImportBtn.disabled = false;
@@ -1048,7 +1045,6 @@ Return *only* a single, valid JSON object with these fields.
             aiCancelBtn.disabled = false;
             return;
         }
-        // +++ END OF FIX +++
 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`;
 
@@ -1060,7 +1056,7 @@ Return *only* a single, valid JSON object with these fields.
                         { text: prompt },
                         {
                             inlineData: {
-                                mimeType: "image/png", // The API can handle png/jpeg/webp
+                                mimeType: "image/png",
                                 data: base64ImageData
                             }
                         }
@@ -1081,7 +1077,13 @@ Return *only* a single, valid JSON object with these fields.
             });
 
             if (!response.ok) {
-                // Try to parse error from Google
+                // On 429, blacklist key and retry with a different one
+                if (response.status === 429 && _retryCount < GeminiKeyManager.getTotalKeyCount()) {
+                    GeminiKeyManager.markRateLimited(apiKey);
+                    console.warn(`[Editor] 429 on key ...${apiKey.slice(-6)}, rotating (attempt ${_retryCount + 1})`);
+                    await new Promise(r => setTimeout(r, 1000));
+                    return callGeminiToParseQuestion(prompt, schema, base64ImageData, _retryCount + 1);
+                }
                 let errorBody;
                 try {
                     errorBody = await response.json();
@@ -1314,8 +1316,8 @@ Return *only* a single, valid JSON object with these fields.
             return;
         }
 
-        const apiKey = (typeof AI_API_KEY !== 'undefined') ? AI_API_KEY : "";
-        if (apiKey === "" || apiKey === "PASTE_YOUR_GOOGLE_AI_API_KEY_HERE") {
+        const apiKey = GeminiKeyManager.getKey();
+        if (!apiKey) {
             aiFixError.textContent = "API Key is missing from js/config.js";
             aiFixError.style.display = 'block';
             return;

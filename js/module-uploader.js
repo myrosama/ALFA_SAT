@@ -310,8 +310,8 @@ async function runAutomation(targetModule) {
                 });
             });
             
-            // Artificial delay to respect rate limits
-            await new Promise(r => setTimeout(r, 1500));
+            // Brief delay between pages (key rotation handles rate limits)
+            await new Promise(r => setTimeout(r, 500));
         }
     } catch(err) {
         logModError("Failed to detect questions bounding boxes: " + err.message);
@@ -472,8 +472,8 @@ async function runAutomation(targetModule) {
             logModError(`Error on Q${currentQNumber}: ` + err.message);
         }
         
-        // Rate limit delay between questions
-        await new Promise(r => setTimeout(r, 2000));
+        // Brief delay between questions (key rotation handles rate limits)
+        await new Promise(r => setTimeout(r, 1000));
     }
     
     updateModProgress(totalQuestions, totalQuestions, `Done! ${successCount}/${totalQuestions} processed successfully.`);
@@ -505,9 +505,9 @@ async function renderPageToBase64(pageNum) {
     return { canvas, base64Data };
 }
 
-async function detectQuestionBoxesWithGemini(base64Image) {
-    const apiKey = (typeof AI_API_KEY !== 'undefined') ? AI_API_KEY : "";
-    if (!apiKey || apiKey === "PASTE_YOUR_GOOGLE_AI_API_KEY_HERE") {
+async function detectQuestionBoxesWithGemini(base64Image, _retryCount = 0) {
+    const apiKey = GeminiKeyManager.getKey();
+    if (!apiKey) {
         throw new Error("No API key configured");
     }
     
@@ -555,7 +555,16 @@ If no questions are found, return an empty array [].`;
         body: JSON.stringify(payload)
     });
 
-    if (!response.ok) throw new Error("API call failed: " + response.statusText);
+    if (!response.ok) {
+        // On 429, blacklist this key and retry immediately with a different one
+        if (response.status === 429 && _retryCount < GeminiKeyManager.getTotalKeyCount()) {
+            GeminiKeyManager.markRateLimited(apiKey);
+            console.warn(`[ModUploader] 429 on key ...${apiKey.slice(-6)}, rotating to next key (attempt ${_retryCount + 1})`);
+            await new Promise(r => setTimeout(r, 1000)); // 1s micro-delay
+            return detectQuestionBoxesWithGemini(base64Image, _retryCount + 1);
+        }
+        throw new Error("API call failed: " + response.statusText);
+    }
     
     const result = await response.json();
     const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
