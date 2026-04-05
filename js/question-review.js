@@ -267,8 +267,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Security check
             if (resultData.userId !== user.uid) {
-                showError("Access Denied.");
-                return;
+                try {
+                    const adminDoc = await db.collection('admins').doc(user.uid).get();
+                    if (!adminDoc.exists) {
+                        showError("Access Denied.");
+                        return;
+                    }
+                } catch(err) {
+                    showError("Access Denied.");
+                    return;
+                }
             }
 
             // --- Proctored Review Access Control ---

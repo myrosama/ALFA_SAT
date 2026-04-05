@@ -728,8 +728,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="max-height:200px;overflow-y:auto;">${testStatus.map(ts => {
                     if (ts.result) {
                         return `<a href="results.html?resultId=${ts.result.id}" target="_blank" class="mini-stat-row" style="text-decoration:none;cursor:pointer;border-radius:6px;padding:5px 8px;margin:0 -8px;" onmouseover="this.style.background='var(--light-gray)'" onmouseout="this.style.background=''">
-                            <span class="label" style="color:var(--primary-blue);font-weight:600;">${esc(ts.name)} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.6rem;opacity:0.5;"></i></span>
-                            <span class="value">${scoreBadge(ts.result.totalScore)}</span>
+                            <span class="label" style="display:flex;flex-direction:column;color:var(--primary-blue);">
+                                <span style="font-weight:600;">${esc(ts.name)} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.6rem;opacity:0.5;"></i></span>
+                                <span style="font-size:0.7rem;color:#999;">${ts.result.rwScore ? 'R&W: ' + ts.result.rwScore + ' · Math: ' + ts.result.mathScore : ''}</span>
+                            </span>
+                            <span class="value" style="display:flex;align-items:center;">${scoreBadge(ts.result.totalScore)}</span>
                         </a>`;
                     }
                     return `<div class="mini-stat-row"><span class="label" style="color:#999;">${esc(ts.name)}</span><span class="value" style="font-size:0.75rem;color:#999;">Not taken</span></div>`;
