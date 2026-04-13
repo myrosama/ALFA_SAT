@@ -1598,3 +1598,436 @@ body {
 }
 
 /* +++ END UI ENHANCEMENTS +++ */
+
+/* ====================================================== */
+/* === MOBILE RESPONSIVE STYLES                       === */
+/* ====================================================== */
+
+/* --- Tablet (max-width: 768px) --- */
+@media (max-width: 768px) {
+    /* Header */
+    .main-header {
+        padding: 0 16px;
+    }
+
+    .header-content {
+        height: 56px;
+    }
+
+    .brand {
+        font-size: 1.2rem;
+        gap: 8px;
+    }
+
+    .logo-small {
+        width: 32px;
+        height: 32px;
+    }
+
+    .main-header nav a {
+        font-size: 0.85rem;
+        padding: 6px 10px;
+    }
+
+    /* Profile Menu */
+    .profile-menu {
+        width: 280px;
+        right: -8px;
+        padding: 12px;
+    }
+
+    .referral-display-container #referral-link-display {
+        font-size: 0.7rem;
+    }
+
+    /* Dashboard */
+    .dashboard-main {
+        padding: 20px 16px;
+    }
+
+    .welcome-section {
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+
+    .welcome-section h2 {
+        font-size: 1.4rem;
+    }
+
+    .welcome-section p {
+        font-size: 0.9rem;
+    }
+
+    /* Test Code */
+    .test-code-section {
+        margin-bottom: 24px;
+    }
+
+    .test-code-section form {
+        flex-direction: column;
+    }
+
+    .test-code-input {
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .test-code-section .btn-secondary {
+        width: 100%;
+        text-align: center;
+    }
+
+    /* Filter Tabs */
+    .dashboard-filters {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        gap: 8px;
+        padding-bottom: 4px;
+        scrollbar-width: none;
+    }
+
+    .dashboard-filters::-webkit-scrollbar {
+        display: none;
+    }
+
+    .filter-btn {
+        white-space: nowrap;
+        flex-shrink: 0;
+        font-size: 0.82rem;
+        padding: 8px 14px;
+    }
+
+    .filter-btn i {
+        display: none;
+    }
+
+    /* Test Cards Grid */
+    .test-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .card-content {
+        padding: 18px;
+    }
+
+    .test-card h4 {
+        font-size: 1.05rem;
+    }
+
+    /* Section Headers */
+    .section-header-row h3 {
+        font-size: 1.1rem;
+    }
+
+    /* Auth Pages */
+    .auth-card {
+        padding: 28px 22px;
+    }
+
+    .auth-card-header .logo {
+        width: 48px;
+        height: 48px;
+    }
+
+    .auth-card-header h1 {
+        font-size: 1.7rem;
+    }
+
+    .auth-card-slogan {
+        font-size: 0.9rem;
+    }
+
+    /* Results Page */
+    .results-main {
+        padding: 0 16px;
+        margin: 24px auto;
+    }
+
+    .results-header {
+        padding: 20px;
+    }
+
+    .results-header h2 {
+        font-size: 1.3rem;
+    }
+
+    .results-header-title {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .results-header-title .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* --- Mobile (max-width: 480px) --- */
+@media (max-width: 480px) {
+    /* Header */
+    .main-header {
+        padding: 0 12px;
+    }
+
+    .header-content {
+        height: 50px;
+    }
+
+    .brand {
+        font-size: 1rem;
+        gap: 6px;
+    }
+
+    .logo-small {
+        width: 28px;
+        height: 28px;
+    }
+
+    .main-header nav {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .main-header nav a {
+        font-size: 0.75rem;
+        padding: 5px 8px;
+    }
+
+    /* Profile Menu - full width on mobile */
+    .profile-menu {
+        position: fixed;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        border-radius: 16px 16px 0 0;
+        max-height: 80vh;
+        overflow-y: auto;
+        padding: 20px 16px;
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .profile-menu.visible {
+        transform: translateY(0);
+    }
+
+    /* Dashboard */
+    .dashboard-main {
+        padding: 16px 12px;
+    }
+
+    .welcome-section {
+        padding: 16px;
+        margin-bottom: 20px;
+        border-radius: 10px;
+    }
+
+    .welcome-section h2 {
+        font-size: 1.2rem;
+        margin-bottom: 4px;
+    }
+
+    .welcome-section p {
+        font-size: 0.82rem;
+    }
+
+    .test-code-input {
+        font-size: 0.9rem;
+        padding: 10px 12px;
+    }
+
+    .filter-btn {
+        font-size: 0.78rem;
+        padding: 7px 12px;
+    }
+
+    .card-content {
+        padding: 14px;
+    }
+
+    .test-card h4 {
+        font-size: 1rem;
+    }
+
+    .test-card p {
+        font-size: 0.85rem;
+        margin-bottom: 12px;
+    }
+
+    .card-action .btn {
+        padding: 10px 16px;
+        font-size: 0.88rem;
+        width: 100%;
+        text-align: center;
+    }
+
+    .section-header-row {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .section-header-row h3 {
+        font-size: 1rem;
+    }
+
+    /* Auth Pages */
+    .auth-body {
+        padding: 12px;
+    }
+
+    .auth-container {
+        max-width: 100%;
+    }
+
+    .auth-card {
+        padding: 24px 18px;
+        border-radius: 12px;
+    }
+
+    .auth-card-header {
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .auth-card-header .logo {
+        width: 42px;
+        height: 42px;
+    }
+
+    .auth-card-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .auth-card-slogan {
+        font-size: 0.85rem;
+        margin-bottom: 18px;
+    }
+
+    .auth-form .btn {
+        padding: 14px;
+        font-size: 1rem;
+    }
+
+    .input-group input {
+        padding: 11px 12px;
+        font-size: 0.95rem;
+    }
+
+    .input-group label {
+        font-size: 0.85rem;
+    }
+
+    .auth-switch {
+        margin-top: 18px;
+        font-size: 0.85rem;
+    }
+
+    /* Results Page */
+    .results-main {
+        margin: 16px auto;
+        padding: 0 12px;
+    }
+
+    .results-header {
+        padding: 16px;
+        border-radius: 12px;
+    }
+
+    .results-header h2 {
+        font-size: 1.15rem;
+    }
+
+    .score-summary-grid {
+        gap: 12px;
+    }
+
+    .total-score-card {
+        padding: 20px 16px;
+    }
+
+    .total-score-card h1 {
+        font-size: 3rem;
+    }
+
+    .section-score-card h2 {
+        font-size: 2rem;
+    }
+
+    .score-card .score-label {
+        font-size: 0.82rem;
+    }
+
+    .review-section {
+        padding: 0 12px 12px;
+        border-radius: 12px;
+    }
+
+    .section-title {
+        font-size: 1rem;
+        gap: 8px;
+        padding: 14px 0;
+    }
+
+    .section-title .section-raw-score {
+        font-size: 0.78rem;
+        padding: 4px 10px;
+    }
+
+    .review-grid {
+        grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
+        gap: 6px;
+        padding: 12px;
+    }
+
+    .q-number-btn {
+        min-height: 44px;
+        padding: 5px 3px;
+    }
+
+    .q-number-btn .q-number {
+        font-size: 1rem;
+    }
+
+    /* AI Analysis */
+    .ai-analysis-card {
+        padding: 16px;
+        border-radius: 12px;
+    }
+
+    .ai-badge {
+        font-size: 0.82rem;
+        padding: 5px 12px;
+    }
+}
+
+/* --- Small phones (max-width: 360px) --- */
+@media (max-width: 360px) {
+    .auth-card {
+        padding: 20px 14px;
+    }
+
+    .auth-card-header h1 {
+        font-size: 1.3rem;
+    }
+
+    .auth-card-header .logo {
+        width: 36px;
+        height: 36px;
+    }
+
+    .welcome-section h2 {
+        font-size: 1.1rem;
+    }
+
+    .total-score-card h1 {
+        font-size: 2.5rem;
+    }
+
+    .review-grid {
+        grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+    }
+}

@@ -167,30 +167,93 @@ document.addEventListener('DOMContentLoaded', () => {
                     resultsContainer.innerHTML = `
                         <style>
                             @keyframes fadeSlideUp { from { opacity:0; transform:translateY(25px); } to { opacity:1; transform:translateY(0); } }
-                            @keyframes checkPop { 0% { transform:scale(0); opacity:0; } 60% { transform:scale(1.15); } 100% { transform:scale(1); opacity:1; } }
+                            @keyframes checkPop { 0% { transform:scale(0) rotate(-45deg); opacity:0; } 60% { transform:scale(1.1) rotate(0deg); } 100% { transform:scale(1) rotate(0deg); opacity:1; } }
+                            @keyframes confettiDrift { 0% { transform: translateY(0) rotate(0deg); opacity:1; } 100% { transform: translateY(80px) rotate(720deg); opacity:0; } }
+                            @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+                            @keyframes pulseGlow { 0%,100% { box-shadow: 0 0 0 0 rgba(46,125,50,0.2); } 50% { box-shadow: 0 0 0 16px rgba(46,125,50,0); } }
+                            .submit-success-card { background:#fff; border-radius:20px; box-shadow:0 8px 40px rgba(0,0,0,0.08); max-width:520px; margin:0 auto; padding:48px 36px 40px; text-align:center; animation:fadeSlideUp 0.5s ease-out; position:relative; overflow:hidden; }
+                            .submit-success-card::before { content:''; position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg, #6A0DAD, #2e7d32, #003366); }
+                            .confetti-container { position:absolute; top:0; left:0; right:0; height:100px; pointer-events:none; overflow:hidden; }
+                            .confetti { position:absolute; width:8px; height:8px; border-radius:2px; animation: confettiDrift 2s ease-out forwards; }
+                            .check-circle { width:88px; height:88px; border-radius:50%; background:linear-gradient(135deg, #e8f5e9, #c8e6c9); margin:0 auto 28px; display:flex; align-items:center; justify-content:center; animation: checkPop 0.5s ease-out 0.15s both, pulseGlow 2s ease-in-out infinite; }
+                            .check-circle i { font-size:2.8rem; background:linear-gradient(135deg, #2e7d32, #43a047); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+                            .submit-title { color:var(--primary-blue); margin:0 0 8px; font-size:1.5rem; font-weight:700; }
+                            .submit-subtitle { color:var(--dark-gray); font-size:0.92rem; line-height:1.7; margin:0 0 24px; }
+                            .timeline-card { background:linear-gradient(135deg, #f8f9ff, #f0f4ff); border:1px solid #e3e8f0; border-radius:14px; padding:20px 24px; margin:0 0 24px; text-align:left; }
+                            .timeline-card h4 { margin:0 0 14px; color:var(--primary-blue); font-size:0.9rem; display:flex; align-items:center; gap:8px; }
+                            .timeline-step { display:flex; align-items:flex-start; gap:12px; margin-bottom:12px; }
+                            .timeline-step:last-child { margin-bottom:0; }
+                            .timeline-dot { width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:0.65rem; color:#fff; }
+                            .timeline-dot.done { background:#2e7d32; }
+                            .timeline-dot.pending { background:linear-gradient(135deg, #e0e0e0 25%, #bdbdbd 50%, #e0e0e0 75%); background-size:200% 100%; animation: shimmer 2s infinite linear; }
+                            .timeline-text { font-size:0.85rem; color:var(--dark-gray); line-height:1.4; padding-top:2px; }
+                            .timeline-text strong { color:var(--text-color); }
+                            .notify-hint { font-size:0.82rem; color:var(--dark-gray); margin:0 0 24px; line-height:1.5; }
+                            .notify-hint i { color:var(--primary-purple); }
+                            .submit-actions { display:flex; flex-direction:column; gap:10px; align-items:center; }
+                            .tg-btn { display:inline-flex; align-items:center; gap:10px; background:linear-gradient(135deg, var(--primary-blue), #004080); color:white; padding:14px 32px; border-radius:12px; text-decoration:none; font-weight:600; font-size:0.92rem; transition:transform 0.2s, box-shadow 0.2s; }
+                            .tg-btn:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,51,102,0.3); }
+                            .back-link { color:var(--dark-gray); font-size:0.82rem; text-decoration:none; padding:8px; transition:color 0.2s; }
+                            .back-link:hover { color:var(--primary-purple); text-decoration:underline; }
+                            @media (max-width:480px) {
+                                .submit-success-card { padding:32px 20px 28px; border-radius:16px; }
+                                .check-circle { width:72px; height:72px; }
+                                .check-circle i { font-size:2.2rem; }
+                                .submit-title { font-size:1.25rem; }
+                                .timeline-card { padding:16px; }
+                                .tg-btn { width:100%; justify-content:center; padding:14px 24px; }
+                            }
                         </style>
-                        <div style="text-align:center; padding:60px 20px; max-width:520px; margin:0 auto; animation:fadeSlideUp 0.5s ease-out;">
-                            <div style="width:80px; height:80px; border-radius:50%; background:#e8f5e9; margin:0 auto 24px; display:flex; align-items:center; justify-content:center; animation:checkPop 0.4s ease-out 0.1s both;">
-                                <i class="fa-solid fa-check" style="font-size:2.5rem; color:#2e7d32;"></i>
+                        <div class="submit-success-card">
+                            <div class="confetti-container" id="confetti-box"></div>
+                            <div class="check-circle">
+                                <i class="fa-solid fa-check"></i>
                             </div>
-                            <h2 style="color:var(--primary-blue); margin:0 0 14px; font-size:1.4rem;">Test Submitted Successfully</h2>
-                            <p style="color:var(--dark-gray); font-size:0.95rem; line-height:1.7; margin:0 0 10px;">
-                                Your test has been received and is currently being reviewed.
+                            <h2 class="submit-title">Test Submitted Successfully!</h2>
+                            <p class="submit-subtitle">
+                                Great job completing your test! Your answers have been securely recorded and are now being processed.
                             </p>
-                            <p style="color:var(--text-color); font-size:1rem; font-weight:600; margin:0 0 20px;">
-                                Results will be available within 24 hours.
+                            <div class="timeline-card">
+                                <h4><i class="fa-solid fa-list-check"></i> What Happens Next</h4>
+                                <div class="timeline-step">
+                                    <div class="timeline-dot done"><i class="fa-solid fa-check"></i></div>
+                                    <div class="timeline-text"><strong>Answers Received</strong> — Your responses have been saved.</div>
+                                </div>
+                                <div class="timeline-step">
+                                    <div class="timeline-dot pending"></div>
+                                    <div class="timeline-text"><strong>Scoring in Progress</strong> — Our team is reviewing and scoring your test.</div>
+                                </div>
+                                <div class="timeline-step">
+                                    <div class="timeline-dot pending"></div>
+                                    <div class="timeline-text"><strong>Results Published</strong> — Scores will be available within <strong>24 hours</strong>.</div>
+                                </div>
+                            </div>
+                            <p class="notify-hint">
+                                <i class="fa-solid fa-bell"></i> You'll receive an email notification when your scores are ready. Score releases will also be announced on our Telegram channel.
                             </p>
-                            <p style="color:var(--dark-gray); font-size:0.85rem; margin:0 0 28px; line-height:1.5;">
-                                Score releases will be announced on our official Telegram channel.
-                            </p>
-                            <a href="https://t.me/SAT_ALFA" target="_blank" rel="noopener"
-                                style="display:inline-flex; align-items:center; gap:8px; background:var(--primary-blue); color:white; padding:14px 28px; border-radius:10px; text-decoration:none; font-weight:600; font-size:0.95rem;">
-                                <i class="fa-brands fa-telegram"></i> ALFA SAT Channel
-                            </a>
-                            <br><br>
-                            <a href="dashboard.html" style="color:var(--dark-gray); font-size:0.85rem; text-decoration:underline;">Back to Dashboard</a>
+                            <div class="submit-actions">
+                                <a href="https://t.me/SAT_ALFA" target="_blank" rel="noopener" class="tg-btn">
+                                    <i class="fa-brands fa-telegram"></i> Join ALFA SAT Channel
+                                </a>
+                                <a href="dashboard.html" class="back-link">← Back to Dashboard</a>
+                            </div>
                         </div>
                     `;
+                    // Spawn confetti
+                    const confettiBox = document.getElementById('confetti-box');
+                    if (confettiBox) {
+                        const colors = ['#6A0DAD', '#2e7d32', '#003366', '#f0c040', '#e74c3c', '#3498db'];
+                        for (let i = 0; i < 30; i++) {
+                            const c = document.createElement('div');
+                            c.className = 'confetti';
+                            c.style.left = Math.random() * 100 + '%';
+                            c.style.top = '-10px';
+                            c.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                            c.style.animationDelay = (Math.random() * 0.8) + 's';
+                            c.style.animationDuration = (1.5 + Math.random()) + 's';
+                            confettiBox.appendChild(c);
+                        }
+                    }
                 }, 3500);
 
                 return;

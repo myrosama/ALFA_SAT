@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Helper Functions ---
+    function isAdmin() {
+      return exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isReadingOwnResult(resultDoc) {
+      return request.auth.uid == resultDoc.userId;
+    }
+
+    // --- Collection Rules ---
+    match /admins/{userId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId);
+
+      // Allow subcollections (completedTests, etc.)
+      match /{subcollection=**} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // --- Test Data Rules ---
+    match /tests/{testId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+
+      match /questions/{questionId} {
+        allow read: if request.auth != null;
+        allow write: if isAdmin();
+      }
+    }
+
+    // --- Test Results Rules ---
+    match /testResults/{resultId} {
+      allow read: if request.auth != null && (isReadingOwnResult(resource.data) || isAdmin());
+      allow create: if request.auth != null && isReadingOwnResult(request.resource.data);
+      allow update: if request.auth != null && (isReadingOwnResult(resource.data) || isAdmin());
+    }
+
+    // --- Proctored Sessions Rules ---
+    match /proctoredSessions/{code} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isAdmin();
+
+      match /participants/{participantId} {
+        allow read, write: if request.auth != null && isAdmin();
+        allow create, update: if request.auth != null && request.auth.uid == participantId;
+      }
+    }
+
+    // --- Bug Reports Rules ---
+    match /bug_reports/{reportId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // --- Study Groups Rules (NEW) ---
+    match /studyGroups/{groupId} {
+      allow read, write: if isAdmin();
+    }
+
+    // --- Referral Rules ---
+    match /referrals/{referralId} {
+      allow read, create: if request.auth != null;
+      allow update, delete: if false;
+    }
+  }
+}
