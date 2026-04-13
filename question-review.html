@@ -8,11 +8,11 @@
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/png" href="assets/logo.png">
     <!-- Core styles -->
-    <link rel="stylesheet" href="css/style.css?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2">
+    <link rel="stylesheet" href="css/style.css?v=3.0">
     <!-- Test styles (for layout) -->
-    <link rel="stylesheet" href="css/test.css?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2">
+    <link rel="stylesheet" href="css/test.css?v=3.0">
     <!-- This page's specific styles -->
-    <link rel="stylesheet" href="css/question-review.css?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2">
+    <link rel="stylesheet" href="css/question-review.css?v=3.0">
 
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;1,400&display=swap"
         rel="stylesheet">
@@ -21,6 +21,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.18/dist/katex.min.css">
+
+    <!-- Preconnect hints for performance -->
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com">
 </head>
 
 <body class="test-body">
@@ -126,12 +132,15 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
-    <script src="js/firebase-init.js?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script>
-    <script src="js/main.js?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script> <!-- For auth state/logout button -->
-    <script src="js/config.js?v=3.0?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script>
-    <script src="js/telegram-images.js?v=3.0?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script>
-    <script src="js/question-review.js?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script> <!-- This page's specific logic -->
+    <script src="js/firebase-init.js?v=3.0" defer></script>
+    <script src="js/main.js?v=3.0" defer></script> <!-- For auth state/logout button -->
+    <script src="js/config.js?v=3.0" defer></script>
+    <script src="js/telegram-images.js?v=3.0" defer></script>
+    <script src="js/question-review.js?v=3.0" defer></script> <!-- This page's specific logic -->
 
+
+    <!-- UI Enhancements -->
+    <script src="js/ui-enhancements.js?v=3.0" defer></script>
 </body>
 
 </html>

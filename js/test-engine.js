@@ -112,6 +112,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const fullscreenLoadingSpinner = document.getElementById('fullscreen-loading-spinner');
     // +++ END of Fullscreen Elements +++
 
+    // +++ Module Transition & Break Screen Elements +++
+    const moduleTransitionOverlay = document.getElementById('module-transition-overlay');
+    const breakScreenOverlay = document.getElementById('break-screen-overlay');
+    const breakTimerDigits = document.getElementById('break-timer-digits');
+    const breakSkipBtn = document.getElementById('break-skip-btn');
+    const breakStudentName = document.getElementById('break-student-name');
+    let breakTimerInterval = null;
+    // +++ END of Transition Elements +++
+
 
     // +++ NEW SCORING CONVERSION TABLES +++
     // Based on the provided PDF (Digital SAT, non-adaptive)
@@ -514,7 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
             saveTestState();
             const nextIdx = findNextNonEmptyModule(currentModuleIndex + 1);
             if (nextIdx !== -1) {
-                startModule(nextIdx);
+                advanceToNextModule(nextIdx);
             } else {
                 finishTest();
             }
@@ -581,7 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveTestState();
                 const nextIdx = findNextNonEmptyModule(currentModuleIndex + 1);
                 if (nextIdx !== -1) {
-                    startModule(nextIdx);
+                    advanceToNextModule(nextIdx);
                 } else {
                     finishTest();
                 }
@@ -922,6 +931,52 @@ document.addEventListener('DOMContentLoaded', () => {
             }), 'Save completedTests');
             console.log("User's completedTests subcollection updated.");
 
+            // +++ Referral reward trigger (proctored tests only) +++
+            if (proctorCode) {
+                try {
+                    const userDoc = await db.collection('users').doc(user.uid).get();
+                    const referredBy = userDoc.exists ? userDoc.data().referredBy : null;
+
+                    if (referredBy) {
+                        // Check if this is the user's first proctored completion
+                        const proctorResults = await db.collection('testResults')
+                            .where('userId', '==', user.uid)
+                            .where('proctorCode', '!=', null)
+                            .limit(2).get();
+
+                        // Only count if this is the first proctored result (the one we just saved)
+                        if (proctorResults.size <= 1) {
+                            console.log('First proctored test for referred user. Incrementing referrer count...');
+                            const referrerRef = db.collection('users').doc(referredBy);
+                            await referrerRef.update({
+                                referralCount: firebase.firestore.FieldValue.increment(1)
+                            });
+
+                            // Check if referrer reached 5
+                            const updatedReferrer = await referrerRef.get();
+                            if (updatedReferrer.exists && (updatedReferrer.data().referralCount || 0) >= 5) {
+                                // Add referrer to "Free Tests" study group
+                                const groupsSnap = await db.collection('studyGroups')
+                                    .where('name', '==', 'Free Tests').limit(1).get();
+                                if (!groupsSnap.empty) {
+                                    const groupDoc = groupsSnap.docs[0];
+                                    const members = groupDoc.data().memberIds || [];
+                                    if (!members.includes(referredBy)) {
+                                        await groupDoc.ref.update({
+                                            memberIds: firebase.firestore.FieldValue.arrayUnion(referredBy)
+                                        });
+                                        console.log('Referrer added to Free Tests group!');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (refErr) {
+                    console.warn('Referral reward check failed (non-critical):', refErr);
+                }
+            }
+            // +++ End referral reward +++
+
             // Remove beforeunload to prevent "leave page" dialog
             window.removeEventListener('beforeunload', saveTestState);
 
@@ -951,6 +1006,128 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
+
+    // =========================================================
+    // MODULE TRANSITION & BREAK SCREEN LOGIC
+    // =========================================================
+
+    /**
+     * Decides whether to show a simple white transition or the 10-min break screen,
+     * then advances to the next module.
+     * @param {number} nextIdx - The next module index to start.
+     */
+    function advanceToNextModule(nextIdx) {
+        // Module indices: 0=RW1, 1=RW2, 2=Math1, 3=Math2
+        // Between R&W modules (0→1) or Math modules (2→3): white transition
+        // Between sections (1→2, i.e. R&W done → Math): break screen
+        const comingFromModule = currentModuleIndex;
+
+        if (comingFromModule === 1 && nextIdx === 2) {
+            // R&W → Math: show 10-minute break
+            showBreakScreen(nextIdx);
+        } else {
+            // Same section transition: white overlay for 3s
+            showModuleTransition(nextIdx);
+        }
+    }
+
+    /**
+     * Shows the simple white "Module Is Over" overlay for ~3s, then starts next module.
+     */
+    function showModuleTransition(nextIdx) {
+        if (!moduleTransitionOverlay) {
+            // Fallback: just start module directly
+            startModule(nextIdx);
+            return;
+        }
+        moduleTransitionOverlay.style.display = 'flex';
+        if (testWrapper) testWrapper.classList.add('hidden');
+
+        setTimeout(() => {
+            moduleTransitionOverlay.style.display = 'none';
+            if (testWrapper) testWrapper.classList.remove('hidden');
+            startModule(nextIdx);
+        }, 3000);
+    }
+
+    /**
+     * Shows the dark break screen with 10-minute countdown.
+     * Skip button advances immediately. After timer hits 0, button becomes "Resume Testing Now".
+     */
+    function showBreakScreen(nextIdx) {
+        if (!breakScreenOverlay) {
+            startModule(nextIdx);
+            return;
+        }
+
+        // Set student name
+        if (breakStudentName && auth.currentUser) {
+            breakStudentName.textContent = auth.currentUser.displayName || 'Student';
+        }
+
+        // Hide test, show break
+        if (testWrapper) testWrapper.classList.add('hidden');
+        breakScreenOverlay.style.display = 'flex';
+
+        // Reset button to skip mode
+        if (breakSkipBtn) {
+            breakSkipBtn.textContent = 'Skip Break';
+            breakSkipBtn.classList.remove('resume-mode');
+        }
+
+        // Start 10-minute countdown
+        let breakSeconds = 10 * 60; // 600 seconds
+        updateBreakTimerDisplay(breakSeconds);
+
+        breakTimerInterval = setInterval(() => {
+            breakSeconds--;
+            updateBreakTimerDisplay(breakSeconds);
+
+            if (breakSeconds <= 0) {
+                clearInterval(breakTimerInterval);
+                breakTimerInterval = null;
+                // Change button to "Resume Testing Now"
+                if (breakSkipBtn) {
+                    breakSkipBtn.textContent = 'Resume Testing Now';
+                    breakSkipBtn.classList.add('resume-mode');
+                }
+            }
+        }, 1000);
+
+        // Wire up skip/resume button (remove old listener first)
+        if (breakSkipBtn) {
+            const newBtn = breakSkipBtn.cloneNode(true);
+            breakSkipBtn.parentNode.replaceChild(newBtn, breakSkipBtn);
+            // Re-assign reference (we can't update const, so use getElementById)
+            const btn = document.getElementById('break-skip-btn');
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    hideBreakScreen();
+                    startModule(nextIdx);
+                });
+            }
+        }
+    }
+
+    function updateBreakTimerDisplay(seconds) {
+        if (!breakTimerDigits) return;
+        const m = Math.max(0, Math.floor(seconds / 60));
+        const s = Math.max(0, seconds % 60);
+        breakTimerDigits.textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    }
+
+    function hideBreakScreen() {
+        if (breakTimerInterval) {
+            clearInterval(breakTimerInterval);
+            breakTimerInterval = null;
+        }
+        if (breakScreenOverlay) breakScreenOverlay.style.display = 'none';
+        if (testWrapper) testWrapper.classList.remove('hidden');
+    }
+
+    // =========================================================
+    // END MODULE TRANSITION & BREAK SCREEN LOGIC
+    // =========================================================
 
     function toggleModal(show) {
         if (!modal || !backdrop) return;
@@ -1575,7 +1752,7 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleModal(false);
             const nextIdx = findNextNonEmptyModule(currentModuleIndex + 1);
             if (nextIdx !== -1) {
-                startModule(nextIdx);
+                advanceToNextModule(nextIdx);
             } else {
                 finishTest();
             }

@@ -38,9 +38,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const email = loginForm['login-email'].value;
             const password = loginForm['login-password'].value;
 
+            const submitBtn = loginForm.querySelector('button[type="submit"]');
+            if (window.btnLoading) btnLoading(submitBtn, true);
             auth.signInWithEmailAndPassword(email, password)
                 .then(cred => {
-                    window.location.href = 'dashboard.html';
+                    (window.navigateTo ? window.navigateTo('dashboard.html') : window.location.href = 'dashboard.html');
                 })
                 .catch(err => {
                     console.error("Login Error:", err.code, err.message);
@@ -52,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         errorDiv.textContent = message;
                         errorDiv.classList.add('visible');
                     }
+                    if (window.btnLoading) btnLoading(submitBtn, false);
                 });
         });
     }
@@ -59,6 +62,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const signupForm = document.getElementById('signup-form');
     if (signupForm) {
         const errorDiv = document.getElementById('signup-error');
+
+        // +++ Referral: Check for ?ref= parameter +++
+        const urlParams = new URLSearchParams(window.location.search);
+        const referrerUid = urlParams.get('ref');
+        if (referrerUid) {
+            const referralNotice = document.getElementById('referral-notice');
+            const referrerNameEl = document.getElementById('referrer-name');
+            if (referralNotice && referrerNameEl) {
+                // Look up referrer's name
+                db.collection('users').doc(referrerUid).get().then(doc => {
+                    if (doc.exists && doc.data().fullName) {
+                        referrerNameEl.textContent = doc.data().fullName;
+                        referralNotice.style.display = 'flex';
+                    }
+                }).catch(() => { /* Silently ignore if referrer not found */ });
+            }
+        }
+        // +++ End referral check +++
+
         signupForm.addEventListener('submit', (e) => {
             e.preventDefault();
             if (errorDiv) errorDiv.classList.remove('visible');
@@ -67,19 +89,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const email = signupForm['signup-email'].value;
             const password = signupForm['signup-password'].value;
 
+            const submitBtn = signupForm.querySelector('button[type="submit"]');
+            if (window.btnLoading) btnLoading(submitBtn, true);
             auth.createUserWithEmailAndPassword(email, password)
                 .then(cred => {
-                    return db.collection('users').doc(cred.user.uid).set({
+                    const userData = {
                         fullName: name,
                         email: email,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    }).then(() => {
+                    };
+                    // +++ Store referral if present +++
+                    if (referrerUid) {
+                        userData.referredBy = referrerUid;
+                    }
+                    return db.collection('users').doc(cred.user.uid).set(userData).then(() => {
                         return cred.user.updateProfile({ displayName: name });
                     });
                 })
                 .then(() => {
-                    alert('Account created! Please log in.');
-                    window.location.href = 'index.html';
+                    if (window.showToast) window.showToast('Account created! Please log in.', 'success'); else alert('Account created! Please log in.');
+                    (window.navigateTo ? window.navigateTo('index.html') : window.location.href = 'index.html');
                 })
                 .catch(err => {
                     console.error("Signup Error:", err.code, err.message);
@@ -93,6 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         errorDiv.textContent = message;
                         errorDiv.classList.add('visible');
                     }
+                    if (window.btnLoading) btnLoading(submitBtn, false);
                 });
         });
     }
@@ -107,6 +137,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const email = adminLoginForm['admin-email'].value;
             const password = adminLoginForm['admin-password'].value;
 
+            const submitBtn = adminLoginForm.querySelector('button[type="submit"]');
+            if (window.btnLoading) btnLoading(submitBtn, true);
             auth.signInWithEmailAndPassword(email, password)
                 .then(userCredential => {
                     const user = userCredential.user;
@@ -114,13 +146,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
                 .then(doc => {
                     if (doc.exists) {
-                        window.location.href = 'admin.html';
+                        (window.navigateTo ? window.navigateTo('admin.html') : window.location.href = 'admin.html');
                     } else {
                         auth.signOut();
                         if (errorDiv) {
                             errorDiv.textContent = 'Access Denied. Not an admin account.';
                             errorDiv.classList.add('visible');
                         }
+                        if (window.btnLoading) btnLoading(submitBtn, false);
                     }
                 })
                 .catch(err => {
@@ -129,6 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         errorDiv.textContent = 'Invalid admin credentials.';
                         errorDiv.classList.add('visible');
                     }
+                    if (window.btnLoading) btnLoading(submitBtn, false);
                 });
         });
     }
@@ -188,8 +222,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }).then(() => {
                 console.log('Test created successfully!');
                 closeModal(createTestModal);
-                alert('Test created successfully!');
-                window.location.reload();
+                if (window.showToast) window.showToast('Test created successfully!', 'success'); else alert('Test created successfully!');
+                (window.smoothReload ? window.smoothReload() : window.location.reload());
             }).catch(err => {
                 console.error("Error creating test:", err);
                 alert("Error creating test: " + err.message);
@@ -315,7 +349,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                         await batch.commit();
                         alert(`Done! ${legacyTests.length} test(s) claimed.`);
-                        window.location.reload();
+                        (window.smoothReload ? window.smoothReload() : window.location.reload());
                     } catch (err) {
                         alert('Error: ' + err.message);
                     }
@@ -335,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             // Delete main document
                             await db.collection('tests').doc(testIdToDelete).delete();
                             alert('Test deleted successfully.');
-                            window.location.reload();
+                            (window.smoothReload ? window.smoothReload() : window.location.reload());
                         } catch (err) {
                             console.error("Delete failed:", err);
                             alert("Failed to delete test.");
@@ -467,7 +501,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }).then(() => {
                 console.log(`Access updated for ${currentEditingTestId}`);
                 closeAccessModal();
-                window.location.reload();
+                (window.smoothReload ? window.smoothReload() : window.location.reload());
             }).catch(err => {
                 console.error("Error updating access:", err);
                 if (accessErrorMsg) {
@@ -717,7 +751,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (logoutBtn && !logoutBtn.dataset.listenerAdded) {
                 logoutBtn.addEventListener('click', (e) => {
                     e.preventDefault();
-                    auth.signOut().then(() => { window.location.href = 'index.html'; });
+                    auth.signOut().then(() => { (window.navigateTo ? window.navigateTo('index.html') : window.location.href = 'index.html'); });
                 });
                 logoutBtn.dataset.listenerAdded = 'true';
             }
@@ -725,7 +759,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             // User is NOT logged in
             if (protectedPages.includes(currentPage)) {
-                window.location.href = 'index.html';
+                (window.navigateTo ? window.navigateTo('index.html') : window.location.href = 'index.html');
             }
         }
     });
@@ -776,7 +810,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (testId) {
-                    window.location.href = `test.html?id=${testId}&proctorCode=${code}`;
+                    (window.navigateTo ? window.navigateTo(`test.html?id=${testId}&proctorCode=${code}`) : window.location.href = `test.html?id=${testId}&proctorCode=${code}`);
                 } else {
                     alert("Error: Test not found.");
                     button.disabled = false;
@@ -817,9 +851,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => { copyUidBtn.innerHTML = '<i class="fa-regular fa-copy"></i>'; }, 2000);
             });
 
+            // +++ Referral link setup +++
+            const referralLinkDisplay = document.getElementById('referral-link-display');
+            const copyReferralBtn = document.getElementById('copy-referral-btn');
+            const referralCountDisplay = document.getElementById('referral-count-display');
+
+            if (referralLinkDisplay) {
+                const baseUrl = window.location.origin || 'https://alfasat.uz';
+                referralLinkDisplay.value = baseUrl + '/signup.html?ref=' + user.uid;
+            }
+
+            if (copyReferralBtn && referralLinkDisplay) {
+                copyReferralBtn.addEventListener('click', () => {
+                    referralLinkDisplay.select();
+                    document.execCommand('copy');
+                    copyReferralBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                    setTimeout(() => { copyReferralBtn.innerHTML = '<i class="fa-regular fa-copy"></i>'; }, 2000);
+                });
+            }
+
+            // Load referral count from Firestore
+            if (referralCountDisplay) {
+                db.collection('users').doc(user.uid).get().then(doc => {
+                    if (doc.exists) {
+                        const count = doc.data().referralCount || 0;
+                        referralCountDisplay.textContent = `Referred: ${count} / 5 students`;
+                        if (count >= 5) {
+                            referralCountDisplay.textContent = `✅ Referral reward unlocked! (${count} students)`;
+                            referralCountDisplay.style.color = '#0d6832';
+                        }
+                    }
+                }).catch(err => console.warn('Could not load referral count:', err));
+            }
+            // +++ End referral link setup +++
+
             profileLogoutBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                auth.signOut().then(() => { window.location.href = 'index.html'; });
+                auth.signOut().then(() => { (window.navigateTo ? window.navigateTo('index.html') : window.location.href = 'index.html'); });
             });
         }
 

@@ -15,11 +15,17 @@
     <meta http-equiv="Expires" content="0">
 
     <link rel="icon" type="image/png" href="assets/logo.png">
-    <link rel="stylesheet" href="css/style.css?v=2.0?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2">
+    <link rel="stylesheet" href="css/style.css?v=3.0">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700&display=swap" rel="stylesheet">
     <!-- +++ ADDED: Font Awesome for icons +++ -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+
+    <!-- Preconnect hints for performance -->
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com">
 </head>
 
 <body class="dashboard-body">
@@ -47,6 +53,16 @@
                                 </button>
                             </div>
                             <small>Give this ID to your admin for private test access.</small>
+                        </div>
+                        <div class="referral-display-container">
+                            <label>Your Referral Link</label>
+                            <div class="user-id-input-wrapper">
+                                <input type="text" id="referral-link-display" value="Loading..." readonly>
+                                <button class="btn-icon" id="copy-referral-btn" title="Copy Link">
+                                    <i class="fa-regular fa-copy"></i>
+                                </button>
+                            </div>
+                            <small id="referral-count-display">Referred: 0 / 5 students</small>
                         </div>
                         <button class="btn-logout" id="profile-logout-btn">
                             <i class="fa-solid fa-arrow-right-from-bracket"></i>
@@ -132,7 +148,34 @@
         <!-- Loading / Empty State -->
         <div class="test-list-container" id="loading-container">
             <div class="test-grid" id="test-grid-container">
-                <p>Loading available tests...</p>
+                <!-- Skeleton Loading Cards -->
+                <div class="skeleton-card">
+                    <div class="skeleton-content">
+                        <div class="skeleton-line badge"></div>
+                        <div class="skeleton-line title"></div>
+                        <div class="skeleton-line text"></div>
+                        <div class="skeleton-line text-short"></div>
+                    </div>
+                    <div class="skeleton-btn"></div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-content">
+                        <div class="skeleton-line badge"></div>
+                        <div class="skeleton-line title"></div>
+                        <div class="skeleton-line text"></div>
+                        <div class="skeleton-line text-short"></div>
+                    </div>
+                    <div class="skeleton-btn"></div>
+                </div>
+                <div class="skeleton-card">
+                    <div class="skeleton-content">
+                        <div class="skeleton-line badge"></div>
+                        <div class="skeleton-line title"></div>
+                        <div class="skeleton-line text"></div>
+                        <div class="skeleton-line text-short"></div>
+                    </div>
+                    <div class="skeleton-btn"></div>
+                </div>
             </div>
         </div>
     </main>
@@ -143,10 +186,13 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
 
     <!-- Our Firebase initialization script -->
-    <script src="js/firebase-init.js?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script>
+    <script src="js/firebase-init.js?v=3.0" defer></script>
 
     <!-- Our main script (must be last) -->
-    <script src="js/main.js?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script>
+    <script src="js/main.js?v=3.0" defer></script>
+
+    <!-- UI Enhancements -->
+    <script src="js/ui-enhancements.js?v=3.0" defer></script>
 </body>
 
 </html>

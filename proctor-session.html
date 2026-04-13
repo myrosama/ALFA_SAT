@@ -7,10 +7,16 @@
     <title>Proctored Session — ALFA SAT</title>
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/png" href="assets/logo.png">
-    <link rel="stylesheet" href="css/style.css?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2">
-    <link rel="stylesheet" href="css/proctor-session.css?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2">
+    <link rel="stylesheet" href="css/style.css?v=3.0">
+    <link rel="stylesheet" href="css/proctor-session.css?v=3.0">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+
+    <!-- Preconnect hints for performance -->
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com">
 </head>
 
 <body class="dashboard-body">
@@ -122,11 +128,14 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
-    <script src="js/firebase-init.js?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script>
-    <script src="js/config.js?v=3.0?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script>
-    <script src="js/telegram-images.js?v=3.0?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script>
-    <script src="js/ai-scoring-engine.js?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script>
-    <script src="js/proctor-session.js?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2?v=2.2"></script>
+    <script src="js/firebase-init.js?v=3.0" defer></script>
+    <script src="js/config.js?v=3.0" defer></script>
+    <script src="js/telegram-images.js?v=3.0" defer></script>
+    <script src="js/ai-scoring-engine.js?v=3.0" defer></script>
+    <script src="js/proctor-session.js?v=3.0" defer></script>
+
+    <!-- UI Enhancements -->
+    <script src="js/ui-enhancements.js?v=3.0" defer></script>
 </body>
 
 </html>

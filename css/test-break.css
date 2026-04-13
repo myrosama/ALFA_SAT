@@ -1,0 +1,212 @@
+/* css/test-break.css — Module transition & Break screen overlays */
+
+/* === Module Transition Overlay (white, between modules within same section) === */
+.module-transition-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99990;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    font-family: 'Poppins', sans-serif;
+}
+
+.module-transition-overlay h2 {
+    font-size: 1.4rem;
+    color: #4a6fa5;
+    font-weight: 600;
+    margin: 0;
+}
+
+.module-transition-overlay p {
+    font-size: 0.95rem;
+    color: #555;
+    margin: 0;
+    text-align: center;
+    line-height: 1.6;
+}
+
+.module-transition-overlay .mod-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid #e0e0e0;
+    border-top-color: #333;
+    border-radius: 50%;
+    animation: mod-spin 0.8s linear infinite;
+    margin-top: 10px;
+}
+
+@keyframes mod-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* === Break Screen Overlay (dark, between R&W and Math — SAT style) === */
+.break-screen-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99990;
+    background: #1a1a1a;
+    color: #fff;
+    font-family: 'Poppins', sans-serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.break-screen-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 80px;
+    padding: 40px 60px;
+}
+
+/* Left side — timer */
+.break-timer-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+}
+
+.break-timer-box {
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-radius: 12px;
+    padding: 24px 40px;
+    text-align: center;
+}
+
+.break-timer-box .timer-label {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 8px;
+}
+
+.break-timer-box .timer-digits {
+    font-size: 4rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 2px;
+    line-height: 1;
+}
+
+/* Right side — instructions */
+.break-info-section {
+    max-width: 460px;
+}
+
+.break-info-section h2 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin: 0 0 14px 0;
+    line-height: 1.25;
+}
+
+.break-info-section .break-subtitle {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.break-info-section .break-subtitle strong {
+    color: #fff;
+}
+
+.break-rules-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.break-rules-list {
+    list-style: decimal;
+    padding-left: 20px;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.break-rules-list li {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.4;
+}
+
+/* Footer — student name */
+.break-footer {
+    padding: 20px 60px;
+    font-size: 1rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Skip / Resume button */
+.break-skip-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 28px;
+    padding: 12px 32px;
+    background: #f5c518;
+    color: #1a1a1a;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.break-skip-btn:hover {
+    background: #e6b800;
+}
+
+.break-skip-btn:active {
+    transform: scale(0.98);
+}
+
+.break-skip-btn.resume-mode {
+    background: #4caf50;
+    color: #fff;
+    animation: pulse-resume 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-resume {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4); }
+    50% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .break-screen-content {
+        flex-direction: column;
+        gap: 40px;
+        padding: 30px 24px;
+        text-align: center;
+    }
+
+    .break-timer-box .timer-digits {
+        font-size: 3rem;
+    }
+
+    .break-info-section h2 {
+        font-size: 1.4rem;
+    }
+
+    .break-rules-list {
+        text-align: left;
+    }
+
+    .break-footer {
+        text-align: center;
+        padding: 16px 24px;
+    }
+}

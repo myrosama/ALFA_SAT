@@ -3,6 +3,12 @@
 <head>
   <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
   <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+
+    <!-- Preconnect hints for performance -->
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com">
 </head>
 <body>
   <div id="editor">
@@ -14,5 +20,8 @@
     const fs = require('fs');
     fs.writeFileSync('quill_output.txt', document.querySelector('.ql-editor').innerHTML);
   </script>
+
+    <!-- UI Enhancements -->
+    <script src="js/ui-enhancements.js?v=3.0" defer></script>
 </body>
 </html>

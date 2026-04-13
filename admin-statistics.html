@@ -12,6 +12,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+
+    <!-- Preconnect hints for performance -->
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com">
 </head>
 
 <body class="dashboard-body">
@@ -177,8 +183,11 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
 
-    <script src="js/firebase-init.js"></script>
-    <script src="js/admin-statistics.js"></script>
+    <script src="js/firebase-init.js" defer></script>
+    <script src="js/admin-statistics.js" defer></script>
+
+    <!-- UI Enhancements -->
+    <script src="js/ui-enhancements.js?v=3.0" defer></script>
 </body>
 
 </html>

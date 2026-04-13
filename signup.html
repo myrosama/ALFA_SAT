@@ -17,6 +17,12 @@
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- Preconnect hints for performance -->
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com">
 </head>
 
 <body class="auth-body">
@@ -36,6 +42,10 @@
 
             <p class="auth-card-slogan">Join us and start preparing for success.</p>
             <form id="signup-form" class="auth-form">
+                <div id="referral-notice" class="referral-notice" style="display: none;">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span>You were referred by <strong id="referrer-name">...</strong></span>
+                </div>
                 <div class="error-message" id="signup-error"></div>
                 <div class="input-group">
                     <label for="signup-name">Full Name</label>
@@ -61,8 +71,11 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore-compat.js"></script>
-    <script src="js/firebase-init.js"></script>
-    <script src="js/main.js"></script>
+    <script src="js/firebase-init.js" defer></script>
+    <script src="js/main.js" defer></script>
+
+    <!-- UI Enhancements -->
+    <script src="js/ui-enhancements.js?v=3.0" defer></script>
 </body>
 
 </html>
