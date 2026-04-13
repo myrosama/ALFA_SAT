@@ -65,12 +65,12 @@
     padding: 40px 60px;
 }
 
-/* Left side — timer */
+/* Left side — timer + skip button */
 .break-timer-section {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0;
+    gap: 24px;
 }
 
 .break-timer-box {
@@ -152,7 +152,6 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    margin-top: 28px;
     padding: 12px 32px;
     background: #f5c518;
     color: #1a1a1a;

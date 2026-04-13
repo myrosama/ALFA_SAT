@@ -70,13 +70,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const referralNotice = document.getElementById('referral-notice');
             const referrerNameEl = document.getElementById('referrer-name');
             if (referralNotice && referrerNameEl) {
-                // Look up referrer's name
+                // Show notice immediately with generic text
+                referrerNameEl.textContent = 'a friend';
+                referralNotice.style.display = 'flex';
+
+                // Try to fetch referrer's actual name (may fail if rules block unauthenticated reads)
                 db.collection('users').doc(referrerUid).get().then(doc => {
                     if (doc.exists && doc.data().fullName) {
                         referrerNameEl.textContent = doc.data().fullName;
-                        referralNotice.style.display = 'flex';
                     }
-                }).catch(() => { /* Silently ignore if referrer not found */ });
+                }).catch(() => { /* Keep generic name if lookup fails */ });
             }
         }
         // +++ End referral check +++
@@ -870,18 +873,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
-            // Load referral count from Firestore
+            // Load referral count from referrals collection (reliable source)
             if (referralCountDisplay) {
-                db.collection('users').doc(user.uid).get().then(doc => {
-                    if (doc.exists) {
-                        const count = doc.data().referralCount || 0;
+                db.collection('referrals')
+                    .where('referrerId', '==', user.uid)
+                    .get()
+                    .then(snap => {
+                        const count = snap.size;
                         referralCountDisplay.textContent = `Referred: ${count} / 5 students`;
                         if (count >= 5) {
                             referralCountDisplay.textContent = `✅ Referral reward unlocked! (${count} students)`;
                             referralCountDisplay.style.color = '#0d6832';
                         }
-                    }
-                }).catch(err => console.warn('Could not load referral count:', err));
+                    })
+                    .catch(err => {
+                        console.warn('Could not load referral count:', err);
+                        // Fallback: try from user doc
+                        db.collection('users').doc(user.uid).get().then(doc => {
+                            if (doc.exists) {
+                                const count = doc.data().referralCount || 0;
+                                referralCountDisplay.textContent = `Referred: ${count} / 5 students`;
+                            }
+                        }).catch(() => {});
+                    });
             }
             // +++ End referral link setup +++
 

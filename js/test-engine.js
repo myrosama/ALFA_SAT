@@ -938,23 +938,39 @@ document.addEventListener('DOMContentLoaded', () => {
                     const referredBy = userDoc.exists ? userDoc.data().referredBy : null;
 
                     if (referredBy) {
-                        // Check if this is the user's first proctored completion
-                        const proctorResults = await db.collection('testResults')
-                            .where('userId', '==', user.uid)
-                            .where('proctorCode', '!=', null)
-                            .limit(2).get();
+                        // Check if we already recorded this referral completion
+                        const existingRef = await db.collection('referrals')
+                            .where('referredUserId', '==', user.uid)
+                            .limit(1).get();
 
-                        // Only count if this is the first proctored result (the one we just saved)
-                        if (proctorResults.size <= 1) {
-                            console.log('First proctored test for referred user. Incrementing referrer count...');
-                            const referrerRef = db.collection('users').doc(referredBy);
-                            await referrerRef.update({
-                                referralCount: firebase.firestore.FieldValue.increment(1)
+                        if (existingRef.empty) {
+                            console.log('Recording referral completion for referrer:', referredBy);
+
+                            // Write to shared referrals collection (no cross-user write needed)
+                            await db.collection('referrals').add({
+                                referrerId: referredBy,
+                                referredUserId: user.uid,
+                                completedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                testId: testId || null,
+                                resultId: resultId
                             });
+                            console.log('Referral completion recorded successfully.');
 
-                            // Check if referrer reached 5
-                            const updatedReferrer = await referrerRef.get();
-                            if (updatedReferrer.exists && (updatedReferrer.data().referralCount || 0) >= 5) {
+                            // Try to update referrer's count (may fail due to security rules — that's OK)
+                            try {
+                                await db.collection('users').doc(referredBy).update({
+                                    referralCount: firebase.firestore.FieldValue.increment(1)
+                                });
+                            } catch (e) {
+                                console.warn('Could not update referrer count directly (expected if rules block cross-user writes):', e.message);
+                            }
+
+                            // Check referral count from the referrals collection
+                            const allReferrals = await db.collection('referrals')
+                                .where('referrerId', '==', referredBy)
+                                .get();
+
+                            if (allReferrals.size >= 5) {
                                 // Add referrer to "Free Tests" study group
                                 const groupsSnap = await db.collection('studyGroups')
                                     .where('name', '==', 'Free Tests').limit(1).get();
@@ -969,6 +985,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                     }
                                 }
                             }
+                        } else {
+                            console.log('Referral already recorded for this user, skipping.');
                         }
                     }
                 } catch (refErr) {

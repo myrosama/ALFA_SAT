@@ -21,8 +21,8 @@
 
             // Add spinner if not already present
             if (!btn.querySelector('.btn-spinner-icon')) {
-                const spinner = document.createElement('i');
-                spinner.className = 'fa-solid fa-circle-notch fa-spin btn-spinner-icon';
+                const spinner = document.createElement('span');
+                spinner.className = 'btn-spinner-icon';
                 btn.appendChild(spinner);
             }
         } else {
